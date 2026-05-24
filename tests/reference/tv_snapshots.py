@@ -1,0 +1,211 @@
+"""
+TradingView reference snapshots for 10 large-cap canaries.
+
+These values are pinned from the 2026-05-22 pipeline output and are spot-
+checked against TradingView indicator screenshots for the same date. The
+test in `test_tv_parity.py` re-derives the same fields from the live
+parquet outputs and asserts they fall within the per-field tolerance below.
+
+When indicators are recalibrated or upstream data changes:
+  1.  Update TV_SNAPSHOTS values from `tests/reference/regenerate.py`
+      (uses the latest snapshot folder under `data/snapshots/YYYY-MM-DD/`).
+  2.  Visually re-cross-check ≥3 tickers against TradingView screenshots
+      on the same date.
+  3.  Note the snapshot date and reason for the refresh below.
+
+Last refreshed: 2026-05-22 (Phase 4 build).
+"""
+from __future__ import annotations
+
+REFERENCE_DATE = "2026-05-22"
+
+# Per-field absolute tolerance. Wider on indicators where TV/our convention
+# differs slightly (ADX/RSI smoothing, ATR multiple).
+TOLERANCES: dict[str, float] = {
+    "close": 0.50,
+    "rs_rating_spy": 5.0,
+    "pct_ma_50": 1.0,
+    "pct_ma_200": 1.5,
+    "adx_14": 3.0,
+    "rsi_14": 2.0,
+    "atr_x_50": 1.0,
+    "ccqs": 5.0,
+    "state_confidence": 0.10,
+    "setup_confidence": 0.10,
+}
+
+# Exact-match fields (categorical labels).
+EXACT_FIELDS: list[str] = ["grade", "state", "leadership_tier", "setup"]
+
+TV_SNAPSHOTS: dict[str, dict] = {
+    "NVDA": {
+        "date": REFERENCE_DATE,
+        "close": 215.33,
+        "rs_rating_spy": 69.63,
+        "pct_ma_50": 9.41,
+        "pct_ma_200": 15.13,
+        "adx_14": 28.74,
+        "rsi_14": 53.71,
+        "atr_x_50": 2.44,
+        "ccqs": 81.53,
+        "grade": "A",
+        "state": "TRENDING",
+        "state_confidence": 0.672,
+        "leadership_tier": "STRONG_PERFORMER",
+        "setup": "Healthy Trend",
+        "setup_confidence": 0.65,
+    },
+    "MSFT": {
+        "date": REFERENCE_DATE,
+        "close": 418.57,
+        "rs_rating_spy": 31.50,
+        "pct_ma_50": 4.53,
+        "pct_ma_200": -9.09,
+        "adx_14": 17.09,
+        "rsi_14": 54.42,
+        "atr_x_50": 1.65,
+        "ccqs": 35.68,
+        "grade": "C",
+        "state": "PULLBACK",
+        "state_confidence": 0.427,
+        "leadership_tier": "WEAK_PERFORMER",
+        "setup": "Range-Bound Coil",
+        "setup_confidence": 0.70,
+    },
+    "META": {
+        "date": REFERENCE_DATE,
+        "close": 610.26,
+        "rs_rating_spy": 29.46,
+        "pct_ma_50": -1.22,
+        "pct_ma_200": -8.84,
+        "adx_14": 20.56,
+        "rsi_14": 45.34,
+        "atr_x_50": -0.49,
+        "ccqs": 21.51,
+        "grade": "D",
+        "state": "BROKEN",
+        "state_confidence": 0.811,
+        "leadership_tier": "WEAK_PERFORMER",
+        "setup": "Weak Setup",
+        "setup_confidence": 0.65,
+    },
+    "GOOGL": {
+        "date": REFERENCE_DATE,
+        "close": 382.97,
+        "rs_rating_spy": 86.37,
+        "pct_ma_50": 12.26,
+        "pct_ma_200": 29.30,
+        "adx_14": 44.55,
+        "rsi_14": 57.49,
+        "atr_x_50": 4.23,
+        "ccqs": 92.70,
+        "grade": "A",
+        "state": "TRENDING",
+        "state_confidence": 0.769,
+        "leadership_tier": "STRONG_PERFORMER",
+        "setup": "Climax Bearish Divergence",
+        "setup_confidence": 0.90,
+    },
+    "TSLA": {
+        "date": REFERENCE_DATE,
+        "close": 426.01,
+        "rs_rating_spy": 61.67,
+        "pct_ma_50": 9.70,
+        "pct_ma_200": 3.90,
+        "adx_14": 21.05,
+        "rsi_14": 58.30,
+        "atr_x_50": 2.29,
+        "ccqs": 73.83,
+        "grade": "B",
+        "state": "MIXED",
+        "state_confidence": 0.549,
+        "leadership_tier": "STRONG_PERFORMER",
+        "setup": "Theme Leader Pullback",
+        "setup_confidence": 0.80,
+    },
+    "AMZN": {
+        "date": REFERENCE_DATE,
+        "close": 266.32,
+        "rs_rating_spy": 71.23,
+        "pct_ma_50": 10.08,
+        "pct_ma_200": 15.51,
+        "adx_14": 31.12,
+        "rsi_14": 57.98,
+        "atr_x_50": 3.66,
+        "ccqs": 96.36,
+        "grade": "S",
+        "state": "TRENDING",
+        "state_confidence": 0.830,
+        "leadership_tier": "STRONG_PERFORMER",
+        "setup": "Range-Bound Coil",
+        "setup_confidence": 0.70,
+    },
+    "JPM": {
+        "date": REFERENCE_DATE,
+        "close": 306.38,
+        "rs_rating_spy": 47.44,
+        "pct_ma_50": 1.57,
+        "pct_ma_200": 0.27,
+        "adx_14": 20.08,
+        "rsi_14": 52.69,
+        "atr_x_50": 0.79,
+        "ccqs": 42.45,
+        "grade": "C",
+        "state": "BROKEN",
+        "state_confidence": 0.351,
+        "leadership_tier": "NEUTRAL",
+        "setup": "Weak Setup",
+        "setup_confidence": 0.65,
+    },
+    "TSM": {
+        "date": REFERENCE_DATE,
+        "close": 404.52,
+        "rs_rating_spy": 83.86,
+        "pct_ma_50": 8.42,
+        "pct_ma_200": 27.27,
+        "adx_14": 19.94,
+        "rsi_14": 55.46,
+        "atr_x_50": 2.22,
+        "ccqs": 92.29,
+        "grade": "A",
+        "state": "TRENDING",
+        "state_confidence": 0.523,
+        "leadership_tier": "STRONG_PERFORMER",
+        "setup": "Pullback to 21EMA",
+        "setup_confidence": 0.85,
+    },
+    "LLY": {
+        "date": REFERENCE_DATE,
+        "close": 1065.00,
+        "rs_rating_spy": 65.08,
+        "pct_ma_50": 12.90,
+        "pct_ma_200": 14.73,
+        "adx_14": 20.34,
+        "rsi_14": 68.31,
+        "atr_x_50": 4.03,
+        "ccqs": 73.59,
+        "grade": "B",
+        "state": "MIXED",
+        "state_confidence": 0.917,
+        "leadership_tier": "STRONG_PERFORMER",
+        "setup": "Mixed / Indeterminate",
+        "setup_confidence": 0.55,
+    },
+    "UNH": {
+        "date": REFERENCE_DATE,
+        "close": 388.47,
+        "rs_rating_spy": 75.89,
+        "pct_ma_50": 17.49,
+        "pct_ma_200": 19.89,
+        "adx_14": 48.41,
+        "rsi_14": 67.84,
+        "atr_x_50": 6.26,
+        "ccqs": 85.09,
+        "grade": "A",
+        "state": "TRENDING",
+        "state_confidence": 0.597,
+        "leadership_tier": "STRONG_PERFORMER",
+        "setup": "Healthy Trend",
+        "setup_confidence": 0.65,
+    },
+}

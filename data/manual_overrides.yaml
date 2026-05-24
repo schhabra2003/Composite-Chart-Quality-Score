@@ -1,0 +1,73 @@
+# CCQS V1 — Manual Overrides (Reliability Layer 7)
+#
+# Mechanism for human-in-the-loop adjustments to the scoring pipeline without
+# touching code. Loaded at runtime by the relevant compute modules.
+#
+# All sections are OPTIONAL. Leave empty (or omit) to apply no overrides.
+#
+# Edit, then rerun the pipeline. Changes take effect on next refresh.
+
+# ---------------------------------------------------------------------------
+# exclude_tickers
+#   List of tickers to skip entirely (excluded from data pull, scoring,
+#   and aggregation). Useful for known-bad symbols or names you do not want
+#   appearing in the dashboard.
+#
+#   Example:
+#     exclude_tickers:
+#       - GHOST     # delisted, yfinance still returns stale data
+#       - HALTED    # currently halted, awaiting resolution
+# ---------------------------------------------------------------------------
+exclude_tickers: []
+
+# ---------------------------------------------------------------------------
+# flag_tickers
+#   Add a custom warning flag that shows up in the dashboard next to the
+#   ticker. Does NOT exclude from scoring; informational only.
+#
+#   Example:
+#     flag_tickers:
+#       NVDA: "watch for split-adjusted history bug in yfinance"
+#       SMCI: "auditor concerns, manual review recommended"
+# ---------------------------------------------------------------------------
+flag_tickers: {}
+
+# ---------------------------------------------------------------------------
+# force_state
+#   Override the probabilistic state classification for specific tickers.
+#   Use sparingly — the state classifier is usually correct. Reach for this
+#   only when you have strong outside context (e.g., known corp action).
+#
+#   Valid states: TRENDING, PULLBACK, COILING, CLIMACTIC, BROKEN, MIXED
+#
+#   Example:
+#     force_state:
+#       XYZ: BROKEN          # despite chart, fundamentals are deteriorating
+#       ABC: COILING         # pre-spinoff consolidation, classifier confused
+# ---------------------------------------------------------------------------
+force_state: {}
+
+# ---------------------------------------------------------------------------
+# data_quality_overrides
+#   Suppress specific data-quality warnings or failures for specific tickers.
+#   Use when you have manually verified the data is correct despite the
+#   automated firewall flagging it.
+#
+#   Each entry: ticker -> list of warning/failure codes to suppress.
+#
+#   Valid codes (critical, exclude from scoring unless overridden):
+#     NO_DATA, INSUFFICIENT_HISTORY, STALE_DATA, INVALID_PRICES,
+#     ZERO_VOLUME, INSUFFICIENT_LIQUIDITY, SUSPICIOUS_BAR
+#
+#   Valid codes (warnings, kept in scoring):
+#     LARGE_GAP_RECENT, VOLUME_COLLAPSE, LOW_LIQUIDITY, FREQUENT_GAPS,
+#     FREQUENT_DOJI, POSSIBLE_CORPORATE_ACTION
+#
+#   Example:
+#     data_quality_overrides:
+#       NEWIPO:
+#         - INSUFFICIENT_HISTORY   # IPO'd recently, accept short history
+#       SPINOFF1:
+#         - POSSIBLE_CORPORATE_ACTION   # confirmed legit spinoff
+# ---------------------------------------------------------------------------
+data_quality_overrides: {}
