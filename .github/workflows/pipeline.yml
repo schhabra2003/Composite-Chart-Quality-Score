@@ -6,6 +6,10 @@ on:
     - cron: '0 23 * * 1-5'
   workflow_dispatch: {}  # allow manual triggering from Actions UI
 
+# Need write access to push the refreshed dashboard cache back to main.
+permissions:
+  contents: write
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -32,6 +36,21 @@ jobs:
 
       - name: Run end-to-end pipeline
         run: python -m compute.pipeline
+
+      - name: Build slim dashboard cache for Streamlit Cloud
+        run: python -m compute.build_dashboard_cache
+
+      - name: Commit refreshed dashboard cache to main
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/cache/dashboard/
+          if git diff --cached --quiet; then
+            echo "No dashboard cache changes to commit."
+          else
+            git commit -m "ci: refresh dashboard cache ($(date -u +%Y-%m-%d))"
+            git push origin HEAD:main
+          fi
 
       - name: Run data-dependent tests against fresh outputs
         run: |
