@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax check (compileall)
+        run: python -m compileall -q compute/ app/ data/ tests/
+
+      - name: Import smoke test
+        run: |
+          python -c "
+          import compute.pipeline
+          import compute.features
+          import compute.standardization
+          import compute.components
+          import compute.state
+          import compute.leadership
+          import compute.ccqs
+          import compute.aggregation
+          import compute.setup_classifier
+          import compute.reliability.sanity_checks
+          import compute.reliability.ic_tracker
+          import data.universe
+          print('all imports OK')
+          "
+
+      - name: Verify SHOW_SANDBOX flag is off in production code
+        run: |
+          grep -q "^SHOW_SANDBOX = False" app/streamlit_app.py
+          echo "SHOW_SANDBOX = False — confirmed"

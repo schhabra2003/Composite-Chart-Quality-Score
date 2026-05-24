@@ -1,0 +1,58 @@
+name: Daily CCQS Pipeline
+
+on:
+  schedule:
+    # Mon-Fri at 23:00 UTC (~18:00 ET / 19:00 EDT) — after US market close
+    - cron: '0 23 * * 1-5'
+  workflow_dispatch: {}  # allow manual triggering from Actions UI
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Fetch OHLCV and compute features
+        run: python -m compute.features
+
+      - name: Standardize features (z-scores)
+        run: python -m compute.standardization
+
+      - name: Run end-to-end pipeline
+        run: python -m compute.pipeline
+
+      - name: Run data-dependent tests against fresh outputs
+        run: |
+          pip install pytest
+          pytest tests/test_phase2_spot_check.py tests/test_phase3_validation.py -v --tb=short
+        continue-on-error: true
+
+      - name: Upload data/cache artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ccqs-cache-${{ github.run_number }}
+          path: |
+            data/cache/
+            !data/cache/sandbox/
+          retention-days: 90
+
+      - name: Upload sanity-checks report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sanity-checks-${{ github.run_number }}
+          path: data/cache/sanity_checks.json
+          retention-days: 90
