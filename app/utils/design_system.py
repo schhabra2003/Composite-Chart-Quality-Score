@@ -131,8 +131,12 @@ CUSTOM_CSS = """
         margin-bottom: 8px;
     }
 
-    /* Plotly chart consistency */
-    .stPlotlyChart { background: #ffffff; }
+    /* Plotly chart consistency — subtle card elevation */
+    .stPlotlyChart {
+        background: #ffffff;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
     .stPlotlyChart > div { margin-bottom: 8px; }
     .js-plotly-plot .table .cell { font-size: 12px; }
 

@@ -198,7 +198,14 @@ with tab_production:
         tickers_sorted = sorted(df.index.astype(str).tolist())
 
     default_idx = tickers_sorted.index("NVDA") if "NVDA" in tickers_sorted else 0
-    sel = st.selectbox("Ticker", options=tickers_sorted, index=default_idx)
+    tc1, _ = st.columns([2, 3])
+    with tc1:
+        sel = st.selectbox(
+            "Ticker",
+            options=tickers_sorted,
+            index=default_idx,
+            label_visibility="collapsed",
+        )
 
     if sel in df.index:
         row = df.loc[sel]
@@ -217,7 +224,6 @@ with tab_production:
             unsafe_allow_html=True,
         )
 
-        st.markdown("<br/>", unsafe_allow_html=True)
         left, right = st.columns([3, 2])
         with left:
             st.markdown("### Component Contributions")
@@ -236,15 +242,17 @@ with tab_production:
 
         st.markdown("### CCQS Trajectory")
         period_options = ["1W", "1M", "3M", "6M", "1Y", "3Y", "5Y", "INCEPTION"]
-        period_sel = st.selectbox(
-            "Period",
-            options=period_options,
-            index=period_options.index("6M"),
-            label_visibility="collapsed",
-            key=f"period_{sel}",
-        )
+        pc1, _ = st.columns([1, 4])
+        with pc1:
+            period_sel = st.selectbox(
+                "Period",
+                options=period_options,
+                index=period_options.index("6M"),
+                label_visibility="collapsed",
+                key=f"period_{sel}",
+            )
         st.plotly_chart(
-            ccqs_trajectory_chart(load_ticker_history(sel, period=period_sel)),
+            ccqs_trajectory_chart(load_ticker_history(sel, period=period_sel), period=period_sel),
             use_container_width=True,
             config={"displayModeBar": False},
         )
