@@ -19,7 +19,18 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 CACHE_DIR = ROOT / "data" / "cache"
+DASHBOARD_DIR = CACHE_DIR / "dashboard"
 TTL = 1800
+
+
+def _resolve(name: str) -> Path:
+    """Prefer the slim dashboard cache (shipped with the deployed app),
+    fall back to the full pipeline cache for local dev.
+    """
+    slim = DASHBOARD_DIR / name
+    if slim.exists():
+        return slim
+    return CACHE_DIR / name
 
 
 # ---------------------------------------------------------------------------
@@ -28,7 +39,7 @@ TTL = 1800
 
 @st.cache_data(ttl=TTL, show_spinner=False)
 def _read_parquet(name: str) -> pd.DataFrame:
-    path = CACHE_DIR / name
+    path = _resolve(name)
     if not path.exists():
         return pd.DataFrame()
     return pd.read_parquet(path)
@@ -36,7 +47,7 @@ def _read_parquet(name: str) -> pd.DataFrame:
 
 @st.cache_data(ttl=TTL, show_spinner=False)
 def _read_json(name: str) -> dict:
-    path = CACHE_DIR / name
+    path = _resolve(name)
     if not path.exists():
         return {}
     try:

@@ -1,0 +1,91 @@
+{
+  "generated_at": "2026-05-24T03:49:20.434381+00:00",
+  "passed": true,
+  "n_checks": 11,
+  "n_failed": 0,
+  "checks": [
+    {
+      "name": "ccqs_in_0_100",
+      "passed": true,
+      "observed": "0 out-of-range",
+      "expected": "0 rows where ccqs is outside [0,100]",
+      "detail": ""
+    },
+    {
+      "name": "state_probs_sum_to_1",
+      "passed": true,
+      "observed": "0 rows",
+      "expected": "0 rows where \u03a3p != 1.0 \u00b11e-3",
+      "detail": ""
+    },
+    {
+      "name": "state_p_adj_sum_to_1",
+      "passed": true,
+      "observed": "0 rows",
+      "expected": "0 rows where \u03a3p_adj != 1.0 \u00b11e-3",
+      "detail": ""
+    },
+    {
+      "name": "no_inf_components",
+      "passed": true,
+      "observed": "False",
+      "expected": "no \u00b1inf in components",
+      "detail": ""
+    },
+    {
+      "name": "grade_s_pct_in_2_15",
+      "passed": true,
+      "observed": "6.37%",
+      "expected": "S grade % between 2 and 15",
+      "detail": ""
+    },
+    {
+      "name": "leadership_tier_values_valid",
+      "passed": true,
+      "observed": "ok",
+      "expected": "all tier values in TIERS",
+      "detail": ""
+    },
+    {
+      "name": "setup_confidence_in_0_1",
+      "passed": true,
+      "observed": "0 rows",
+      "expected": "setup_confidence \u2208 [0,1]",
+      "detail": ""
+    },
+    {
+      "name": "index_alignment",
+      "passed": true,
+      "observed": {
+        "ccqs": 1553400,
+        "components": 1553400,
+        "state": 1553400,
+        "leadership": 1553400,
+        "setups": 1553400
+      },
+      "expected": "all (ticker,date) indexes equal length and named",
+      "detail": ""
+    },
+    {
+      "name": "theme_ccqs_coverage",
+      "passed": true,
+      "observed": "81.87% valid",
+      "expected": "\u226550% of theme rows have a valid theme_ccqs",
+      "detail": ""
+    },
+    {
+      "name": "features_fresh_within_5d",
+      "passed": true,
+      "observed": "max date 2026-05-22 (2d old)",
+      "expected": "latest features date within 5 calendar days",
+      "detail": ""
+    },
+    {
+      "name": "universe_coverage",
+      "passed": true,
+      "observed": "863 tickers",
+      "expected": "\u2265750 unique tickers with a CCQS in the last 30 trading days",
+      "detail": ""
+    }
+  ]
+}

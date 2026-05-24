@@ -43,10 +43,11 @@ venv.bak/
 *~
 .DS_Store
 
-# Project data (gitignored per SPEC)
-data/cache/
+# Project data — gitignored EXCEPT the slim dashboard cache that ships with
+# the deployed Streamlit app (see compute/build_dashboard_cache.py).
+data/cache/*
+!data/cache/dashboard/
 data/snapshots/
-*.parquet
 logs/
 
 # Testing
