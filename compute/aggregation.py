@@ -282,12 +282,13 @@ def aggregate_themes(
         lambda s: (s == "EMERGING_LEADER").sum()
     )
 
-    # Setup counts
-    agg["n_multibagger_setups"] = g["setup"].apply(
-        lambda s: (s == "Emerging Leader (Multibagger Setup)").sum()
+    # Setup counts (labels renamed in Phase 5.8 — see SETUP_LABELS in
+    # compute/setup_classifier.py)
+    agg["n_emerging_leader_setups"] = g["setup"].apply(
+        lambda s: (s == "Emerging Leader").sum()
     )
-    agg["n_tier_s_pullback"] = g["setup"].apply(
-        lambda s: (s == "Tier S Pullback").sum()
+    agg["n_premium_pullback"] = g["setup"].apply(
+        lambda s: (s == "Premium Pullback").sum()
     )
     agg["n_elite_leader_setups"] = g["setup"].apply(
         lambda s: s.isin(["Elite Leader Continuation", "Elite Leader Pullback"]).sum()

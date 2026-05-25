@@ -14,6 +14,7 @@ When indicators are recalibrated or upstream data changes:
   3.  Note the snapshot date and reason for the refresh below.
 
 Last refreshed: 2026-05-22 (Phase 4 build).
+Setup labels updated 2026-05-25 (Phase 5.8 Tier A vocabulary audit).
 """
 from __future__ import annotations
 
@@ -52,7 +53,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "TRENDING",
         "state_confidence": 0.672,
         "leadership_tier": "STRONG_PERFORMER",
-        "setup": "Sustained Uptrend",
+        "setup": "Trending (Generic)",
         "setup_confidence": 0.65,
     },
     "MSFT": {
@@ -86,7 +87,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "DETERIORATING",
         "state_confidence": 0.811,
         "leadership_tier": "WEAK_PERFORMER",
-        "setup": "Low-Confidence Pattern",
+        "setup": "Deteriorating (Generic)",
         "setup_confidence": 0.65,
     },
     "GOOGL": {
@@ -154,7 +155,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "DETERIORATING",
         "state_confidence": 0.351,
         "leadership_tier": "NEUTRAL",
-        "setup": "Low-Confidence Pattern",
+        "setup": "Deteriorating (Generic)",
         "setup_confidence": 0.65,
     },
     "TSM": {
@@ -205,7 +206,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "TRENDING",
         "state_confidence": 0.597,
         "leadership_tier": "STRONG_PERFORMER",
-        "setup": "Sustained Uptrend",
+        "setup": "Trending (Generic)",
         "setup_confidence": 0.65,
     },
 }

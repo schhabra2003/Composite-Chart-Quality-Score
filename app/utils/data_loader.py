@@ -280,7 +280,6 @@ COMPONENT_DISPLAY_NAMES = {
     "s_structure":       "Structure",
     "s_mtf":             "MTF",
     "s_extension":       "Extension",
-    "s_climax":          "Climax",
     "s_demand":          "Demand",
     "s_momentum":        "Momentum",
 }

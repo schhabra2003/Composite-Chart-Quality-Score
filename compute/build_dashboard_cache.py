@@ -39,7 +39,7 @@ LATEST_ONLY_COLS = {
     ],
     "components.parquet": [
         "s_rs", "s_rs_leadership", "s_rsl", "s_trend_slope",
-        "s_structure", "s_mtf", "s_extension", "s_climax",
+        "s_structure", "s_mtf", "s_extension",
         "s_demand", "s_momentum",
     ],
 }

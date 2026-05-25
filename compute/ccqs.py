@@ -5,7 +5,7 @@ Bayesian-averaged composite over the 6-state probability distribution:
 
     ccqs_z   = Σ_state p_adj(state) · Σ_comp w[state][comp] · z_comp
     ccqs_raw = Φ(ccqs_z) · 100              (normal CDF → percentile)
-    ccqs     = clip(ccqs_raw, p1, p99)      (winsorized for display)
+    ccqs     = clip(ccqs_raw, p1_d, p99_d)  (per-date winsorization)
 
 Grades (SPEC §9):
 
@@ -51,7 +51,12 @@ logger.add(LOG_DIR / "ccqs.log", level="DEBUG", rotation="10 MB", retention="30 
 # Rows must sum to 1.0 per state.
 #
 # Phase X.2.1 — FIX 2: S_CLIMAX zeroed in every state (mean OOS IC = -0.0242,
-# significantly negative at two horizons). Still computed for diagnostics.
+# significantly negative at two horizons). Phase 6: removed from the component
+# set entirely — the field carried zero weight everywhere and its math was
+# inverted vs its name (high s_climax meant "less climactic"). Component
+# dimension dropped from 10 → 9. The underlying features (climax_volume_flag,
+# days_near_52w_high_60d, consecutive_high_intensity) are still computed and
+# consumed by state classification and the setup classifier.
 #
 # Phase X.3 (M8 — component cleanup): redistribute weight from the four
 # zero/negative-OOS-IC components (s_rsl -0.0013, s_trend_slope -0.0001,
@@ -63,38 +68,32 @@ STATE_WEIGHTS: dict[str, dict[str, float]] = {
     "TRENDING": {
         "s_rs": 0.25, "s_rs_leadership": 0.25, "s_rsl": 0.03,
         "s_trend_slope": 0.03, "s_structure": 0.18, "s_mtf": 0.15,
-        "s_extension": 0.00, "s_climax": 0.00, "s_demand": 0.10,
-        "s_momentum": 0.01,
+        "s_extension": 0.00, "s_demand": 0.10, "s_momentum": 0.01,
     },
     "PULLBACK": {
         "s_rs": 0.22, "s_rs_leadership": 0.25, "s_rsl": 0.03,
         "s_trend_slope": 0.02, "s_structure": 0.18, "s_mtf": 0.14,
-        "s_extension": 0.02, "s_climax": 0.00, "s_demand": 0.13,
-        "s_momentum": 0.01,
+        "s_extension": 0.02, "s_demand": 0.13, "s_momentum": 0.01,
     },
     "CONSOLIDATING": {
         "s_rs": 0.20, "s_rs_leadership": 0.22, "s_rsl": 0.02,
         "s_trend_slope": 0.02, "s_structure": 0.22, "s_mtf": 0.15,
-        "s_extension": 0.01, "s_climax": 0.00, "s_demand": 0.15,
-        "s_momentum": 0.01,
+        "s_extension": 0.01, "s_demand": 0.15, "s_momentum": 0.01,
     },
     "EXHAUSTION": {
         "s_rs": 0.22, "s_rs_leadership": 0.28, "s_rsl": 0.01,
         "s_trend_slope": 0.01, "s_structure": 0.16, "s_mtf": 0.15,
-        "s_extension": 0.01, "s_climax": 0.00, "s_demand": 0.15,
-        "s_momentum": 0.01,
+        "s_extension": 0.01, "s_demand": 0.15, "s_momentum": 0.01,
     },
     "DETERIORATING": {
         "s_rs": 0.20, "s_rs_leadership": 0.25, "s_rsl": 0.02,
         "s_trend_slope": 0.02, "s_structure": 0.20, "s_mtf": 0.15,
-        "s_extension": 0.00, "s_climax": 0.00, "s_demand": 0.15,
-        "s_momentum": 0.01,
+        "s_extension": 0.00, "s_demand": 0.15, "s_momentum": 0.01,
     },
     "INDETERMINATE": {
         "s_rs": 0.22, "s_rs_leadership": 0.26, "s_rsl": 0.03,
         "s_trend_slope": 0.03, "s_structure": 0.18, "s_mtf": 0.15,
-        "s_extension": 0.01, "s_climax": 0.00, "s_demand": 0.11,
-        "s_momentum": 0.01,
+        "s_extension": 0.01, "s_demand": 0.11, "s_momentum": 0.01,
     },
 }
 
@@ -122,6 +121,18 @@ def _per_date_zscore(s: pd.Series) -> pd.Series:
     return (s - mean) / std
 
 
+def _per_date_winsorize(s: pd.Series, lower: float = 0.01, upper: float = 0.99) -> pd.Series:
+    """Cross-sectional winsorization per date.
+
+    Clips each row against its own date's lower/upper quantiles. NaN values
+    are preserved. A date with all-NaN inputs produces all-NaN output.
+    """
+    g = s.groupby(level="date", sort=False)
+    lo = g.transform(lambda x: x.quantile(lower))
+    hi = g.transform(lambda x: x.quantile(upper))
+    return s.clip(lower=lo, upper=hi)
+
+
 def compute_ccqs(components: pd.DataFrame, state: pd.DataFrame) -> pd.DataFrame:
     """
     Returns (per row):
@@ -143,10 +154,14 @@ def compute_ccqs(components: pd.DataFrame, state: pd.DataFrame) -> pd.DataFrame:
     # Convert to 0-100 percentile.
     ccqs_raw = pd.Series(norm.cdf(ccqs_z.to_numpy(dtype=float)) * 100.0, index=ccqs_z.index)
 
-    # Winsorize at 1st / 99th percentiles (across the full long frame).
-    p1 = float(np.nanpercentile(ccqs_raw.to_numpy(), 1.0))
-    p99 = float(np.nanpercentile(ccqs_raw.to_numpy(), 99.0))
-    ccqs = ccqs_raw.clip(lower=p1, upper=p99)
+    # Per-date winsorization at 1st / 99th percentiles. The earlier global clip
+    # (computed once across the entire long frame) produced ~24k exact ties at
+    # the floor/ceiling because every date with extreme scores collapsed to the
+    # same two values. Per-date clipping preserves cross-sectional dispersion
+    # within each date — clips ~1% of each date's universe at that date's local
+    # tails, so ties remain only within a single date (no global collisions).
+    # Grade assignment is unchanged (grades use per-date quantiles regardless).
+    ccqs = _per_date_winsorize(ccqs_raw, lower=0.01, upper=0.99)
 
     # Grade (S/A/B/C/D) by per-date cross-sectional percentile rank.
     # Targets: S top 8% (q92), A next 12% (q80), B next 25% (q55),
@@ -200,6 +215,12 @@ def main() -> int:
     )
 
     grade_dist = ccqs["grade"].astype(str).value_counts(normalize=True).to_dict()
+
+    # Cross-sectional tie diagnostics — these should be near-zero after the
+    # Phase 6 per-date winsorization fix.
+    n_unique = int(ccqs["ccqs"].nunique())
+    top_tie = int(ccqs["ccqs"].value_counts().iloc[0]) if len(ccqs) else 0
+
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "elapsed_seconds": round(elapsed, 2),
@@ -208,6 +229,9 @@ def main() -> int:
         "ccqs_median": float(ccqs["ccqs"].median()),
         "ccqs_p1": float(np.nanpercentile(ccqs["ccqs"].to_numpy(), 1.0)),
         "ccqs_p99": float(np.nanpercentile(ccqs["ccqs"].to_numpy(), 99.0)),
+        "ccqs_unique_values": n_unique,
+        "ccqs_max_tie_count": top_tie,
+        "winsorization": "per-date p1/p99",
         "grade_distribution": {k: round(v, 4) for k, v in grade_dist.items()},
     }
     CCQS_META_PATH.write_text(json.dumps(meta, indent=2, default=str))

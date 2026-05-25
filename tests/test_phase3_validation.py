@@ -107,7 +107,7 @@ def main() -> None:
         print()
         print(f"      Components (z-space):")
         for col in ["s_rs", "s_rs_leadership", "s_rsl", "s_trend_slope",
-                    "s_structure", "s_mtf", "s_extension", "s_climax",
+                    "s_structure", "s_mtf", "s_extension",
                     "s_demand", "s_momentum"]:
             print(f"        {col:<22} {c[col]: .3f}")
         print()

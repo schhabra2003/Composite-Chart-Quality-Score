@@ -1,10 +1,10 @@
 {
   "summary": {
-    "generated_at": "2026-05-24T03:49:18.859694+00:00",
-    "n_ccqs_jumps": 174,
+    "generated_at": "2026-05-25T09:16:19.014366+00:00",
+    "n_ccqs_jumps": 175,
     "n_grade_jumps": 0,
     "n_state_flips": 4,
-    "n_total": 178,
+    "n_total": 179,
     "n_high_severity": 0
   },
   "anomalies": [
@@ -236,16 +236,6 @@
       "ccqs_prev": 10.51,
       "abs_jump": 1.22,
       "roll_z": 2.6,
-      "severity": "medium"
-    },
-    {
-      "ticker": "BLDR",
-      "date": "2026-05-22",
-      "type": "ccqs_jump",
-      "ccqs": 4.1,
-      "ccqs_prev": 3.63,
-      "abs_jump": 0.47,
-      "roll_z": 2.56,
       "severity": "medium"
     },
     {
@@ -999,6 +989,16 @@
       "severity": "medium"
     },
     {
+      "ticker": "KBH",
+      "date": "2026-05-22",
+      "type": "ccqs_jump",
+      "ccqs": 6.0,
+      "ccqs_prev": 5.23,
+      "abs_jump": 0.77,
+      "roll_z": 2.79,
+      "severity": "medium"
+    },
+    {
       "ticker": "KMX",
       "date": "2026-05-22",
       "type": "ccqs_jump",
@@ -1036,6 +1036,16 @@
       "ccqs_prev": 10.78,
       "abs_jump": 2.27,
       "roll_z": -2.85,
+      "severity": "medium"
+    },
+    {
+      "ticker": "LULU",
+      "date": "2026-05-22",
+      "type": "ccqs_jump",
+      "ccqs": 4.32,
+      "ccqs_prev": 3.65,
+      "abs_jump": 0.68,
+      "roll_z": 3.22,
       "severity": "medium"
     },
     {
@@ -1112,10 +1122,10 @@
       "ticker": "NBR",
       "date": "2026-05-22",
       "type": "ccqs_jump",
-      "ccqs": 97.74,
+      "ccqs": 97.86,
       "ccqs_prev": 95.13,
-      "abs_jump": 2.61,
-      "roll_z": 2.97,
+      "abs_jump": 2.73,
+      "roll_z": 3.18,
       "severity": "medium"
     },
     {
@@ -1245,7 +1255,7 @@
       "ccqs": 4.84,
       "ccqs_prev": 4.25,
       "abs_jump": 0.59,
-      "roll_z": 3.52,
+      "roll_z": 3.79,
       "severity": "medium"
     },
     {

@@ -38,15 +38,15 @@ logger.add(LOG_DIR / "ccqs.log", level="DEBUG", rotation="10 MB", retention="30 
 
 SETUP_LABELS: list[str] = [
     # Exhaustion (1-4)
-    "Parabolic Blow-Off", "Exhaustion w/ Bearish Divergence",
+    "Extreme Extension", "Exhaustion w/ Bearish Divergence",
     "Volume-Confirmed Exhaustion", "Extended Exhaustion",
     # Deteriorating (5-8)
     "Capitulation Selling", "Deteriorating w/ Bullish Divergence",
-    "Distribution Pattern", "Trend Failure",
+    "Distribution Pattern", "Sustained Weakness",
     # Elite Leader (9-10)
     "Elite Leader Continuation", "Elite Leader Pullback",
-    # Tier S / Premium Long (11-13)
-    "Tier S Pullback", "Emerging Leader (Multibagger Setup)",
+    # Premium Long (11-13)
+    "Premium Pullback", "Emerging Leader",
     "Theme Leader Pullback",
     # Trending (14-15)
     "Trend Continuation", "Trending Leadership",
@@ -58,8 +58,8 @@ SETUP_LABELS: list[str] = [
     # Failure / Transition (23)
     "Failed Breakout",
     # State-aware catch-alls (24-29) — assigned when no specific rule fired.
-    "Sustained Uptrend", "Routine Pullback", "Constructive Consolidation",
-    "Late-Cycle Pattern", "Low-Confidence Pattern", "Indeterminate Pattern",
+    "Trending (Generic)", "Routine Pullback", "Consolidating (Generic)",
+    "Exhaustion (Generic)", "Deteriorating (Generic)", "Indeterminate Pattern",
 ]
 
 
@@ -129,8 +129,10 @@ def classify_setups(
         confidence[take] = conf
         assigned[take] = True
 
-    # ---- 1. Parabolic Blow-Off -------------------------------------------
-    _apply(atr_x_50 >= 6.5, "Parabolic Blow-Off", 0.95)
+    # ---- 1. Extreme Extension --------------------------------------------
+    # Pure extension trigger (atr_x_50 ≥ 6.5). No volume/shape requirement,
+    # so prior "Parabolic Blow-Off" naming overclaimed the pattern.
+    _apply(atr_x_50 >= 6.5, "Extreme Extension", 0.95)
 
     # ---- 2. Exhaustion w/ Bearish Divergence -----------------------------
     _apply(
@@ -168,8 +170,10 @@ def classify_setups(
         "Distribution Pattern", 0.85,
     )
 
-    # ---- 8. Trend Failure ------------------------------------------------
-    _apply(pct_ma_50 < -8, "Trend Failure", 0.70)
+    # ---- 8. Sustained Weakness -------------------------------------------
+    # Static position threshold (>8% below 50MA). Prior "Trend Failure" name
+    # implied a transition event the math doesn't verify.
+    _apply(pct_ma_50 < -8, "Sustained Weakness", 0.70)
 
     # ---- 9. Elite Leader Continuation ------------------------------------
     _apply(
@@ -183,7 +187,9 @@ def classify_setups(
         "Elite Leader Pullback", 0.95,
     )
 
-    # ---- 11. Tier S Pullback ---------------------------------------------
+    # ---- 11. Premium Pullback --------------------------------------------
+    # Comprehensive high-quality pullback gates. Prior "Tier S Pullback" name
+    # mixed grade vocabulary with setup detection — math never checks CCQS grade.
     _apply(
         (sma_stack >= 85)
         & (ema_stack >= 70)
@@ -191,16 +197,19 @@ def classify_setups(
         & (atr_x_50 < 2.5)
         & (rs_spy >= 80)
         & (udvr_50 >= 1.3),
-        "Tier S Pullback", 0.95,
+        "Premium Pullback", 0.95,
     )
 
-    # ---- 12. Emerging Leader (Multibagger Setup) -------------------------
+    # ---- 12. Emerging Leader ---------------------------------------------
+    # Mid-tier RS rapidly accelerating with multi-timeframe + volume confirm.
+    # Prior "(Multibagger Setup)" parenthetical claimed a forward outcome the
+    # math does not predict — dropped.
     _apply(
         (rs_spy >= 60) & (rs_spy <= 85)
         & (rs_slope_60 >= 10)
         & (mtf_coh >= 2)
         & volume_lead,
-        "Emerging Leader (Multibagger Setup)", 0.85,
+        "Emerging Leader", 0.85,
     )
 
     # ---- 13. Theme Leader Pullback ---------------------------------------
@@ -289,11 +298,16 @@ def classify_setups(
         confidence[mask] = conf
         assigned[mask] = True
 
-    _catchall("TRENDING", "Sustained Uptrend", 0.65)
+    # Catch-all naming convention: "<State> (Generic)" when no specific
+    # pattern matched. Prior names ("Sustained Uptrend", "Constructive
+    # Consolidation", "Late-Cycle Pattern", "Low-Confidence Pattern")
+    # overclaimed by implying duration, bias, macro-cycle position, or
+    # confidence judgments that the catch-all doesn't verify.
+    _catchall("TRENDING", "Trending (Generic)", 0.65)
     _catchall("PULLBACK", "Routine Pullback", 0.65)
-    _catchall("CONSOLIDATING", "Constructive Consolidation", 0.65)
-    _catchall("EXHAUSTION", "Late-Cycle Pattern", 0.65)
-    _catchall("DETERIORATING", "Low-Confidence Pattern", 0.65)
+    _catchall("CONSOLIDATING", "Consolidating (Generic)", 0.65)
+    _catchall("EXHAUSTION", "Exhaustion (Generic)", 0.65)
+    _catchall("DETERIORATING", "Deteriorating (Generic)", 0.65)
 
     # Final fallback for INDETERMINATE / unknown.
     remaining = ~assigned

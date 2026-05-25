@@ -1,6 +1,6 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — Phase 5.5 / 5.6 / 5.7 naming standardization (2026-05-24)
+**Version:** 1.0 (Locked) — Phase 5.5 / 5.6 / 5.7 / 5.8 + Phase 6 foundation fixes (2026-05-25)
 **Date:** May 2026
 **Author:** Shreyaansh Chhabra (ADFM)
 **Purpose:** Pure technical, momentum & strength screening tool for L/S discretionary equity analysis.
@@ -374,11 +374,11 @@ identical because the dict keys move together with the lookups.
   "Industrial Distribution"), the "Distribution Days (25d)" metric, and the
   `distribution_days_25` feature column — these reference share-distribution
   patterns (Wyckoff-style), not the renamed deteriorating state.
-- Component score `s_climax` and feature flag `climax_volume_flag` — these
-  belong to the methodology/feature namespace, not the setup label namespace.
-  The component still displays as "Climax" on the dashboard's component
-  decomposition view; the setup labels were renamed in Phase 5.7 but the
-  underlying climax-detection feature retains its technical name.
+- Feature flag `climax_volume_flag` — methodology/feature namespace, used
+  by state classification and the setup classifier. The component score
+  `s_climax` referenced in the original Phase 5.5 preservation list was
+  subsequently **removed entirely in Phase 6** (2026-05-25); the
+  dashboard's component decomposition view now reports 9 components.
 
 **Methodology preservation (verified bit-identically).** Phase 5.5 is a
 relabeling only. The state-classification log-likelihoods, the Bayesian
@@ -432,9 +432,9 @@ State distribution after rename:
 
 CCQS distribution: mean 50.14, median 50.81, S-grade share 6.37% (within
 the 2–15% spec band). Top-10 setup distribution uses the new vocabulary
-("Indeterminate Pattern" 20.16%, "Range Consolidation" 12.17%,
-"Low-Confidence Pattern" 11.61%, "Routine Pullback" 9.54%, "Sustained
-Uptrend" 8.26%, ...).
+(post-Phase-5.8: "Indeterminate Pattern" 20.16%, "Range Consolidation"
+12.17%, "Deteriorating (Generic)" 11.61%, "Routine Pullback" 9.54%,
+"Trending (Generic)" 8.26%, ...).
 
 ---
 
@@ -497,6 +497,184 @@ was updated in lockstep so the bit-identical reference test stays
 green. Validation: 11/11 sanity checks pass; CCQS bit-identical vs the
 2026-05-22 snapshot; no residual `Climax *` or `Broken Capitulation` /
 `Broken Bullish Divergence` labels in any setups parquet.
+
+---
+
+### Phase 5.8 — Setup label accuracy audit (2026-05-25)
+
+Tier A of the Priority 1 foundation work. The audit re-examined each of
+the 29 setup labels against the actual detection logic in
+[compute/setup_classifier.py](compute/setup_classifier.py) and renamed
+any that overclaimed relative to what the math measures. Two categories
+of mismatch were corrected:
+
+**Specific patterns** (4 renames). The label promised a property the
+math doesn't verify:
+
+| Old | New | Why |
+|-----|-----|-----|
+| Parabolic Blow-Off | Extreme Extension | Trigger is `atr_x_50 ≥ 6.5` only — no climactic-volume or parabolic-shape gate, so "Blow-Off" overclaimed |
+| Trend Failure | Sustained Weakness | Trigger is `pct_ma_50 < -8` — a static position threshold, not a trend-transition event |
+| Tier S Pullback | Premium Pullback | The 6-feature gate matches "high-quality pullback" but never checks CCQS grade — "Tier S" conflated grade vocabulary with setup detection |
+| Emerging Leader (Multibagger Setup) | Emerging Leader | The pattern is mid-RS + accelerating + multi-timeframe + volume; "(Multibagger Setup)" was forward-looking marketing |
+
+**State catch-alls** (4 renames). Each catch-all fires when the primary
+state matches but no specific pattern triggered, so labels that implied
+duration / bias / cycle position / confidence overclaimed:
+
+| State | Old | New |
+|-------|-----|-----|
+| TRENDING | Sustained Uptrend | Trending (Generic) |
+| CONSOLIDATING | Constructive Consolidation | Consolidating (Generic) |
+| EXHAUSTION | Late-Cycle Pattern | Exhaustion (Generic) |
+| DETERIORATING | Low-Confidence Pattern | Deteriorating (Generic) |
+
+The remaining 21 labels were verified accurate and unchanged: Exhaustion
+w/ Bearish Divergence, Volume-Confirmed Exhaustion, Extended Exhaustion,
+Capitulation Selling, Deteriorating w/ Bullish Divergence, Distribution
+Pattern, Elite Leader Continuation, Elite Leader Pullback, Theme Leader
+Pullback, Trend Continuation, Trending Leadership, Pullback to 21EMA,
+Pullback to 50MA, Consolidation Within Strong Theme, Tight Consolidation
+Pre-Breakout, VCP Setup, BB Squeeze with RS, Range Consolidation, Failed
+Breakout, Routine Pullback, Indeterminate Pattern.
+
+Data migration ([scripts/phase_5_5_data_migration.py](scripts/phase_5_5_data_migration.py))
+extended with the 8 new entries plus chained-rename updates so a parquet
+at any prior Phase 5.5–5.7 vocabulary migrates to the Phase 5.8 final
+label in one pass. TV reference snapshots for NVDA, META, JPM, UNH
+updated in lockstep.
+
+**Caveat — "Consolidation Within Strong Theme" (#18) is currently
+unreachable.** Its `theme_strong` gate is hardcoded `False` because the
+theme aggregation layer runs after the setup classifier in the Phase 3
+pipeline. The label exists for forward compatibility; no row can earn it
+in the current pipeline order.
+
+---
+
+### Phase 6 — Foundation fixes (2026-05-25)
+
+Three improvements to the composite layer driven by the Priority 1
+foundation-fix mandate (empirical signal quality over theoretical
+elegance):
+
+**1. Per-date winsorization of CCQS display values**
+([compute/ccqs.py:165](compute/ccqs.py:165))
+
+The prior global `np.nanpercentile(ccqs_raw, 1.0/99.0)` clip computed one
+fixed lower/upper threshold across the entire 1.55M-row long frame and
+clipped every row against the same two numbers. Because that pair of
+numbers was strictly determined by the global distribution, every row
+beyond the threshold collapsed to those exact two values:
+
+- Pre-fix: max tie count = **12,281 rows pinned at 97.74**, 12,281 at
+  2.51. Total of 24,562 rows (≈1.6% of universe-days) lost any
+  cross-sectional dispersion within their date.
+- Post-fix (per-date `p1/p99` via [`_per_date_winsorize`](compute/ccqs.py:125)):
+  max tie count = **9 rows**, 1,205,080 unique values across 1.55M rows.
+
+Per-date `p1` ranges 0.64 – 5.71 across the 1,800 dates; `p99` ranges
+94.50 – 99.18. Bear-market days clip 25+ tops, bull-market days clip 30+
+floors — these previously collapsed to the same global pair regardless
+of when they occurred. The fix preserves cross-sectional dispersion
+within each date by clipping each row against its own date's local
+tails.
+
+Grade distribution is **unchanged** (S 6.37% / A 9.49% / B 19.73% /
+C 19.74% / D 23.73%) because grading already used per-date quantiles —
+the global clip only ever affected display values, never grade
+assignment. Only 32,099 rows (2.07%) change display value; median |Δ| =
+0.41 CCQS points, max 3.03.
+
+**2. Removed `s_climax` from the component set**
+([compute/components.py:51](compute/components.py:51),
+[compute/ccqs.py:62](compute/ccqs.py:62))
+
+`s_climax` carried weight 0.00 in every state since Phase X.2.1
+(mean OOS IC = −0.0242, significantly negative at two horizons). The
+component dimension dropped from 10 → 9. The math was also inverted vs
+the label: `raw = 100 − (extension_penalty + time_score +
+vol_climax_score)`, so a "high s_climax" meant *less* climactic risk —
+contributing to the negative OOS IC. Removing it is bit-identical for
+CCQS (verified: mean / median / all grade percentages unchanged) since
+its weight was already zero, and simplifies the code surface without
+loss of signal. The underlying features (`climax_volume_flag`,
+`days_near_52w_high_60d`, `consecutive_high_intensity`) are still
+computed and consumed by state classification and the setup classifier.
+
+**3. Diagnostic fields in `ccqs_meta.json`**
+
+Added `ccqs_unique_values`, `ccqs_max_tie_count`, and
+`winsorization: "per-date p1/p99"` fields so any future tie regression
+is detectable from the meta JSON alone.
+
+---
+
+### Known caveats & limitations (Phase 6 documentation)
+
+**Cross-sectional standardization caveats**
+
+All components are z-scored cross-sectionally per date. This means:
+
+1. Component values are always relative to *that date's universe*, not
+   to an absolute baseline. A "1.0 z" in 2020 reflects a different raw
+   feature value than a "1.0 z" in 2026 if the universe distribution
+   shifted.
+2. CCQS percentile values reflect *relative rank within the date*, not
+   absolute quality. A market-wide drawdown compresses the dispersion,
+   so a CCQS of 80 in March 2020 represents a meaningfully different
+   stock than a CCQS of 80 in March 2024.
+3. The Bayesian state-weighted composite has narrow variance (≈ 0.14)
+   before per-date renormalization. The `_per_date_zscore()` call in
+   `compute_ccqs()` is what restores N(0,1) shape so `Φ(z)·100` spans
+   the full 0–100 range.
+
+**Per-date winsorization trade-off**
+
+Per-date clipping eliminates the global tie problem but still creates
+~1% of each date's universe pinned at the date's local `p99`. For a
+900-stock day, that's ~9 stocks tied at the top. These ties are
+intentional (winsorization is the standard treatment for display-value
+extremes) and only affect the *display value*, not the *grade* (grades
+use per-date quantile thresholds independently).
+
+**State-confidence blending**
+
+When `max(p_state) < 0.7`, state probabilities are blended toward
+INDETERMINATE (50/50 if `max < 0.5`, 70/30 if `< 0.7`). This is by
+design — it prevents low-confidence state classifications from
+dominating Bayesian-averaged CCQS — but means INDETERMINATE-state
+stocks effectively inherit the INDETERMINATE weight column, which is
+a near-average column. The signal-to-noise on these rows is therefore
+weaker by construction. State distribution shows 28.1% INDETERMINATE
+in the current cache.
+
+**`s_climax` removal — history note**
+
+Phase X.2.1 zeroed `s_climax` in every state (negative OOS IC). Phase 6
+removed it from the component set entirely. If a future validation
+phase identifies a real climactic-extension signal worth modeling, the
+component should be re-derived with an inverted sign (high score =
+high climactic risk) and weighted negatively in the composite. The
+underlying features remain available.
+
+**TV reference snapshot staleness**
+
+The reference values in [tests/reference/tv_snapshots.py](tests/reference/tv_snapshots.py)
+were last pinned 2026-05-22 against a Phase 4 build. CCQS values
+subsequently drifted 5–8 points on several large-caps (MSFT, META,
+AMZN, TSM, NVDA) due to the Phase X.3 component-weight redistribution,
+which happened before this repo's first commit. Per-date winsorization
+(Phase 6) does **not** affect any of the 10 canaries — verified by
+running both global and per-date paths on the live components/state
+cache and confirming identical outputs. Refresh of CCQS / grade / setup
+pins to the current build is a pending decision; the technical-indicator
+pins (close, RSI, ADX, ATR, pct_ma_*) remain accurate within tolerance.
+
+**Setup label "Consolidation Within Strong Theme" is structurally
+inactive in Phase 3** — its `theme_strong` gate is hardcoded `False`
+because the theme aggregation layer runs after the setup classifier.
+The label is preserved for forward compatibility.
 
 ---
 
@@ -568,7 +746,7 @@ formula.**
 **Practical-limit conclusion.** The single substantive Cat A cluster (252d
 quality block) is already inside `s_rs_leadership`; tripling its intra-block
 weight delivers ~0.06 t-stat lift, suggesting the 20-60d IC is already near
-the ceiling that the current 10-component / 121-feature architecture can
+the ceiling that the current 9-component / 121-feature architecture can
 extract without adding a vol-derived component. The vol cluster is a single
 correlated signal, not seven, and is already proxied by `s_rs` (high-RS
 names are high-vol in this universe). **No further action taken at this
@@ -764,7 +942,7 @@ principle 4).
 4. [Data Layer](#4-data-layer)
 5. [Feature Engineering — 104 Features](#5-feature-engineering--104-features)
 6. [Cross-Sectional Standardization](#6-cross-sectional-standardization)
-7. [Component Scoring — 10 Components](#7-component-scoring--10-components)
+7. [Component Scoring — 9 Components](#7-component-scoring--9-components)
 8. [State Classification — 6 States](#8-state-classification--6-states)
 9. [Composite Scoring & Grading](#9-composite-scoring--grading)
 10. [Setup Categories — 24 Setups](#10-setup-categories--24-setups)
@@ -1413,17 +1591,25 @@ def robust_z_score(series):
 
 ### Winsorization
 
-Apply 1st/99th percentile winsorization to final CCQS scores to cap extreme outliers.
+Apply 1st/99th percentile winsorization to final CCQS scores to cap
+extreme outliers. **Phase 6 (2026-05-25):** winsorization is now applied
+**per-date** rather than globally across the long frame. Each row is
+clipped against its own date's `p1 / p99` quantiles. The earlier global
+clip produced 24,562 exact ties at two literal display values across all
+dates; per-date clipping reduces the maximum tie count to 9 rows while
+preserving the same grade assignments (grading uses per-date quantiles
+independently). See the Phase 6 narrative above for the full rationale
+and impact metrics.
 
 ---
 
-## 7. Component Scoring — 10 Components
+## 7. Component Scoring — 9 Components
 
 ### Component Architecture
 
 Each component is a weighted sum of standardized feature z-scores. Components themselves are in z-score space (then converted to 0-100 for display via normal CDF).
 
-### Default Weights (INDETERMINATE State) — Phase X.2.1
+### Default Weights (INDETERMINATE State) — Phase X.2.1, post Phase 6 removal of S_CLIMAX
 
 ```
 S_RS:                17%   # Classical cross-sectional momentum  (was 12%, +5%)
@@ -1433,7 +1619,6 @@ S_TREND_SLOPE:      10%   # Trend cleanness (ADX + R² + t-stat)
 S_STRUCTURE:        13%   # MA stacks + HH/HL + Supertrend
 S_MTF:              11%   # Multi-timeframe confluence
 S_EXTENSION:         8%   # Vol-normalized extension
-S_CLIMAX:            0%   # Late-stage exhaustion risk        (was 8%, FIX 2)
 S_DEMAND:            9%   # Volume quality (U/D, A/D, CMF)
 S_MOMENTUM:          3%   # MACD + RSI + divergences
                     ----
@@ -1442,10 +1627,14 @@ Total:             100%
 
 > **Phase X.2.1 — FIX 2.** The OOS feature audit (2026-05) found
 > `S_CLIMAX` had mean OOS IC = -0.0242, significantly negative at two
-> horizons. The component is harmful to the composite. It is still
-> *computed* (useful as a stand-alone diagnostic on the dashboard) but
-> contributes 0% to the CCQS composite. The freed 8% is redistributed to
-> the two top OOS contributors (`S_RS` +5%, `S_RS_LEADERSHIP` +3%).
+> horizons. The component was harmful to the composite. Phase X.2.1
+> zeroed its weight; **Phase 6 (2026-05-25)** removed it from the
+> component set entirely. The component dimension dropped from 10 → 9.
+> Bit-identical for CCQS output since the weight was already zero; the
+> underlying features (`climax_volume_flag`, `days_near_52w_high_60d`,
+> `consecutive_high_intensity`) remain available to state classification
+> and the setup classifier. The original 8% freed by zeroing was already
+> redistributed to `S_RS` (+5%) and `S_RS_LEADERSHIP` (+3%).
 
 ### Component Formulas
 
@@ -1608,18 +1797,14 @@ else:
     )
 ```
 
-**S_CLIMAX (0%, Phase X.2.1 — still computed for diagnostics) — Inverted (less climactic = better):**
-```python
-extension_penalty = max(0, min(50, (atr_x_50 - 5.0) * 25)) if atr_x_50 >= 5.0 else 0
-time_score = 50 * (days_near_52w_high_60d / 60) + 50 * (consecutive_high_intensity / 5)
-vol_climax_score = 30 if climax_volume_flag else 0
-
-# Higher score = LESS climactic (good)
-S_CLIMAX = 100 - (0.50 * extension_penalty + 0.30 * time_score + 0.20 * vol_climax_score)
-S_CLIMAX = max(0, S_CLIMAX)
-
-# Then convert to z-score space
-```
+**~~S_CLIMAX~~ — removed in Phase 6 (2026-05-25).** Carried weight 0% in
+every state since Phase X.2.1 (mean OOS IC −0.0242). The math was also
+inverted vs the label: `100 − (extension_penalty + time_score +
+vol_climax_score)` made "high s_climax" mean *less climactic*,
+contributing to the negative IC. Removed from the component set; the
+underlying features (`climax_volume_flag`, `days_near_52w_high_60d`,
+`consecutive_high_intensity`) remain available to state classification
+and the setup classifier.
 
 **S_DEMAND (9%):**
 ```python
@@ -1765,12 +1950,14 @@ def classify_state_probabilistic(features):
 | S_STRUCTURE | 18% | 18% | 22% | 16% | 20% | 18% |
 | S_MTF | 15% | 14% | 15% | 15% | 15% | 15% |
 | S_EXTENSION | 0% | 2% | 1% | 1% | 0% | 1% |
-| S_CLIMAX | 0% | 0% | 0% | 0% | 0% | 0% |
 | S_DEMAND | 10% | 13% | 15% | 15% | 15% | 11% |
 | S_MOMENTUM | 1% | 1% | 1% | 1% | 1% | 1% |
 
-> **Phase X.2.1 — FIX 2.** `S_CLIMAX` zeroed everywhere (mean OOS IC = -0.0242,
-> sig-negative at two horizons). Still computed for diagnostics.
+> **Phase X.2.1 — FIX 2 / Phase 6.** `S_CLIMAX` was zeroed in every state
+> at X.2.1 (mean OOS IC = -0.0242, sig-negative at two horizons) and
+> **removed from the component set entirely in Phase 6** (2026-05-25).
+> Component dimension dropped from 10 → 9. Bit-identical for CCQS output
+> since the weight was already zero everywhere.
 >
 > **Phase X.3 — M8 (component cleanup).** Four components carry essentially
 > zero OOS signal across all six horizons:
@@ -1840,8 +2027,14 @@ import scipy.stats as ss
 ccqs_z = compute_ccqs_z(components, state_probabilities)
 ccqs_raw = ss.norm.cdf(ccqs_z) * 100
 
-# Winsorize at 1st/99th percentile
-ccqs = np.clip(ccqs_raw, ccqs_pct_1, ccqs_pct_99)
+# Winsorize at 1st/99th percentile — per-date since Phase 6 (2026-05-25).
+# Each row is clipped against its own date's p1 / p99 quantiles. The earlier
+# global clip computed one (p1, p99) pair across the entire long frame and
+# collapsed every clipped row to those two literal values (24,562 exact ties).
+# Per-date clipping preserves cross-sectional dispersion within each date.
+ccqs = ccqs_raw.groupby(level='date').transform(
+    lambda s: s.clip(lower=s.quantile(0.01), upper=s.quantile(0.99))
+)
 ```
 
 ### Grade Thresholds (Per-Date Percentile)
@@ -1891,9 +2084,9 @@ def classify_setup(features, state_probs, ccqs):
     
     # ===== EXHAUSTION SETUPS (Priority 1-4) =====
     
-    # 1. Parabolic Blow-Off
+    # 1. Extreme Extension  (Phase 5.8 audit: math is pure extension, not "blow-off")
     if features['atr_x_50'] >= 6.5:
-        return 'Parabolic Blow-Off', 0.95
+        return 'Extreme Extension', 0.95
     
     # 2. Exhaustion w/ Bearish Divergence
     if (features['atr_x_50'] >= 4.0 and 
@@ -1929,9 +2122,10 @@ def classify_setup(features, state_probs, ccqs):
         features['distribution_days_25'] >= 8):
         return 'Distribution Pattern', 0.85
     
-    # 8. Trend Failure
+    # 8. Sustained Weakness  (Phase 5.8 audit: math is a static threshold,
+    #    not a trend-transition event)
     if features['pct_ma_50'] < -8:
-        return 'Trend Failure', 0.70
+        return 'Sustained Weakness', 0.70
     
     # ===== ELITE LEADER SETUPS (Priority 9-10) =====
     
@@ -1945,23 +2139,23 @@ def classify_setup(features, state_probs, ccqs):
         features.get('leadership_tier') == 'ELITE_LEADER'):
         return 'Elite Leader Pullback', 0.95
     
-    # ===== TIER S / PREMIUM LONG SETUPS (Priority 11-13) =====
-    
-    # 11. Tier S Pullback
+    # ===== PREMIUM LONG SETUPS (Priority 11-13) =====
+
+    # 11. Premium Pullback  (Phase 5.8 audit: math does not check CCQS grade)
     if (features['sma_stack_score'] >= 85 and
         features['ema_stack_score'] >= 70 and
         0 < features['pct_ma_50'] < 10 and
         features['atr_x_50'] < 2.5 and
         features['rs_rating_spy'] >= 80 and
         features['up_down_vol_ratio_50'] >= 1.3):
-        return 'Tier S Pullback', 0.95
+        return 'Premium Pullback', 0.95
 
-    # 12. Emerging Leader (Multibagger Setup)
+    # 12. Emerging Leader  (Phase 5.8 audit: forward "(Multibagger Setup)" claim dropped)
     if (60 <= features['rs_rating_spy'] <= 85 and
         features['rs_rating_slope_60d'] >= 10 and
         features['mtf_rs_coherence'] >= 2 and
         features['volume_leadership_confirmed']):
-        return 'Emerging Leader (Multibagger Setup)', 0.85
+        return 'Emerging Leader', 0.85
     
     # 13. Theme Leader Pullback
     if (features.get('is_basket_leader', False) and
@@ -2047,12 +2241,16 @@ def classify_setup(features, state_probs, ccqs):
     # downstream consumers can still distinguish a healthy trend with no
     # sharp setup from a chart in a degenerate state. Only truly INDETERMINATE
     # rows collapse to 'Indeterminate Pattern'.
+    # Phase 5.8 audit: catch-all labels renamed to "<State> (Generic)" so
+    # they don't imply duration / bias / cycle position / confidence that
+    # the catch-all doesn't verify. "Routine Pullback" and
+    # "Indeterminate Pattern" remain accurate and unchanged.
     primary = state_probs_argmax  # name of highest-probability state
-    if primary == 'TRENDING':   return 'Sustained Uptrend',         0.65
-    if primary == 'PULLBACK':   return 'Routine Pullback',      0.65
-    if primary == 'CONSOLIDATING':    return 'Constructive Consolidation', 0.65
-    if primary == 'EXHAUSTION':  return 'Late-Cycle Pattern',            0.65
-    if primary == 'DETERIORATING':     return 'Low-Confidence Pattern',            0.65
+    if primary == 'TRENDING':      return 'Trending (Generic)',      0.65
+    if primary == 'PULLBACK':      return 'Routine Pullback',        0.65
+    if primary == 'CONSOLIDATING': return 'Consolidating (Generic)', 0.65
+    if primary == 'EXHAUSTION':    return 'Exhaustion (Generic)',    0.65
+    if primary == 'DETERIORATING': return 'Deteriorating (Generic)', 0.65
     return 'Indeterminate Pattern', 0.55
 ```
 

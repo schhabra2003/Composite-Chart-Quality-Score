@@ -48,29 +48,48 @@ THEME_COLUMN_RENAMES: dict[str, str] = {
 }
 
 SETUP_RENAMES: dict[str, str] = {
-    "Healthy Trend": "Sustained Uptrend",
+    # Phase 5.5 originals — updated to point directly to Phase 5.8 final names
+    # where applicable, so a parquet at ANY historical phase migrates to the
+    # current canonical label in a single replace() pass (pandas.replace does
+    # not chain).
+    "Healthy Trend": "Trending (Generic)",
     "Healthy Pullback": "Routine Pullback",
-    "Healthy Consolidation": "Constructive Consolidation",
+    "Healthy Consolidation": "Consolidating (Generic)",
     "Strong Continuation": "Trend Continuation",
-    "Weak Setup": "Low-Confidence Pattern",
+    "Weak Setup": "Deteriorating (Generic)",
     "Range-Bound Coil": "Range Consolidation",
     "Mixed / Indeterminate": "Indeterminate Pattern",
-    "Late Stage": "Late-Cycle Pattern",
-    "Broken Downtrend": "Trend Failure",
+    "Late Stage": "Exhaustion (Generic)",
+    "Broken Downtrend": "Sustained Weakness",
     "Broken Distribution": "Distribution Pattern",
-    # Phase 5.6 follow-up: drop remaining "Coil" references for consistency
-    # with the COILING -> CONSOLIDATING state rename.
+    # Phase 5.6: drop "Coil" references for COILING → CONSOLIDATING parity.
     "Coil Within Strong Theme": "Consolidation Within Strong Theme",
     "Strong Coil Pre-Breakout": "Tight Consolidation Pre-Breakout",
-    # Phase 5.7 follow-up: rename Exhaustion / Deteriorating sub-setups for
-    # consistency with the CLIMACTIC -> EXHAUSTION and BROKEN -> DETERIORATING
-    # state renames. New names verified against the underlying detection logic.
-    "Climax Parabolic": "Parabolic Blow-Off",
+    # Phase 5.7: rename Climax / Broken sub-setups to align with the new
+    # EXHAUSTION / DETERIORATING state vocabulary.
+    "Climax Parabolic": "Extreme Extension",
     "Climax Bearish Divergence": "Exhaustion w/ Bearish Divergence",
     "Climax Volume Confirmed": "Volume-Confirmed Exhaustion",
     "Climax Extended": "Extended Exhaustion",
     "Broken Capitulation": "Capitulation Selling",
     "Broken Bullish Divergence": "Deteriorating w/ Bullish Divergence",
+    # Phase 5.8 (Priority 1 Tier A) — math-vs-name audit corrections.
+    #   "Parabolic Blow-Off"  →  Extreme Extension       (math is pure extension)
+    #   "Trend Failure"       →  Sustained Weakness      (math is static threshold)
+    #   "Tier S Pullback"     →  Premium Pullback        (math does not check grade)
+    #   "Emerging Leader (Multibagger Setup)" → Emerging Leader  (forward claim removed)
+    #   "Sustained Uptrend"          →  Trending (Generic)        (catch-all naming)
+    #   "Constructive Consolidation" →  Consolidating (Generic)   (catch-all naming)
+    #   "Late-Cycle Pattern"         →  Exhaustion (Generic)      (catch-all naming)
+    #   "Low-Confidence Pattern"     →  Deteriorating (Generic)   (catch-all naming)
+    "Parabolic Blow-Off": "Extreme Extension",
+    "Trend Failure": "Sustained Weakness",
+    "Tier S Pullback": "Premium Pullback",
+    "Emerging Leader (Multibagger Setup)": "Emerging Leader",
+    "Sustained Uptrend": "Trending (Generic)",
+    "Constructive Consolidation": "Consolidating (Generic)",
+    "Late-Cycle Pattern": "Exhaustion (Generic)",
+    "Low-Confidence Pattern": "Deteriorating (Generic)",
 }
 
 

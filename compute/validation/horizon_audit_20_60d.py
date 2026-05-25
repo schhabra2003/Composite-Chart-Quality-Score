@@ -125,12 +125,10 @@ FEATURE_WEIGHTS: dict[str, dict[str, float]] = {
     "pct_ma_50":                {"s_extension": 0.30},
     "price_z_score_vs_trend":   {"s_extension": 0.15},
 
-    # s_climax raw features feed a 0..100 score then z. Component weight is
-    # 0 in every state, so effective weight at composite is 0 — but list them.
-    "atr_x_50":                  {"s_climax": 0.50},
-    "days_near_52w_high_60d":    {"s_climax": 0.30 * 0.5},
-    "consecutive_high_intensity":{"s_climax": 0.30 * 0.5},
-    "climax_volume_flag":        {"s_climax": 0.20},
+    # s_climax was removed in Phase 6 (zero weight everywhere, inverted-name
+    # math). The underlying features (atr_x_50, days_near_52w_high_60d,
+    # consecutive_high_intensity, climax_volume_flag) remain for state and
+    # setup classification, but no longer roll up into a CCQS component.
 
     # s_demand
     "up_down_vol_ratio_50": {"s_demand": 0.30},

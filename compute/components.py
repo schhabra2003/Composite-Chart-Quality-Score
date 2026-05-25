@@ -1,7 +1,7 @@
 """
 CCQS V1 — Component Scoring Layer (SPEC Section 7)
 
-Computes 10 component z-scores per (ticker, date):
+Computes 9 component z-scores per (ticker, date):
 
     S_RS                Classical cross-sectional momentum
     S_RS_LEADERSHIP     Multi-dim leadership composite (PRIMARY)
@@ -10,9 +10,12 @@ Computes 10 component z-scores per (ticker, date):
     S_STRUCTURE         MA stacks + HH/HL + Supertrend
     S_MTF               Multi-timeframe confluence
     S_EXTENSION         Vol-normalized extension (inverted)
-    S_CLIMAX            Late-stage exhaustion risk (inverted)
     S_DEMAND            Volume quality
     S_MOMENTUM          MACD + RSI + divergences
+
+(S_CLIMAX removed in Phase 6, 2026-05-25 — carried zero weight since
+Phase X.2.1, math was inverted vs label. Underlying features remain
+available to state classification and the setup classifier.)
 
 All outputs live in z-score space. Raw features feed pre-transform
 operations (logs, products, sign-flips, posture lookups); z_scores feed
@@ -50,7 +53,7 @@ EPS = 1e-10
 
 COMPONENT_COLS = [
     "s_rs", "s_rs_leadership", "s_rsl", "s_trend_slope", "s_structure",
-    "s_mtf", "s_extension", "s_climax", "s_demand", "s_momentum",
+    "s_mtf", "s_extension", "s_demand", "s_momentum",
 ]
 
 # Volume-gate cap on S_RS_LEADERSHIP: 70th percentile of standard normal.
@@ -285,31 +288,6 @@ def _compute_s_extension(features: pd.DataFrame, z: pd.DataFrame) -> pd.Series:
     return s
 
 
-def _compute_s_climax(features: pd.DataFrame) -> pd.Series:
-    # Score is in 0..100; then per-date z-score so it composes in z-space.
-    atr_x_50 = features["atr_x_50"].astype(float)
-    days_near_high = features["days_near_52w_high_60d"].astype(float)
-    consec_high = features["consecutive_high_intensity"].astype(float)
-    climax_vol = features["climax_volume_flag"].astype(float).fillna(0)
-
-    extension_penalty = np.where(
-        atr_x_50 >= 5.0,
-        np.clip((atr_x_50 - 5.0) * 25.0, 0.0, 50.0),
-        0.0,
-    )
-    time_score = 50.0 * (days_near_high / 60.0) + 50.0 * (consec_high / 5.0)
-    vol_climax_score = 30.0 * climax_vol
-
-    raw = 100.0 - (
-        0.50 * extension_penalty
-        + 0.30 * time_score
-        + 0.20 * vol_climax_score
-    )
-    raw = np.clip(raw, 0.0, None)
-    raw_series = pd.Series(raw, index=features.index, name="s_climax_raw")
-    return per_date_standard_z(raw_series)
-
-
 def _compute_s_demand(features: pd.DataFrame, z: pd.DataFrame) -> pd.Series:
     udvr = features["up_down_vol_ratio_50"].astype(float)
     log_udvr = np.log(udvr.clip(lower=EPS))
@@ -373,7 +351,6 @@ def compute_components(features: pd.DataFrame, z_scores: pd.DataFrame) -> pd.Dat
     out["s_structure"] = _compute_s_structure(features, z)
     out["s_mtf"] = _compute_s_mtf(features, z)
     out["s_extension"] = _compute_s_extension(features, z)
-    out["s_climax"] = _compute_s_climax(features)
     out["s_demand"] = _compute_s_demand(features, z)
     out["s_momentum"] = _compute_s_momentum(features, z)
     return out
