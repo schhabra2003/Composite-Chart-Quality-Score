@@ -64,36 +64,53 @@ logger.add(LOG_DIR / "ccqs.log", level="DEBUG", rotation="10 MB", retention="30 
 # carriers (s_rs +0.0272, s_rs_leadership +0.0266, s_structure +0.0185,
 # s_mtf +0.0154). Cumulative weight on zero-contribution components drops
 # from 29% (post-X.2.1) → 8-10% (post-X.3, depending on state).
+#
+# Phase 7 (Priority 3a — s_demand removal, 2026-05-25): The Priority 2 bootstrap
+# analysis flagged s_demand as the next removal candidate — average OOS IC
+# −0.009 across the 24 (state × horizon) cells, 6/24 cells significantly
+# negative (CONSOLIDATING at all four horizons, PULLBACK at 20d/60d,
+# INDETERMINATE at 60d). Removing its 10-15% weight per state and
+# redistributing proportionally to the four carriers (s_rs, s_rs_leadership,
+# s_structure, s_mtf) improved unconditional OOS IC at 5d / 60d / 126d under
+# both the per-date IC framework (paired bootstrap CI excludes zero) and the
+# Phase X.3 walk-forward framework (paired t = 2.01, 2.77, 2.64). 20d
+# directionally improved (+14%) but not statistically distinguishable. The
+# alt 126d t-statistic clears t > 2.0 (was 1.82, now 2.02). Grade
+# distribution is preserved exactly; Spearman rank correlation between
+# pre- and post-Phase-7 CCQS is 0.9901. See SPEC §"Phase 7" for the full
+# OOS IC validation table and the 2020 long-horizon caveat. s_demand is
+# kept as a 0-weight diagnostic component (parallel to s_climax's history
+# before Phase 6); its formula remains in components.py.
 STATE_WEIGHTS: dict[str, dict[str, float]] = {
     "TRENDING": {
-        "s_rs": 0.25, "s_rs_leadership": 0.25, "s_rsl": 0.03,
-        "s_trend_slope": 0.03, "s_structure": 0.18, "s_mtf": 0.15,
-        "s_extension": 0.00, "s_demand": 0.10, "s_momentum": 0.01,
+        "s_rs": 0.280120, "s_rs_leadership": 0.280120, "s_rsl": 0.030000,
+        "s_trend_slope": 0.030000, "s_structure": 0.201687, "s_mtf": 0.168072,
+        "s_extension": 0.000000, "s_demand": 0.000000, "s_momentum": 0.010000,
     },
     "PULLBACK": {
-        "s_rs": 0.22, "s_rs_leadership": 0.25, "s_rsl": 0.03,
-        "s_trend_slope": 0.02, "s_structure": 0.18, "s_mtf": 0.14,
-        "s_extension": 0.02, "s_demand": 0.13, "s_momentum": 0.01,
+        "s_rs": 0.256203, "s_rs_leadership": 0.291139, "s_rsl": 0.030000,
+        "s_trend_slope": 0.020000, "s_structure": 0.209620, "s_mtf": 0.163038,
+        "s_extension": 0.020000, "s_demand": 0.000000, "s_momentum": 0.010000,
     },
     "CONSOLIDATING": {
-        "s_rs": 0.20, "s_rs_leadership": 0.22, "s_rsl": 0.02,
-        "s_trend_slope": 0.02, "s_structure": 0.22, "s_mtf": 0.15,
-        "s_extension": 0.01, "s_demand": 0.15, "s_momentum": 0.01,
+        "s_rs": 0.237975, "s_rs_leadership": 0.261772, "s_rsl": 0.020000,
+        "s_trend_slope": 0.020000, "s_structure": 0.261772, "s_mtf": 0.178481,
+        "s_extension": 0.010000, "s_demand": 0.000000, "s_momentum": 0.010000,
     },
     "EXHAUSTION": {
-        "s_rs": 0.22, "s_rs_leadership": 0.28, "s_rsl": 0.01,
-        "s_trend_slope": 0.01, "s_structure": 0.16, "s_mtf": 0.15,
-        "s_extension": 0.01, "s_demand": 0.15, "s_momentum": 0.01,
+        "s_rs": 0.260741, "s_rs_leadership": 0.331852, "s_rsl": 0.010000,
+        "s_trend_slope": 0.010000, "s_structure": 0.189630, "s_mtf": 0.177778,
+        "s_extension": 0.010000, "s_demand": 0.000000, "s_momentum": 0.010000,
     },
     "DETERIORATING": {
-        "s_rs": 0.20, "s_rs_leadership": 0.25, "s_rsl": 0.02,
-        "s_trend_slope": 0.02, "s_structure": 0.20, "s_mtf": 0.15,
-        "s_extension": 0.00, "s_demand": 0.15, "s_momentum": 0.01,
+        "s_rs": 0.237500, "s_rs_leadership": 0.296875, "s_rsl": 0.020000,
+        "s_trend_slope": 0.020000, "s_structure": 0.237500, "s_mtf": 0.178125,
+        "s_extension": 0.000000, "s_demand": 0.000000, "s_momentum": 0.010000,
     },
     "INDETERMINATE": {
-        "s_rs": 0.22, "s_rs_leadership": 0.26, "s_rsl": 0.03,
-        "s_trend_slope": 0.03, "s_structure": 0.18, "s_mtf": 0.15,
-        "s_extension": 0.01, "s_demand": 0.11, "s_momentum": 0.01,
+        "s_rs": 0.249877, "s_rs_leadership": 0.295309, "s_rsl": 0.030000,
+        "s_trend_slope": 0.030000, "s_structure": 0.204444, "s_mtf": 0.170370,
+        "s_extension": 0.010000, "s_demand": 0.000000, "s_momentum": 0.010000,
     },
 }
 

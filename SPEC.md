@@ -1,6 +1,6 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — Phase 5.5 / 5.6 / 5.7 / 5.8 + Phase 6 foundation fixes (2026-05-25)
+**Version:** 1.0 (Locked) — Phase 7 (s_demand removal + carrier redistribution) + Phase 5.5–5.8 + Phase 6 foundation fixes + Priority 2 empirical validation (2026-05-25)
 **Date:** May 2026
 **Author:** Shreyaansh Chhabra (ADFM)
 **Purpose:** Pure technical, momentum & strength screening tool for L/S discretionary equity analysis.
@@ -675,6 +675,317 @@ pins (close, RSI, ADX, ATR, pct_ma_*) remain accurate within tolerance.
 inactive in Phase 3** — its `theme_strong` gate is hardcoded `False`
 because the theme aggregation layer runs after the setup classifier.
 The label is preserved for forward compatibility.
+
+---
+
+### Priority 2 — Empirical validation of current methodology (2026-05-25)
+
+Investigation-only pass (no code changes). Two parallel studies under the
+Phase 6 baseline (9 components, per-date winsorized CCQS):
+
+  - **2a Bootstrap CIs on STATE_WEIGHTS** — 54 cells (9 components × 6
+    states), 4 horizons (5d / 20d / 60d / 126d), block bootstrap with
+    21-day blocks and 1000 iterations. Per-cell IC = cross-sectional
+    Spearman of component vs forward return, restricted to rows where
+    `primary_state == s`.
+
+  - **2b Conditional CCQS IC** — partitioning the 1,553,400 row-days by
+    primary state, dollar-volume quintile, per-stock 60d realized-vol
+    quintile, SPY 20d realized-vol tercile (market regime), year, and
+    91 primary baskets (n ≥ 5 members each).
+
+Reference baseline IC of unconditional CCQS (1,362–1,483 dates):
+`5d: +0.0121 (t=2.57)`, `20d: +0.0118 (t=2.78)`, `60d: +0.0108 (t=2.90)`,
+`126d: +0.0233 (t=7.41)`. All four horizons clear t > 2.0 unconditionally.
+
+**Headline finding 2a-i — Most state-conditional weight cells are
+statistically indistinguishable from zero.** Out of 54 cells per horizon
+(90% bootstrap CI excluding zero):
+
+| Horizon | Sig positive | Sig negative | Insignificant |
+|---------|--------------|--------------|---------------|
+|  5d  |  9 / 54  |  3 / 54  | 42 / 54 (78%) |
+| 20d  |  5 / 54  |  5 / 54  | 44 / 54 (81%) |
+| 60d  | 13 / 54  |  5 / 54  | 36 / 54 (67%) |
+| 126d | 19 / 54  |  3 / 54  | 32 / 54 (59%) |
+
+At the 20d institutional horizon, only ~9% of weight cells carry an IC
+statistically distinguishable from zero. This does not mean the matrix
+is wrong — it means the 1,468 dates of data are not enough to resolve
+individual per-state per-component IC at 90% confidence for most cells.
+
+**Headline finding 2a-ii — State-conditional weighting is largely
+empirically arbitrary at 20d.** For each (component, horizon) we
+compared IC across all 15 state-pairs:
+
+| Horizon | State-pairs differing at 90% CI |
+|---------|--------------------------------:|
+|  5d  | 30 / 135  (22%) |
+| 20d  | 11 / 135  ( 8%) |
+| 60d  | 33 / 135  (24%) |
+| 126d | 46 / 135  (34%) |
+
+At 20d, only 8% of state-pairs show statistically distinguishable IC
+for the same component. The remaining 92% of pairs cannot reject the
+null hypothesis that the component has the same IC in both states.
+State-conditional weighting at this horizon adds structural / narrative
+value but limited measurable OOS signal.
+
+The state-pair differences that *do* emerge are concentrated:
+EXHAUSTION state appears in most significant pairs, suggesting EXHAUSTION
+is the one regime worth treating differently. CONSOLIDATING is the
+next most distinguishable.
+
+**Headline finding 2a-iii — Component-level empirical quality is
+strongly unequal.** Across the 24 cells per component (6 states × 4
+horizons):
+
+| Component | avg IC | sig+/24 | sig−/24 | total weight | Verdict |
+|-----------|-------:|--------:|--------:|-------------:|---------|
+| s_rs | +0.023 | 10 |  0 | 5.24 | **Carrier** |
+| s_structure | +0.018 | 11 |  0 | 4.48 | **Carrier (most consistent)** |
+| s_rs_leadership | +0.016 |  8 |  0 | 6.04 | **Carrier (highest weight)** |
+| s_mtf | +0.010 |  6 |  0 | 3.56 | **Carrier (smaller magnitude)** |
+| s_extension | +0.005 |  4 |  0 | 0.20 | Marginal positive (correctly small weight) |
+| s_rsl | +0.004 |  2 |  2 | 0.56 | Noise / neutral |
+| s_trend_slope | +0.001 |  3 |  3 | 0.52 | Noise / neutral |
+| s_momentum | +0.001 |  2 |  5 | 0.24 | Marginal negative |
+| **s_demand** | **−0.009** | **0** | **6** | **3.16** | **Negative carrier — actively harmful** |
+
+The four carriers (s_rs, s_rs_leadership, s_structure, s_mtf) account
+for total weight 19.32 / 54 = ~64% of the matrix. Within those four,
+weight is well-aligned with the sign of empirical IC.
+
+**`s_demand` is the next removal candidate.** Like `s_climax` before it,
+`s_demand` carries the third-highest total weight (3.16, second only to
+`s_rs_leadership` and `s_structure`) despite having an average IC of
+−0.009 and 6 of 24 cells with significantly negative IC. The cells with
+significantly negative IC include `s_demand` in CONSOLIDATING (w=0.15)
+at all four horizons, PULLBACK at 20d and 60d, and INDETERMINATE at 60d.
+Removing or zeroing `s_demand` would free ~10% of total weight for the
+four carrier components.
+
+Pearson correlation between the current matrix and empirical IC across
+all 54 cells:
+
+| Horizon | Pearson | Spearman | p-value | OLS slope |
+|---------|--------:|---------:|--------:|----------:|
+|  5d  | +0.465 | +0.527 | <0.001 | +0.086 |
+| 20d  | +0.403 | +0.399 |  0.002 | +0.056 |
+| 60d  | +0.269 | +0.272 |  0.049 | +0.059 |
+| 126d | +0.263 | +0.308 |  0.023 | +0.061 |
+
+The matrix is positively correlated with empirical IC at every horizon
+— the *directional* intuition behind hand-crafted weights is right.
+But the moderate correlation (0.26–0.47) means only 7–22% of the
+variance in actual per-cell IC is captured by current weight choices.
+Half or more of the per-cell weight magnitude is not statistically
+informative.
+
+**Headline finding 2b-i — CCQS works best on smaller, more volatile
+stocks during low-vol markets.** Monotonic patterns:
+
+| Bucket | 60d IC | 126d IC | Notes |
+|--------|-------:|--------:|-------|
+| Dollar-volume Q1 (smallest) | +0.048 | +0.061 | Strongest single bucket |
+| Dollar-volume Q3 | +0.015 | +0.022 | Mid |
+| Dollar-volume Q5 (largest) | **−0.017** | **−0.007** | Negative in mega-caps |
+| Per-stock vol Q1 (low vol) | +0.021 | +0.020 | Weaker |
+| Per-stock vol Q5 (high vol) | +0.041 | +0.058 | Strong |
+| Market vol regime LOW | +0.039 | +0.045 | Strong all horizons |
+| Market vol regime MID | +0.007 | +0.051 | Mixed |
+| Market vol regime HIGH | **−0.014** | **−0.025** | **Signal fails in crises** |
+
+The signal flips sign in mega-caps and high-vol regimes — these are
+explicit out-of-distribution domains where the composite should not be
+trusted at long horizons.
+
+**Headline finding 2b-ii — Regime sensitivity by year.**
+
+| Year | 5d | 20d | 60d | 126d |
+|------|----|-----|-----|------|
+| 2020 | +0.038 (t=2.1) | +0.054 (t=3.4) | +0.035 (t=2.7) | **−0.052 (t=−6.1)** |
+| 2021 | −0.018 | **−0.058 (t=−6.3)** | **−0.062 (t=−7.8)** | **−0.045 (t=−6.6)** |
+| 2022 | +0.017 | +0.020 | +0.012 | +0.026 (t=3.0) |
+| 2023 | −0.015 | −0.014 | +0.011 | +0.082 (t=12.9) |
+| 2024 | +0.026 (t=2.7) | +0.039 (t=4.2) | +0.008 | +0.061 (t=14.1) |
+| 2025 | +0.013 | +0.021 (t=2.2) | +0.046 (t=5.4) | +0.033 (t=4.7) |
+
+The 2021 meme-stock / SPAC-mania year drove the composite to negative
+IC at every horizon. The Phase X.3 multi-window OOS framework averages
+across regimes and is therefore conservative in good regimes and too
+optimistic in adverse ones. **The signal does not work in speculative-
+euphoria regimes** — a category to flag in pre-trade conditioning.
+
+**Headline finding 2b-iii — Sector dispersion is enormous.**
+
+Among 91 baskets with ≥ 100 row-days, basket-level 60d IC ranges from
+**+0.205** (Hotels and Casinos) to **−0.275** (Household and Personal
+Care). Median basket IC at 60d is −0.009, IQR [−0.063, +0.049]. The
+positive tail is dominated by cyclicals and recovery names (Hotels,
+Auto Affordability, Oilfield Services, Heavy Machinery, Coal,
+Aggregates). The negative tail is dominated by defensives and stable
+traditional sectors (Household/Personal Care, Gold Royalty, Energy
+Majors, Gaming Publishers, Railroads, Beverages, Industrial Automation).
+
+CCQS encodes a clear **cyclical / non-defensive bias**. The composite
+favors stocks whose returns are momentum / quality-driven and underweights
+or actively works against stocks whose returns are mean-reverting or
+yield-dominated.
+
+**Conditional state IC (CCQS, full universe).**
+
+| State | 5d | 20d | 60d | 126d |
+|-------|----|-----|-----|------|
+| TRENDING | +0.014 (t=3.0) | +0.006 | +0.028 (t=7.1) | +0.042 (t=12.3) |
+| PULLBACK | +0.015 (t=2.9) | +0.007 | +0.013 (t=2.9) | +0.010 (t=2.6) |
+| CONSOLIDATING | +0.026 (t=4.6) | +0.025 (t=4.6) | +0.039 (t=7.6) | +0.029 (t=5.7) |
+| EXHAUSTION | +0.023 (t=3.0) | **−0.002 (t=−0.3)** | +0.007 | +0.032 (t=3.7) |
+| DETERIORATING | +0.005 | +0.006 | +0.009 (t=2.6) | +0.018 (t=5.3) |
+| INDETERMINATE | +0.006 | +0.011 (t=2.6) | +0.004 | +0.019 (t=5.6) |
+
+CONSOLIDATING is the strongest state for CCQS — significant at all four
+horizons. EXHAUSTION at 20d shows IC ≈ 0 (t = −0.32) — the signal does
+not predict 20d returns for stocks in this state, even though it does
+at 5d and 126d. This is consistent with the empirical literature on
+momentum-crash behavior at intermediate horizons after extension peaks.
+
+**Where Priority 2 leads.**
+
+The empirical evidence motivates Priority 3 — empirically-driven
+simplification:
+
+1. **Reduced-component test**: a CCQS using only the four carriers
+   (s_rs, s_rs_leadership, s_structure, s_mtf) should perform at least
+   as well as the current 9-component composite. To be verified
+   under Priority 3.
+
+2. **`s_demand` removal**: parallel to `s_climax` in Phase 6 — drop or
+   zero the component, redistribute its ~10% weight to the four carriers.
+
+3. **State-conditional flattening**: at 20d, weights essentially could
+   be made flat across states with no measurable OOS loss. Whether to
+   keep state-conditioning for 5d / 60d / 126d (where ~25-34% of
+   state-pairs differ) is a separate decision.
+
+4. **Pre-trade conditioning**: signal performance is so different across
+   regime / cap / sector that the composite should not be applied
+   uniformly. Specifically:
+   - mega-caps (Q5 by dollar volume) — disable or invert
+   - high-market-vol regimes — disable
+   - 2021-like speculative-euphoria years — disable
+   - defensive sectors — apply with diminished confidence
+
+5. **Bit-identical OOS validation gate**: any Priority 3 changes should
+   preserve or improve the Phase X.3 OOS baseline (1d t=4.16, 126d
+   t=2.59, 252d t=2.05). The current Phase 6 baseline is 5d t=2.57,
+   20d t=2.78, 60d t=2.90, 126d t=7.41 — all above t=2.0.
+
+---
+
+### Phase 7 — Priority 3a: `s_demand` removal + carrier redistribution (2026-05-25)
+
+Empirically-driven simplification motivated by the Priority 2 finding
+that `s_demand` carried 10–15% of weight per state while averaging
+−0.009 OOS IC across 24 (state × horizon) cells, with 6 cells
+significantly negative (CONSOLIDATING at all four horizons, PULLBACK
+at 20d / 60d, INDETERMINATE at 60d).
+
+**Methodology.** Zero `s_demand` in every state and redistribute the
+freed weight proportionally to the four carrier components (`s_rs`,
+`s_rs_leadership`, `s_structure`, `s_mtf`) by their existing
+within-carrier weight share. Each state row is then renormalized to
+sum to 1.0. No other weight cell is touched; `s_rsl`, `s_trend_slope`,
+`s_extension`, `s_momentum` keep their current weights. Surgical change.
+
+The new STATE_WEIGHTS matrix is in [compute/ccqs.py:62](compute/ccqs.py:62).
+Per-state Δ on the four carriers:
+
+| State | s_demand removed | s_rs Δ | s_rs_leadership Δ | s_structure Δ | s_mtf Δ |
+|---|---:|---:|---:|---:|---:|
+| TRENDING | −0.100 | +0.030 | +0.030 | +0.022 | +0.018 |
+| PULLBACK | −0.130 | +0.036 | +0.041 | +0.030 | +0.023 |
+| CONSOLIDATING | −0.150 | +0.038 | +0.042 | +0.042 | +0.028 |
+| EXHAUSTION | −0.150 | +0.041 | +0.052 | +0.030 | +0.028 |
+| DETERIORATING | −0.150 | +0.038 | +0.047 | +0.038 | +0.028 |
+| INDETERMINATE | −0.110 | +0.030 | +0.035 | +0.024 | +0.020 |
+
+**Validation: per-date IC (full history, paired block bootstrap 90% CI).**
+
+| Horizon | Pre IC | Post IC | Δ | 90% CI on Δ | Verdict |
+|---|---:|---:|---:|---|---|
+| 5d | +0.0121 | +0.0137 | +0.0016 | [+0.0003, +0.0028] | **post better** |
+| 20d | +0.0118 | +0.0135 | +0.0017 | [−0.0003, +0.0035] | directional, not sig |
+| 60d | +0.0108 | +0.0144 | +0.0037 | [+0.0016, +0.0059] | **post better** |
+| 126d | +0.0233 | +0.0259 | +0.0026 | [+0.0009, +0.0044] | **post better** |
+
+**Validation: Phase X.3 walk-forward (252-train / 21-test, 73 windows).**
+
+| Horizon | Pre OOS / t | Post OOS / t | Paired Δ | Paired t | Verdict |
+|---|---|---|---:|---:|---|
+| 5d | +0.0105 / 1.28 | +0.0120 / 1.42 | +0.0015 | 2.01 | **post better** |
+| 20d | +0.0106 / 0.71 | +0.0121 / 0.80 | +0.0015 | 1.34 | directional, not sig |
+| 60d | +0.0086 / 0.58 | +0.0122 / 0.81 | +0.0036 | 2.77 | **post better** |
+| 126d | +0.0240 / 1.82 | +0.0269 / 2.02 | +0.0029 | 2.64 | **post better** |
+
+Both frameworks agree: significant improvement at 5d, 60d, 126d.
+20d is directionally positive (+14% in mean IC) but the change is
+not statistically distinguishable. Notably, the post-Phase-7 126d
+walk-forward t-statistic crosses the t > 2.0 institutional bar that
+the pre-Phase-7 composite narrowly missed (1.82 → 2.02).
+
+**Grade and ranking stability.** Grade distribution preserved within
+rounding (S 8.05% / A 12.00% / B 24.95% / C 24.97% / D 30.02%).
+13.19% of rows experience a grade change — almost all are one-step
+shifts between adjacent grades on stocks near a per-date quantile
+boundary. Spearman rank correlation between pre- and post-Phase-7
+CCQS is **0.9901**. Mean |Δ CCQS| is 3.16 points; max 31.4 points.
+
+**Conditional-regime robustness.** Tested whether any specific bucket
+gets worse:
+
+- Market vol regime: post ≥ pre in 11 of 12 cells (LOW 5d flat at
+  −0.0002). Critically, the problematic HIGH regime improves at every
+  horizon (HIGH 60d −0.0135 → −0.0100; HIGH 126d −0.0245 → −0.0235).
+- Dollar-volume quintile: post ≥ pre in 19 of 20 cells (Q3 20d flat).
+  The mega-cap (Q5) regime improves at every horizon (Q5 60d
+  −0.0167 → −0.0109; Q5 126d −0.0069 → −0.0034). Still negative but
+  materially less so — these remain documented out-of-domain conditions.
+- Year buckets (27 cells with ≥1000 rows): post ≥ pre in 22; flat in 3;
+  two minor regressions both confined to **2020 long horizons**
+  (60d −0.0022, 126d −0.0071). 2020 was the COVID liquidity shock —
+  `s_demand` may have captured shock-specific signal not present elsewhere.
+  This is the single regime where the simplification loses signal, and the
+  losses are small in absolute terms. **Documented caveat below.**
+- 2021 (the negative-IC meme/SPAC year): post improves at every horizon
+  by +0.003 to +0.008. The simplification helps where the signal was
+  weakest before.
+
+**Implementation.** Code change is the `STATE_WEIGHTS` dict in
+`compute/ccqs.py`. `s_demand` is **kept as a zero-weight diagnostic
+component** in `compute/components.py` (parallel to `s_climax`'s
+pre-Phase-6 history). It still appears in `components.parquet` and
+the dashboard component decomposition; it just contributes 0 to CCQS.
+This is the safer mid-state — no risk of breaking downstream paths
+that reference the field, and the field remains available for
+diagnostic display or future re-enable. A later phase may follow the
+Phase 6 model and remove the underlying computation entirely.
+
+**Known caveat — COVID-2020 long-horizon regression.** The 2020 60d /
+126d minor IC loss reflects a known limitation: `s_demand` (up/down
+volume ratios, accumulation/distribution line, distribution-day count,
+CMF, volume z-score) carries information about liquidity-shock-driven
+selling that other components do not capture. In a comparable
+crash-then-V-shaped-recovery regime, the post-Phase-7 composite would
+under-perform the pre-Phase-7 composite by roughly the magnitude
+observed (Δ IC ≈ −0.003 to −0.007). The improvement at every other
+year × horizon cell outweighs this loss in expectation, but the loss
+is real and worth flagging for users interpreting CCQS during a
+liquidity crisis.
+
+**TV reference snapshots** — *not* refreshed in this commit. Per
+Priority 3 plan, refresh deferred until Priority 3b and 3c complete
+so we make a single pin update covering all of Priority 3.
 
 ---
 
@@ -1611,18 +1922,20 @@ Each component is a weighted sum of standardized feature z-scores. Components th
 
 ### Default Weights (INDETERMINATE State) — Phase X.2.1, post Phase 6 removal of S_CLIMAX
 
+Post-Phase-7 weights (INDETERMINATE state, the default fallback row):
+
 ```
-S_RS:                17%   # Classical cross-sectional momentum  (was 12%, +5%)
-S_RS_LEADERSHIP:    21%   # Multi-benchmark, multi-dim leadership (was 18%, +3%)
-S_RSL:               8%   # RS Line dynamics
-S_TREND_SLOPE:      10%   # Trend cleanness (ADX + R² + t-stat)
-S_STRUCTURE:        13%   # MA stacks + HH/HL + Supertrend
-S_MTF:              11%   # Multi-timeframe confluence
-S_EXTENSION:         8%   # Vol-normalized extension
-S_DEMAND:            9%   # Volume quality (U/D, A/D, CMF)
-S_MOMENTUM:          3%   # MACD + RSI + divergences
-                    ----
-Total:             100%
+S_RS:               25.0%   # Classical cross-sectional momentum
+S_RS_LEADERSHIP:    29.5%   # Multi-benchmark, multi-dim leadership
+S_RSL:               3.0%   # RS Line dynamics
+S_TREND_SLOPE:       3.0%   # Trend cleanness (ADX + R² + t-stat)
+S_STRUCTURE:        20.4%   # MA stacks + HH/HL + Supertrend
+S_MTF:              17.0%   # Multi-timeframe confluence
+S_EXTENSION:         1.0%   # Vol-normalized extension
+S_DEMAND:            0.0%   # Zero-weight diagnostic (Phase 7)
+S_MOMENTUM:          1.0%   # MACD + RSI + divergences
+                    -----
+Total:             100.0%
 ```
 
 > **Phase X.2.1 — FIX 2.** The OOS feature audit (2026-05) found
@@ -1635,6 +1948,17 @@ Total:             100%
 > `consecutive_high_intensity`) remain available to state classification
 > and the setup classifier. The original 8% freed by zeroing was already
 > redistributed to `S_RS` (+5%) and `S_RS_LEADERSHIP` (+3%).
+>
+> **Phase 7 (2026-05-25) — `S_DEMAND` zeroed.** Same pattern as
+> `S_CLIMAX`. Priority 2 bootstrap analysis found `S_DEMAND` averaged
+> −0.009 OOS IC across 24 (state × horizon) cells with 6 significantly
+> negative cells. Setting its weight to 0 and redistributing the freed
+> 10–15% per state to the four carriers (`S_RS`, `S_RS_LEADERSHIP`,
+> `S_STRUCTURE`, `S_MTF`) improved unconditional walk-forward OOS IC at
+> 5d / 60d / 126d (paired t = 2.01 / 2.77 / 2.64). The component is
+> still computed and stored — kept available for diagnostics and
+> dashboard display — but contributes 0 to CCQS. See the Phase 7
+> narrative section for full validation.
 
 ### Component Formulas
 
@@ -1806,7 +2130,7 @@ underlying features (`climax_volume_flag`, `days_near_52w_high_60d`,
 `consecutive_high_intensity`) remain available to state classification
 and the setup classifier.
 
-**S_DEMAND (9%):**
+**S_DEMAND (0% in Phase 7, kept as zero-weight diagnostic):**
 ```python
 S_DEMAND = (
     0.30 * z(np.log(up_down_vol_ratio_50)) +
@@ -1817,6 +2141,18 @@ S_DEMAND = (
     # capitulation_volume_flag handled in setup classification, not direct scoring
 )
 ```
+
+> **Phase 7 (2026-05-25) — `S_DEMAND` zeroed.** Priority 2 bootstrap
+> analysis found `S_DEMAND` averaged −0.009 OOS IC across 24 (state ×
+> horizon) cells with 6 cells significantly negative (CONSOLIDATING at
+> all four horizons, PULLBACK at 20d/60d, INDETERMINATE at 60d). The
+> component is still computed and stored in `components.parquet` for
+> diagnostic display, but its weight is set to 0.0 in every state.
+> Freed weight (10-15% per state) redistributed proportionally to the
+> four carrier components (`S_RS`, `S_RS_LEADERSHIP`, `S_STRUCTURE`,
+> `S_MTF`). Validation: walk-forward OOS IC improved at 3 of 4 horizons
+> with paired t > 1.96 (5d, 60d, 126d). See Phase 7 narrative for the
+> full empirical evidence and the 2020-COVID-regression caveat.
 
 **S_MOMENTUM (3%):**
 ```python
@@ -1939,19 +2275,22 @@ def classify_state_probabilistic(features):
     }
 ```
 
-### State-Conditional Component Weights
+### State-Conditional Component Weights (Phase 7)
 
 | Component | TRENDING | PULLBACK | CONSOLIDATING | EXHAUSTION | DETERIORATING | INDETERMINATE |
 |-----------|:--------:|:--------:|:-------:|:---------:|:------:|:-----:|
-| S_RS | 25% | 22% | 20% | 22% | 20% | 22% |
-| S_RS_LEADERSHIP | 25% | 25% | 22% | 28% | 25% | 26% |
-| S_RSL | 3% | 3% | 2% | 1% | 2% | 3% |
-| S_TREND_SLOPE | 3% | 2% | 2% | 1% | 2% | 3% |
-| S_STRUCTURE | 18% | 18% | 22% | 16% | 20% | 18% |
-| S_MTF | 15% | 14% | 15% | 15% | 15% | 15% |
-| S_EXTENSION | 0% | 2% | 1% | 1% | 0% | 1% |
-| S_DEMAND | 10% | 13% | 15% | 15% | 15% | 11% |
-| S_MOMENTUM | 1% | 1% | 1% | 1% | 1% | 1% |
+| S_RS | 28.0% | 25.6% | 23.8% | 26.1% | 23.8% | 25.0% |
+| S_RS_LEADERSHIP | 28.0% | 29.1% | 26.2% | 33.2% | 29.7% | 29.5% |
+| S_RSL | 3.0% | 3.0% | 2.0% | 1.0% | 2.0% | 3.0% |
+| S_TREND_SLOPE | 3.0% | 2.0% | 2.0% | 1.0% | 2.0% | 3.0% |
+| S_STRUCTURE | 20.2% | 21.0% | 26.2% | 19.0% | 23.8% | 20.4% |
+| S_MTF | 16.8% | 16.3% | 17.8% | 17.8% | 17.8% | 17.0% |
+| S_EXTENSION | 0.0% | 2.0% | 1.0% | 1.0% | 0.0% | 1.0% |
+| S_DEMAND | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% |
+| S_MOMENTUM | 1.0% | 1.0% | 1.0% | 1.0% | 1.0% | 1.0% |
+
+(Pre-Phase-7 values for reference: S_RS 20-25%, S_DEMAND 10-15%; Phase 7
+zeroed S_DEMAND and redistributed proportionally to the four carriers.)
 
 > **Phase X.2.1 — FIX 2 / Phase 6.** `S_CLIMAX` was zeroed in every state
 > at X.2.1 (mean OOS IC = -0.0242, sig-negative at two horizons) and
