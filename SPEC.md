@@ -1,6 +1,6 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — Phase 5.5 + 5.6 naming standardization (2026-05-24)
+**Version:** 1.0 (Locked) — Phase 5.5 / 5.6 / 5.7 naming standardization (2026-05-24)
 **Date:** May 2026
 **Author:** Shreyaansh Chhabra (ADFM)
 **Purpose:** Pure technical, momentum & strength screening tool for L/S discretionary equity analysis.
@@ -331,7 +331,7 @@ inside `state.parquet`. `STATE_WEIGHTS` lookup keys renamed in
 [compute/ccqs.py](compute/ccqs.py) accordingly. Bayesian-averaging math is
 identical because the dict keys move together with the lookups.
 
-**Setup label renames** (12 of 29 labels; last two added in Phase 5.6):
+**Setup label renames** (18 of 29 labels; entries 11-12 added in Phase 5.6, entries 13-18 added in Phase 5.7):
 
 | Old | New |
 |-----|-----|
@@ -347,6 +347,12 @@ identical because the dict keys move together with the lookups.
 | Broken Distribution | Distribution Pattern |
 | Coil Within Strong Theme | Consolidation Within Strong Theme |
 | Strong Coil Pre-Breakout | Tight Consolidation Pre-Breakout |
+| Climax Parabolic | Parabolic Blow-Off |
+| Climax Bearish Divergence | Exhaustion w/ Bearish Divergence |
+| Climax Volume Confirmed | Volume-Confirmed Exhaustion |
+| Climax Extended | Extended Exhaustion |
+| Broken Capitulation | Capitulation Selling |
+| Broken Bullish Divergence | Deteriorating w/ Bullish Divergence |
 
 **Aggregation column renames** (`theme_aggregates.parquet`):
 
@@ -368,12 +374,11 @@ identical because the dict keys move together with the lookups.
   "Industrial Distribution"), the "Distribution Days (25d)" metric, and the
   `distribution_days_25` feature column — these reference share-distribution
   patterns (Wyckoff-style), not the renamed deteriorating state.
-- Setup labels "Climax Parabolic", "Climax Bearish Divergence", "Climax
-  Volume Confirmed", "Climax Extended" — specialty exhaustion sub-setups
-  that retain "Climax" naming for chart-pattern fidelity.
-- Setup labels "Broken Capitulation", "Broken Bullish Divergence" — they
-  describe a specific reversal pattern within a broken trend, not the
-  state itself; the descriptive "Broken" qualifier is intentional.
+- Component score `s_climax` and feature flag `climax_volume_flag` — these
+  belong to the methodology/feature namespace, not the setup label namespace.
+  The component still displays as "Climax" on the dashboard's component
+  decomposition view; the setup labels were renamed in Phase 5.7 but the
+  underlying climax-detection feature retains its technical name.
 
 **Methodology preservation (verified bit-identically).** Phase 5.5 is a
 relabeling only. The state-classification log-likelihoods, the Bayesian
@@ -440,10 +445,9 @@ Phase 5.5 renamed the `COILING` state to `CONSOLIDATING` and the
 Consolidating-state setups still carried the old "Coil" vocabulary
 (`Coil Within Strong Theme`, `Strong Coil Pre-Breakout`). This
 follow-up commit drops those references so the setup naming aligns
-fully with the state vocabulary. The exhaustion / deteriorating
-sub-setup names (`Climax *`, `Broken Capitulation`, `Broken Bullish
-Divergence`) and the `Distribution *` basket-metric names are
-preserved as deliberate chart-pattern terms of art.
+fully with the state vocabulary. (The `Climax *` and `Broken *`
+sub-setups were initially preserved here but subsequently renamed in
+Phase 5.7 — see below.)
 
 | Old | New |
 |-----|-----|
@@ -456,6 +460,43 @@ idempotent, so it only touched the new labels and left the rest of the
 caches untouched. Validation: 11/11 sanity checks pass; CCQS
 bit-identical vs the 2026-05-22 snapshot (max|diff| = 0.00e+00, 0/863
 grade mismatches); no residual `Coil` labels in any setups parquet.
+
+---
+
+### Phase 5.7 — Climax / Broken sub-setup rename (2026-05-24)
+
+Phase 5.5 renamed the `CLIMACTIC` state to `EXHAUSTION` and `BROKEN` to
+`DETERIORATING`, but the six Exhaustion / Deteriorating sub-setup
+labels (`Climax Parabolic`, `Climax Bearish Divergence`,
+`Climax Volume Confirmed`, `Climax Extended`, `Broken Capitulation`,
+`Broken Bullish Divergence`) were initially preserved as chart-pattern
+terms of art. On reviewing the deployed dashboard the labels read
+inconsistently next to the renamed states, so the same naming-parity
+argument that drove Phase 5.6 applies here. The new labels were
+verified against the underlying detection logic (`atr_x_50`,
+`bearish_divergence_20d`, `climax_volume_flag`, etc.) before adoption.
+
+| Old | New |
+|-----|-----|
+| Climax Parabolic | Parabolic Blow-Off |
+| Climax Bearish Divergence | Exhaustion w/ Bearish Divergence |
+| Climax Volume Confirmed | Volume-Confirmed Exhaustion |
+| Climax Extended | Extended Exhaustion |
+| Broken Capitulation | Capitulation Selling |
+| Broken Bullish Divergence | Deteriorating w/ Bullish Divergence |
+
+The methodology-layer identifiers `s_climax` (component score) and
+`climax_volume_flag` (feature column) are intentionally preserved —
+they refer to the technical detection feature, not the user-facing
+setup label, and renaming would require touching the components and
+features compute paths with no presentation benefit.
+
+The reference TradingView snapshot for NVDA in
+[tests/reference/tv_snapshots.py](tests/reference/tv_snapshots.py)
+was updated in lockstep so the bit-identical reference test stays
+green. Validation: 11/11 sanity checks pass; CCQS bit-identical vs the
+2026-05-22 snapshot; no residual `Climax *` or `Broken Capitulation` /
+`Broken Bullish Divergence` labels in any setups parquet.
 
 ---
 
@@ -1250,8 +1291,9 @@ These are computed in the pipeline for use in components:
 > `capitulation_volume_flag`) were initially flagged for removal but
 > **retained** because they are load-bearing in the s_momentum component
 > ([components.py:313-314](compute/components.py)) and in three setup labels
-> ("Climax Bearish Divergence", "Capitulation Reversal", "Broken Bullish
-> Divergence" in [setup_classifier.py:137,155,161](compute/setup_classifier.py)).
+> ("Exhaustion w/ Bearish Divergence", "Capitulation Selling",
+> "Deteriorating w/ Bullish Divergence" in
+> [setup_classifier.py:137,155,161](compute/setup_classifier.py)).
 
 > **Path C reverted (Path D).** The six short-term features once stored in
 > Category 20 (`vol_surge_5d_ratio`, `range_position_5d`, `momentum_5d_pct`,
@@ -1849,38 +1891,38 @@ def classify_setup(features, state_probs, ccqs):
     
     # ===== EXHAUSTION SETUPS (Priority 1-4) =====
     
-    # 1. Climax Parabolic
+    # 1. Parabolic Blow-Off
     if features['atr_x_50'] >= 6.5:
-        return 'Climax Parabolic', 0.95
+        return 'Parabolic Blow-Off', 0.95
     
-    # 2. Climax Bearish Divergence
+    # 2. Exhaustion w/ Bearish Divergence
     if (features['atr_x_50'] >= 4.0 and 
         features['bearish_divergence_20d'] and
         features['rs_rating_spy'] >= 85):
-        return 'Climax Bearish Divergence', 0.90
+        return 'Exhaustion w/ Bearish Divergence', 0.90
     
-    # 3. Climax Volume Confirmed
+    # 3. Volume-Confirmed Exhaustion
     if (features['atr_x_50'] >= 4.5 and 
         features['climax_volume_flag']):
-        return 'Climax Volume Confirmed', 0.90
+        return 'Volume-Confirmed Exhaustion', 0.90
     
-    # 4. Climax Extended
+    # 4. Extended Exhaustion
     if (features['atr_x_50'] >= 4.0 and 
         features['days_near_52w_high_60d'] >= 15 and
         features['rs_rating_spy'] >= 80):
-        return 'Climax Extended', 0.75
+        return 'Extended Exhaustion', 0.75
     
     # ===== DETERIORATING SETUPS (Priority 5-8) =====
     
-    # 5. Broken Capitulation
+    # 5. Capitulation Selling
     if (features['pct_ma_50'] < -8 and 
         features['capitulation_volume_flag']):
-        return 'Broken Capitulation', 0.85
+        return 'Capitulation Selling', 0.85
     
-    # 6. Broken Bullish Divergence
+    # 6. Deteriorating w/ Bullish Divergence
     if (features['pct_ma_50'] < -5 and 
         features['bullish_divergence_20d']):
-        return 'Broken Bullish Divergence', 0.80
+        return 'Deteriorating w/ Bullish Divergence', 0.80
     
     # 7. Distribution Pattern
     if (features['pct_ma_50'] < -5 and 
@@ -2018,12 +2060,12 @@ def classify_setup(features, state_probs, ccqs):
 
 | # | Setup | Direction | Hold Horizon |
 |:-:|-------|:---------:|:------------:|
-| 1 | Climax Parabolic | SHORT/AVOID | DAYS |
-| 2 | Climax Bearish Divergence | SHORT | DAYS |
-| 3 | Climax Volume Confirmed | SHORT | DAYS |
-| 4 | Climax Extended | CAUTION | DAYS-WEEKS |
-| 5 | Broken Capitulation | LONG-REVERSAL | DAYS-WEEKS |
-| 6 | Broken Bullish Divergence | LONG-REVERSAL | DAYS-WEEKS |
+| 1 | Parabolic Blow-Off | SHORT/AVOID | DAYS |
+| 2 | Exhaustion w/ Bearish Divergence | SHORT | DAYS |
+| 3 | Volume-Confirmed Exhaustion | SHORT | DAYS |
+| 4 | Extended Exhaustion | CAUTION | DAYS-WEEKS |
+| 5 | Capitulation Selling | LONG-REVERSAL | DAYS-WEEKS |
+| 6 | Deteriorating w/ Bullish Divergence | LONG-REVERSAL | DAYS-WEEKS |
 | 7 | Distribution Pattern | SHORT | WEEKS |
 | 8 | Trend Failure | SHORT/AVOID | WEEKS |
 | 9 | Elite Leader Continuation | LONG | WEEKS-MONTHS |

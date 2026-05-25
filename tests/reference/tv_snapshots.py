@@ -103,7 +103,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "TRENDING",
         "state_confidence": 0.769,
         "leadership_tier": "STRONG_PERFORMER",
-        "setup": "Climax Bearish Divergence",
+        "setup": "Exhaustion w/ Bearish Divergence",
         "setup_confidence": 0.90,
     },
     "TSLA": {

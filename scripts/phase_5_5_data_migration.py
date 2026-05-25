@@ -62,6 +62,15 @@ SETUP_RENAMES: dict[str, str] = {
     # with the COILING -> CONSOLIDATING state rename.
     "Coil Within Strong Theme": "Consolidation Within Strong Theme",
     "Strong Coil Pre-Breakout": "Tight Consolidation Pre-Breakout",
+    # Phase 5.7 follow-up: rename Exhaustion / Deteriorating sub-setups for
+    # consistency with the CLIMACTIC -> EXHAUSTION and BROKEN -> DETERIORATING
+    # state renames. New names verified against the underlying detection logic.
+    "Climax Parabolic": "Parabolic Blow-Off",
+    "Climax Bearish Divergence": "Exhaustion w/ Bearish Divergence",
+    "Climax Volume Confirmed": "Volume-Confirmed Exhaustion",
+    "Climax Extended": "Extended Exhaustion",
+    "Broken Capitulation": "Capitulation Selling",
+    "Broken Bullish Divergence": "Deteriorating w/ Bullish Divergence",
 }
 
 

@@ -38,10 +38,10 @@ logger.add(LOG_DIR / "ccqs.log", level="DEBUG", rotation="10 MB", retention="30 
 
 SETUP_LABELS: list[str] = [
     # Exhaustion (1-4)
-    "Climax Parabolic", "Climax Bearish Divergence",
-    "Climax Volume Confirmed", "Climax Extended",
+    "Parabolic Blow-Off", "Exhaustion w/ Bearish Divergence",
+    "Volume-Confirmed Exhaustion", "Extended Exhaustion",
     # Deteriorating (5-8)
-    "Broken Capitulation", "Broken Bullish Divergence",
+    "Capitulation Selling", "Deteriorating w/ Bullish Divergence",
     "Distribution Pattern", "Trend Failure",
     # Elite Leader (9-10)
     "Elite Leader Continuation", "Elite Leader Pullback",
@@ -129,37 +129,37 @@ def classify_setups(
         confidence[take] = conf
         assigned[take] = True
 
-    # ---- 1. Climax Parabolic ---------------------------------------------
-    _apply(atr_x_50 >= 6.5, "Climax Parabolic", 0.95)
+    # ---- 1. Parabolic Blow-Off -------------------------------------------
+    _apply(atr_x_50 >= 6.5, "Parabolic Blow-Off", 0.95)
 
-    # ---- 2. Climax Bearish Divergence ------------------------------------
+    # ---- 2. Exhaustion w/ Bearish Divergence -----------------------------
     _apply(
         (atr_x_50 >= 4.0) & bear_div & (rs_spy >= 85),
-        "Climax Bearish Divergence", 0.90,
+        "Exhaustion w/ Bearish Divergence", 0.90,
     )
 
-    # ---- 3. Climax Volume Confirmed --------------------------------------
+    # ---- 3. Volume-Confirmed Exhaustion ----------------------------------
     _apply(
         (atr_x_50 >= 4.5) & climax_vol,
-        "Climax Volume Confirmed", 0.90,
+        "Volume-Confirmed Exhaustion", 0.90,
     )
 
-    # ---- 4. Climax Extended ----------------------------------------------
+    # ---- 4. Extended Exhaustion ------------------------------------------
     _apply(
         (atr_x_50 >= 4.0) & (days_near_high >= 15) & (rs_spy >= 80),
-        "Climax Extended", 0.75,
+        "Extended Exhaustion", 0.75,
     )
 
-    # ---- 5. Broken Capitulation ------------------------------------------
+    # ---- 5. Capitulation Selling -----------------------------------------
     _apply(
         (pct_ma_50 < -8) & capit_vol,
-        "Broken Capitulation", 0.85,
+        "Capitulation Selling", 0.85,
     )
 
-    # ---- 6. Broken Bullish Divergence ------------------------------------
+    # ---- 6. Deteriorating w/ Bullish Divergence --------------------------
     _apply(
         (pct_ma_50 < -5) & bull_div,
-        "Broken Bullish Divergence", 0.80,
+        "Deteriorating w/ Bullish Divergence", 0.80,
     )
 
     # ---- 7. Distribution Pattern -----------------------------------------
