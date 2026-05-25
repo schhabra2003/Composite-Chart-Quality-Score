@@ -1,6 +1,6 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — Phase 5.3 selective SP100 promotion (2026-05-23)
+**Version:** 1.0 (Locked) — Phase 5.5 naming standardization (2026-05-24)
 **Date:** May 2026
 **Author:** Shreyaansh Chhabra (ADFM)
 **Purpose:** Pure technical, momentum & strength screening tool for L/S discretionary equity analysis.
@@ -307,6 +307,130 @@ to re-enable the tab without re-running any pipeline.
 
 ---
 
+### Phase 5.5 — Naming standardization (2026-05-24)
+
+**Trigger.** Presentation polish for institutional review. The state-classifier
+vocabulary inherited from internal development used informal terms
+(`COILING`, `CLIMACTIC`, `BROKEN`, `MIXED`) and the setup taxonomy mixed
+colloquial labels ("Healthy Trend", "Weak Setup", "Mixed / Indeterminate")
+with technical ones ("VCP Setup", "BB Squeeze with RS"). The renaming
+standardizes on neutral finance vocabulary suitable for external audiences.
+**Methodology is unchanged.**
+
+**State value renames** (4 of 6 states; `TRENDING` and `PULLBACK` unchanged):
+
+| Old | New |
+|-----|-----|
+| `COILING` | `CONSOLIDATING` |
+| `CLIMACTIC` | `EXHAUSTION` |
+| `BROKEN` | `DETERIORATING` |
+| `MIXED` | `INDETERMINATE` |
+
+Probability and state-adjusted columns (`p_*`, `p_adj_*`) renamed in lockstep
+inside `state.parquet`. `STATE_WEIGHTS` lookup keys renamed in
+[compute/ccqs.py](compute/ccqs.py) accordingly. Bayesian-averaging math is
+identical because the dict keys move together with the lookups.
+
+**Setup label renames** (10 of 29 labels):
+
+| Old | New |
+|-----|-----|
+| Healthy Trend | Sustained Uptrend |
+| Healthy Pullback | Routine Pullback |
+| Healthy Consolidation | Constructive Consolidation |
+| Strong Continuation | Trend Continuation |
+| Weak Setup | Low-Confidence Pattern |
+| Range-Bound Coil | Range Consolidation |
+| Mixed / Indeterminate | Indeterminate Pattern |
+| Late Stage | Late-Cycle Pattern |
+| Broken Downtrend | Trend Failure |
+| Broken Distribution | Distribution Pattern |
+
+**Aggregation column renames** (`theme_aggregates.parquet`):
+
+| Old | New |
+|-----|-----|
+| `pct_climactic` | `pct_exhaustion` |
+| `pct_broken` | `pct_deteriorating` |
+
+**Preserved (intentionally NOT renamed):**
+
+- `leadership_tier` value `DETERIORATING` — leadership namespace. The
+  state-classifier `DETERIORATING` and the leadership-tier `DETERIORATING`
+  are stored in distinct columns of distinct parquet files; no downstream
+  calculation joins them by name.
+- `theme_class` values `MIXED`, `BROKEN_THEME`, `WEAKENING`, `STABLE`,
+  `ELITE_THEME`, `STRONG_THEME`, `EMERGING_THEME`, `NARROW_LEADERSHIP` —
+  theme-aggregate namespace, computed in §11 from breadth and `theme_ccqs`.
+- "Distribution" in basket names ("Switchgear and Electrical Distribution",
+  "Industrial Distribution"), the "Distribution Days (25d)" metric, and the
+  `distribution_days_25` feature column — these reference share-distribution
+  patterns (Wyckoff-style), not the renamed deteriorating state.
+- Setup labels "Climax Parabolic", "Climax Bearish Divergence", "Climax
+  Volume Confirmed", "Climax Extended" — specialty exhaustion sub-setups
+  that retain "Climax" naming for chart-pattern fidelity.
+- Setup labels "Broken Capitulation", "Broken Bullish Divergence" — they
+  describe a specific reversal pattern within a broken trend, not the
+  state itself; the descriptive "Broken" qualifier is intentional.
+
+**Methodology preservation (verified bit-identically).** Phase 5.5 is a
+relabeling only. The state-classification log-likelihoods, the Bayesian
+averaging math, the setup-priority cascade, and the cross-sectional
+standardization are unchanged. The migration renames Python identifiers,
+parquet columns and string values, and JSON keys; no arithmetic is touched.
+
+Comparison of fresh pipeline outputs (post-rename code + data) vs. the
+pre-rename backup at `.migration_backup_phase_5_5/cache_backup/`:
+
+| Field | Max \|diff\| | Notes |
+|-------|-------------:|-------|
+| `ccqs` | 0.00e+00 | 1,553,400 rows, bit-identical |
+| `ccqs_raw` | 0.00e+00 | bit-identical |
+| `ccqs_z` | 0.00e+00 | bit-identical |
+| `grade` | 0 mismatches | full equality |
+| each `p_*` (after key rename) | 0.00e+00 | probability vectors identical |
+| each `p_adj_*` (after key rename) | 0.00e+00 | adjusted probabilities identical |
+| `primary_state` (after rename) | 0/1,553,400 mismatches | classification identical |
+
+The **Phase X.3 OOS IC baseline** (1d t=4.16, 126d t=2.59, 252d t=2.05)
+is preserved unchanged per Methodology Lock §6 — naming has no effect on IC.
+
+**Files affected.**
+
+| Category | Count | Detail |
+|----------|------:|--------|
+| Python source | 13 | state classifier, CCQS weights, setup classifier, aggregation, anomaly detection, sanity checks, regularized weighting, level3 validation, data loader, color theme, Streamlit app, manual-overrides yaml comments |
+| Tests | 2 | Phase 3 validation list + TV-snapshot canary pinned values |
+| Cache parquet | 17 | live cache (4), dashboard slim (3), 2026-05-22 snapshot (4), sandbox (4), sp100 (2) |
+| JSON sidecars | 6 | `anomalies.json` (×3), `pipeline_meta.json` (×3 — selective: `state_distribution` + `top_10_setups` only; `theme_class_distribution` preserved) |
+
+**Migration tooling.** A one-shot data migration script is preserved at
+[`scripts/phase_5_5_data_migration.py`](scripts/phase_5_5_data_migration.py)
+for audit trail. It reads each parquet, applies column / value renames in
+place (snappy compression preserved), and patches the JSON sidecars
+selectively. Re-running it on already-migrated data is a no-op.
+
+**Validation.** Post-migration end-to-end pipeline run completes in 209.6s.
+All 11 reliability sanity checks pass (`data/cache/sanity_checks.json`).
+State distribution after rename:
+
+| State | Share |
+|-------|------:|
+| TRENDING | 16.87% |
+| PULLBACK | 19.53% |
+| CONSOLIDATING | 5.21% |
+| EXHAUSTION | 2.20% |
+| DETERIORATING | 28.07% |
+| INDETERMINATE | 28.11% |
+
+CCQS distribution: mean 50.14, median 50.81, S-grade share 6.37% (within
+the 2–15% spec band). Top-10 setup distribution uses the new vocabulary
+("Indeterminate Pattern" 20.16%, "Range Consolidation" 12.17%,
+"Low-Confidence Pattern" 11.61%, "Routine Pullback" 9.54%, "Sustained
+Uptrend" 8.26%, ...).
+
+---
+
 ### Phase X.4 — Targeted 20-60d horizon audit (2026-05-22)
 
 Goal: push 20d and 60d OOS IC toward statistical significance (t > 2.0) while
@@ -602,7 +726,7 @@ Daily technical screening system for 910 stocks/ETFs across 275 baskets. Identif
 For each ticker:
 - **CCQS score** (0-100)
 - **Grade** (S / A / B / C / D)
-- **State** (TRENDING / PULLBACK / COILING / CLIMACTIC / BROKEN / MIXED) with confidence
+- **State** (TRENDING / PULLBACK / CONSOLIDATING / EXHAUSTION / DETERIORATING / INDETERMINATE) with confidence
 - **Setup category** (24 named labels)
 - **Leadership tier** (7 levels — Path 1.5)
 - **Cross-sectional RS vs SPY** + QQQ RS Line context
@@ -1229,7 +1353,7 @@ Apply 1st/99th percentile winsorization to final CCQS scores to cap extreme outl
 
 Each component is a weighted sum of standardized feature z-scores. Components themselves are in z-score space (then converted to 0-100 for display via normal CDF).
 
-### Default Weights (MIXED State) — Phase X.2.1
+### Default Weights (INDETERMINATE State) — Phase X.2.1
 
 ```
 S_RS:                17%   # Classical cross-sectional momentum  (was 12%, +5%)
@@ -1478,10 +1602,10 @@ Per-stock state describes the chart's current behavior. State classification is 
 |-------|-------------|
 | TRENDING | Clean uptrend in progress |
 | PULLBACK | Buyable pullback within uptrend |
-| COILING | Pre-breakout consolidation |
-| CLIMACTIC | Parabolic / late-stage exhaustion |
-| BROKEN | Structurally damaged downtrend |
-| MIXED | Indeterminate / transitioning |
+| CONSOLIDATING | Pre-breakout consolidation |
+| EXHAUSTION | Parabolic / late-stage exhaustion |
+| DETERIORATING | Structurally damaged downtrend |
+| INDETERMINATE | Indeterminate / transitioning |
 
 ### Probabilistic Classification
 
@@ -1491,11 +1615,11 @@ For each state, compute log-likelihood based on how well features match the stat
 def state_likelihood(features, state):
     # Log-pdf is kernel-only: normal_logpdf(x, μ, σ) = -0.5 * ((x-μ)/σ)^2
     # (the σ-dependent constant is dropped so all states peak at 0 and the
-    # MIXED prior of -2.5 sits on the same scale as the directional states).
+    # INDETERMINATE prior of -2.5 sits on the same scale as the directional states).
     #
     # Calibration note: σ values are *wide enough* that a feature within
     # ±1.5σ of the state's centre still contributes a competitive
-    # log-likelihood. Tight σ's caused 96% MIXED dominance because no
+    # log-likelihood. Tight σ's caused 96% INDETERMINATE dominance because no
     # directional state matched a real-world chart well enough.
     if state == 'TRENDING':
         return (
@@ -1513,7 +1637,7 @@ def state_likelihood(features, state):
             normal_logpdf(features['rsi_14'], μ=45, σ=15)
         )
 
-    elif state == 'COILING':
+    elif state == 'CONSOLIDATING':
         return (
             normal_logpdf(features['bb_width_pct_252d'], μ=15, σ=12) +
             normal_logpdf(features['adx_14'], μ=15, σ=8) +
@@ -1521,7 +1645,7 @@ def state_likelihood(features, state):
             normal_logpdf(features['vcp_quality_score'], μ=55, σ=25)
         )
 
-    elif state == 'CLIMACTIC':
+    elif state == 'EXHAUSTION':
         return (
             normal_logpdf(features['atr_x_50'], μ=6.0, σ=2.0) +
             normal_logpdf(features['rsi_14'], μ=75, σ=8) +
@@ -1529,7 +1653,7 @@ def state_likelihood(features, state):
             indicator_logpdf(features['days_near_52w_high_60d'] >= 25, conf=0.70)
         )
 
-    elif state == 'BROKEN':
+    elif state == 'DETERIORATING':
         return (
             normal_logpdf(features['pct_ma_50'], μ=-12, σ=10) +
             normal_logpdf(features['distribution_days_25'], μ=8, σ=4) +
@@ -1537,15 +1661,15 @@ def state_likelihood(features, state):
             normal_logpdf(features['rs_rating_spy'], μ=25, σ=20)
         )
 
-    elif state == 'MIXED':
-        # Low constant prior: MIXED only wins when no directional state's
+    elif state == 'INDETERMINATE':
+        # Low constant prior: INDETERMINATE only wins when no directional state's
         # likelihood beats -2.5. With the kernel scale, this corresponds to
         # roughly ~√5 standardized deviations of joint mismatch.
         return -2.5
 
 # Softmax for probability distribution
 def classify_state_probabilistic(features):
-    states = ['TRENDING', 'PULLBACK', 'COILING', 'CLIMACTIC', 'BROKEN', 'MIXED']
+    states = ['TRENDING', 'PULLBACK', 'CONSOLIDATING', 'EXHAUSTION', 'DETERIORATING', 'INDETERMINATE']
     log_likelihoods = {s: state_likelihood(features, s) for s in states}
     
     max_ll = max(log_likelihoods.values())
@@ -1562,7 +1686,7 @@ def classify_state_probabilistic(features):
 
 ### State-Conditional Component Weights
 
-| Component | TRENDING | PULLBACK | COILING | CLIMACTIC | BROKEN | MIXED |
+| Component | TRENDING | PULLBACK | CONSOLIDATING | EXHAUSTION | DETERIORATING | INDETERMINATE |
 |-----------|:--------:|:--------:|:-------:|:---------:|:------:|:-----:|
 | S_RS | 25% | 22% | 20% | 22% | 20% | 22% |
 | S_RS_LEADERSHIP | 25% | 25% | 22% | 28% | 25% | 26% |
@@ -1581,18 +1705,18 @@ def classify_state_probabilistic(features):
 > **Phase X.3 — M8 (component cleanup).** Four components carry essentially
 > zero OOS signal across all six horizons:
 >
-> | component | mean OOS IC | post-X.2.1 weight (MIXED) | post-X.3 weight (MIXED) |
+> | component | mean OOS IC | post-X.2.1 weight (INDETERMINATE) | post-X.3 weight (INDETERMINATE) |
 > |-----------|------------:|--------------------------:|------------------------:|
 > | s_momentum    |  0.0000 |  3% |  1% |
 > | s_trend_slope | -0.0001 | 10% |  3% |
 > | s_rsl         | -0.0013 |  8% |  3% |
 > | s_extension   | -0.0070 |  8% |  1% |
 >
-> The freed 21% (MIXED state) flows to the four positive OOS carriers:
+> The freed 21% (INDETERMINATE state) flows to the four positive OOS carriers:
 > `S_RS` +5, `S_RS_LEADERSHIP` +5, `S_STRUCTURE` +5, `S_MTF` +4, `S_DEMAND` +2.
 > Same redistribution principle applied to every other state, with
-> state-specific tilts (e.g. `S_STRUCTURE` boosted in COILING/BROKEN where
-> chart structure is most diagnostic; `S_RS_LEADERSHIP` boosted in CLIMACTIC
+> state-specific tilts (e.g. `S_STRUCTURE` boosted in CONSOLIDATING/DETERIORATING where
+> chart structure is most diagnostic; `S_RS_LEADERSHIP` boosted in EXHAUSTION
 > as a quality filter against late-stage exhaustion names).
 | **Total** | 100% | 100% | 100% | 100% | 100% | 100% |
 
@@ -1614,7 +1738,7 @@ def compute_ccqs_z(component_scores, state_probabilities):
 
 ### Confidence Blending
 
-When state confidence is low, blend toward MIXED weights:
+When state confidence is low, blend toward INDETERMINATE weights:
 
 ```python
 def confidence_adjusted_probs(state_probs):
@@ -1623,14 +1747,14 @@ def confidence_adjusted_probs(state_probs):
     if max_prob >= 0.7:
         return state_probs  # High confidence: use as-is
     elif max_prob >= 0.5:
-        # Medium: 70% original + 30% MIXED
+        # Medium: 70% original + 30% INDETERMINATE
         adjusted = {s: 0.7 * p for s, p in state_probs.items()}
-        adjusted['MIXED'] = adjusted.get('MIXED', 0) + 0.3
+        adjusted['INDETERMINATE'] = adjusted.get('INDETERMINATE', 0) + 0.3
         return adjusted
     else:
-        # Low: 50% original + 50% MIXED
+        # Low: 50% original + 50% INDETERMINATE
         adjusted = {s: 0.5 * p for s, p in state_probs.items()}
-        adjusted['MIXED'] = adjusted.get('MIXED', 0) + 0.5
+        adjusted['INDETERMINATE'] = adjusted.get('INDETERMINATE', 0) + 0.5
         return adjusted
 ```
 
@@ -1695,7 +1819,7 @@ def classify_setup(features, state_probs, ccqs):
     Returns: setup_label, confidence
     """
     
-    # ===== CLIMACTIC SETUPS (Priority 1-4) =====
+    # ===== EXHAUSTION SETUPS (Priority 1-4) =====
     
     # 1. Climax Parabolic
     if features['atr_x_50'] >= 6.5:
@@ -1718,7 +1842,7 @@ def classify_setup(features, state_probs, ccqs):
         features['rs_rating_spy'] >= 80):
         return 'Climax Extended', 0.75
     
-    # ===== BROKEN SETUPS (Priority 5-8) =====
+    # ===== DETERIORATING SETUPS (Priority 5-8) =====
     
     # 5. Broken Capitulation
     if (features['pct_ma_50'] < -8 and 
@@ -1730,14 +1854,14 @@ def classify_setup(features, state_probs, ccqs):
         features['bullish_divergence_20d']):
         return 'Broken Bullish Divergence', 0.80
     
-    # 7. Broken Distribution
+    # 7. Distribution Pattern
     if (features['pct_ma_50'] < -5 and 
         features['distribution_days_25'] >= 8):
-        return 'Broken Distribution', 0.85
+        return 'Distribution Pattern', 0.85
     
-    # 8. Broken Downtrend
+    # 8. Trend Failure
     if features['pct_ma_50'] < -8:
-        return 'Broken Downtrend', 0.70
+        return 'Trend Failure', 0.70
     
     # ===== ELITE LEADER SETUPS (Priority 9-10) =====
     
@@ -1776,13 +1900,13 @@ def classify_setup(features, state_probs, ccqs):
     
     # ===== TRENDING SETUPS (Priority 14-15) =====
     
-    # 14. Strong Continuation
+    # 14. Trend Continuation
     if (features['sma_stack_score'] >= 85 and
         features['adx_14'] >= 25 and
         features['atr_x_50'] < 4.5 and
         features['rs_rating_spy'] >= 80 and
         features['supertrend_direction'] == 1):
-        return 'Strong Continuation', 0.90
+        return 'Trend Continuation', 0.90
 
     # 15. Trending Leadership (new_252d_high dropped — too restrictive in
     # range-bound markets; ADX cut loosened from 25 to 20.)
@@ -1805,7 +1929,7 @@ def classify_setup(features, state_probs, ccqs):
         features['rs_rating_spy'] >= 70):
         return 'Pullback to 50MA', 0.80
     
-    # ===== COILING SETUPS (Priority 18-22) =====
+    # ===== CONSOLIDATING SETUPS (Priority 18-22) =====
     
     # 18. Coil Within Strong Theme
     if (features['bb_squeeze_flag'] and
@@ -1831,10 +1955,10 @@ def classify_setup(features, state_probs, ccqs):
         features['rs_rating_spy'] >= 70):
         return 'BB Squeeze with RS', 0.75
     
-    # 22. Range-Bound Coil
+    # 22. Range Consolidation
     if (features['bb_squeeze_flag'] or 
         features['bb_width_pct_252d'] < 15):
-        return 'Range-Bound Coil', 0.70
+        return 'Range Consolidation', 0.70
     
     # ===== FAILURE / TRANSITION (Priority 23) =====
 
@@ -1851,15 +1975,15 @@ def classify_setup(features, state_probs, ccqs):
     # ===== STATE-AWARE CATCH-ALLS (Priority 24-29) =====
     # When no specific rule fires, label the row by its primary state so
     # downstream consumers can still distinguish a healthy trend with no
-    # sharp setup from a chart in a degenerate state. Only truly MIXED
-    # rows collapse to 'Mixed / Indeterminate'.
+    # sharp setup from a chart in a degenerate state. Only truly INDETERMINATE
+    # rows collapse to 'Indeterminate Pattern'.
     primary = state_probs_argmax  # name of highest-probability state
-    if primary == 'TRENDING':   return 'Healthy Trend',         0.65
-    if primary == 'PULLBACK':   return 'Healthy Pullback',      0.65
-    if primary == 'COILING':    return 'Healthy Consolidation', 0.65
-    if primary == 'CLIMACTIC':  return 'Late Stage',            0.65
-    if primary == 'BROKEN':     return 'Weak Setup',            0.65
-    return 'Mixed / Indeterminate', 0.55
+    if primary == 'TRENDING':   return 'Sustained Uptrend',         0.65
+    if primary == 'PULLBACK':   return 'Routine Pullback',      0.65
+    if primary == 'CONSOLIDATING':    return 'Constructive Consolidation', 0.65
+    if primary == 'EXHAUSTION':  return 'Late-Cycle Pattern',            0.65
+    if primary == 'DETERIORATING':     return 'Low-Confidence Pattern',            0.65
+    return 'Indeterminate Pattern', 0.55
 ```
 
 ### Setup Categories Summary
@@ -1872,14 +1996,14 @@ def classify_setup(features, state_probs, ccqs):
 | 4 | Climax Extended | CAUTION | DAYS-WEEKS |
 | 5 | Broken Capitulation | LONG-REVERSAL | DAYS-WEEKS |
 | 6 | Broken Bullish Divergence | LONG-REVERSAL | DAYS-WEEKS |
-| 7 | Broken Distribution | SHORT | WEEKS |
-| 8 | Broken Downtrend | SHORT/AVOID | WEEKS |
+| 7 | Distribution Pattern | SHORT | WEEKS |
+| 8 | Trend Failure | SHORT/AVOID | WEEKS |
 | 9 | Elite Leader Continuation | LONG | WEEKS-MONTHS |
 | 10 | Elite Leader Pullback | LONG | WEEKS-MONTHS |
 | 11 | Tier S Pullback | LONG | WEEKS-MONTHS |
 | 12 | Emerging Leader (Multibagger) | LONG | MONTHS |
 | 13 | Theme Leader Pullback | LONG | WEEKS |
-| 14 | Strong Continuation | LONG | WEEKS-MONTHS |
+| 14 | Trend Continuation | LONG | WEEKS-MONTHS |
 | 15 | Trending Leadership | LONG | WEEKS-MONTHS |
 | 16 | Pullback to 21EMA | LONG | DAYS-WEEKS |
 | 17 | Pullback to 50MA | LONG | WEEKS |
@@ -1887,14 +2011,14 @@ def classify_setup(features, state_probs, ccqs):
 | 19 | Strong Coil Pre-Breakout | LONG | WEEKS |
 | 20 | VCP Setup | LONG | WEEKS |
 | 21 | BB Squeeze with RS | LONG | WEEKS |
-| 22 | Range-Bound Coil | WAIT | - |
+| 22 | Range Consolidation | WAIT | - |
 | 23 | Failed Breakout | AVOID/SHORT | DAYS |
-| 24 | Healthy Trend | LONG (low-conf) | WEEKS |
-| 25 | Healthy Pullback | LONG (low-conf) | WEEKS |
-| 26 | Healthy Consolidation | WAIT | WEEKS |
-| 27 | Late Stage | CAUTION | DAYS-WEEKS |
-| 28 | Weak Setup | AVOID | WEEKS |
-| 29 | Mixed / Indeterminate | WAIT | - |
+| 24 | Sustained Uptrend | LONG (low-conf) | WEEKS |
+| 25 | Routine Pullback | LONG (low-conf) | WEEKS |
+| 26 | Constructive Consolidation | WAIT | WEEKS |
+| 27 | Late-Cycle Pattern | CAUTION | DAYS-WEEKS |
+| 28 | Low-Confidence Pattern | AVOID | WEEKS |
+| 29 | Indeterminate Pattern | WAIT | - |
 
 ---
 
@@ -2017,7 +2141,7 @@ def classify_theme(theme_features):
         momentum_class in ['DECELERATING', 'WEAKENING']):
         return 'WEAKENING'
     
-    if theme_features['pct_broken'] >= 30:
+    if theme_features['pct_deteriorating'] >= 30:
         return 'BROKEN_THEME'
     
     return 'MIXED'
@@ -2041,7 +2165,7 @@ For each populated CORE basket, compute ~25 metrics:
 - `pct_rs_rating_above_70`, `pct_rs_rating_above_85`
 - `pct_rs_line_new_high`
 - `pct_grade_s`, `pct_grade_a_plus`, `pct_grade_d`
-- `pct_climactic`, `pct_broken`
+- `pct_exhaustion`, `pct_deteriorating`
 
 **Theme RS Line (basket equal-weighted index vs SPY):**
 ```python

@@ -65,9 +65,9 @@ def main() -> None:
     # --- 5. State distribution -------------------------------------------
     state_dist = d["state"]["primary_state"].astype(str).value_counts(normalize=True)
     print(f"\n[5] State distribution:")
-    for s in ["TRENDING", "PULLBACK", "COILING", "CLIMACTIC", "BROKEN", "MIXED"]:
+    for s in ["TRENDING", "PULLBACK", "CONSOLIDATING", "EXHAUSTION", "DETERIORATING", "INDETERMINATE"]:
         pct = state_dist.get(s, 0.0) * 100
-        print(f"      {s:<12} {pct:6.2f}%")
+        print(f"      {s:<14} {pct:6.2f}%")
     mean_conf = d["state"]["state_confidence"].mean()
     print(f"      mean confidence: {mean_conf:.3f}")
 
@@ -113,8 +113,8 @@ def main() -> None:
         print()
         print(f"      Primary state  : {s['primary_state']} (conf {s['state_confidence']:.3f})")
         print(f"      State probs    :")
-        for state_name in ["TRENDING", "PULLBACK", "COILING", "CLIMACTIC", "BROKEN", "MIXED"]:
-            print(f"        {state_name:<12} {s[f'p_{state_name}']:.4f}")
+        for state_name in ["TRENDING", "PULLBACK", "CONSOLIDATING", "EXHAUSTION", "DETERIORATING", "INDETERMINATE"]:
+            print(f"        {state_name:<14} {s[f'p_{state_name}']:.4f}")
         print()
         print(f"      Leadership tier: {l['leadership_tier']}")
         print(f"      Basket leader  : {l['is_basket_leader']}")
@@ -133,8 +133,8 @@ def main() -> None:
     print(f"      CCQS NaN          : {n_ccqs_nan} ({n_ccqs_nan/n*100:.2f}%)")
     print(f"      Grade NaN         : {n_grade_nan} ({n_grade_nan/n*100:.2f}%)")
     print(f"      CCQS in [0,100]   : {bool(((d['ccqs']['ccqs'].dropna() >= 0) & (d['ccqs']['ccqs'].dropna() <= 100)).all())}")
-    print(f"      State probs sum~1 : {bool(np.isclose(d['state'][['p_TRENDING','p_PULLBACK','p_COILING','p_CLIMACTIC','p_BROKEN','p_MIXED']].sum(axis=1).dropna(), 1.0, atol=1e-3).all())}")
-    print(f"      State p_adj sum~1 : {bool(np.isclose(d['state'][['p_adj_TRENDING','p_adj_PULLBACK','p_adj_COILING','p_adj_CLIMACTIC','p_adj_BROKEN','p_adj_MIXED']].sum(axis=1).dropna(), 1.0, atol=1e-3).all())}")
+    print(f"      State probs sum~1 : {bool(np.isclose(d['state'][['p_TRENDING','p_PULLBACK','p_CONSOLIDATING','p_EXHAUSTION','p_DETERIORATING','p_INDETERMINATE']].sum(axis=1).dropna(), 1.0, atol=1e-3).all())}")
+    print(f"      State p_adj sum~1 : {bool(np.isclose(d['state'][['p_adj_TRENDING','p_adj_PULLBACK','p_adj_CONSOLIDATING','p_adj_EXHAUSTION','p_adj_DETERIORATING','p_adj_INDETERMINATE']].sum(axis=1).dropna(), 1.0, atol=1e-3).all())}")
 
     n_inf_comp = np.isinf(d["components"].select_dtypes(include=np.number)).any().any()
     print(f"      No inf components : {not bool(n_inf_comp)}")

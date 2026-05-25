@@ -47,7 +47,7 @@ logger.add(LOG_DIR / "ccqs.log", level="DEBUG", rotation="10 MB", retention="30 
 
 
 # State-conditional component weights (SPEC §8 matrix).
-# Columns: TRENDING, PULLBACK, COILING, CLIMACTIC, BROKEN, MIXED
+# Columns: TRENDING, PULLBACK, CONSOLIDATING, EXHAUSTION, DETERIORATING, INDETERMINATE
 # Rows must sum to 1.0 per state.
 #
 # Phase X.2.1 — FIX 2: S_CLIMAX zeroed in every state (mean OOS IC = -0.0242,
@@ -72,25 +72,25 @@ STATE_WEIGHTS: dict[str, dict[str, float]] = {
         "s_extension": 0.02, "s_climax": 0.00, "s_demand": 0.13,
         "s_momentum": 0.01,
     },
-    "COILING": {
+    "CONSOLIDATING": {
         "s_rs": 0.20, "s_rs_leadership": 0.22, "s_rsl": 0.02,
         "s_trend_slope": 0.02, "s_structure": 0.22, "s_mtf": 0.15,
         "s_extension": 0.01, "s_climax": 0.00, "s_demand": 0.15,
         "s_momentum": 0.01,
     },
-    "CLIMACTIC": {
+    "EXHAUSTION": {
         "s_rs": 0.22, "s_rs_leadership": 0.28, "s_rsl": 0.01,
         "s_trend_slope": 0.01, "s_structure": 0.16, "s_mtf": 0.15,
         "s_extension": 0.01, "s_climax": 0.00, "s_demand": 0.15,
         "s_momentum": 0.01,
     },
-    "BROKEN": {
+    "DETERIORATING": {
         "s_rs": 0.20, "s_rs_leadership": 0.25, "s_rsl": 0.02,
         "s_trend_slope": 0.02, "s_structure": 0.20, "s_mtf": 0.15,
         "s_extension": 0.00, "s_climax": 0.00, "s_demand": 0.15,
         "s_momentum": 0.01,
     },
-    "MIXED": {
+    "INDETERMINATE": {
         "s_rs": 0.22, "s_rs_leadership": 0.26, "s_rsl": 0.03,
         "s_trend_slope": 0.03, "s_structure": 0.18, "s_mtf": 0.15,
         "s_extension": 0.01, "s_climax": 0.00, "s_demand": 0.11,

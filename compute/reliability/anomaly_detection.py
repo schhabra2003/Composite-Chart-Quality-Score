@@ -12,7 +12,8 @@ Anomalies detected (per ticker, evaluated on the latest date):
     CCQS exceeds ±2.5.
 2.  Grade jumps  — grade transition skipping ≥ 2 tiers (e.g. D→B, S→C).
 3.  State flips  — `primary_state` changed in 2 of the last 3 days and the
-    states involved are not adjacent (TRENDING↔BROKEN, COILING↔CLIMACTIC).
+    states involved are not adjacent (TRENDING↔DETERIORATING,
+    CONSOLIDATING↔EXHAUSTION).
 
 Output: `data/cache/anomalies.json` — sorted by severity (CCQS jump > grade
 jump > state flip).
@@ -47,9 +48,9 @@ GRADE_ORDER = {"S": 0, "A": 1, "B": 2, "C": 3, "D": 4}
 
 # Pairs of states considered "incompatible" (non-adjacent in regime space).
 _NON_ADJACENT_PAIRS = {
-    frozenset({"TRENDING", "BROKEN"}),
-    frozenset({"COILING", "CLIMACTIC"}),
-    frozenset({"TRENDING", "CLIMACTIC"}),  # also extreme jump
+    frozenset({"TRENDING", "DETERIORATING"}),
+    frozenset({"CONSOLIDATING", "EXHAUSTION"}),
+    frozenset({"TRENDING", "EXHAUSTION"}),  # also extreme jump
 }
 
 LOG_DIR.mkdir(parents=True, exist_ok=True)

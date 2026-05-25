@@ -50,6 +50,9 @@ data/cache/*
 data/snapshots/
 logs/
 
+# Migration backups (local-only — large pre-migration snapshots kept for rollback)
+.migration_backup_*/
+
 # Testing
 .pytest_cache/
 .coverage

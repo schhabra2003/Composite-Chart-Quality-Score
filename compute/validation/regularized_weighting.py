@@ -332,7 +332,7 @@ def _print_report(diag: pd.DataFrame, summary: dict, m8_weights: dict[str, float
             print(f"  {h:>8}d {'-':>10} {r_mean:>+13.4f} {'-':>10} {'-':>10} {r_t:>+11.2f}")
 
     # ---- [2] Mean learned weights vs hand-set -----------------------------
-    print("\n[2] LEARNED WEIGHTS (mean across windows)  vs  HAND-SET (Phase X.3 M8, MIXED state)")
+    print("\n[2] LEARNED WEIGHTS (mean across windows)  vs  HAND-SET (Phase X.3 M8, INDETERMINATE state)")
     print(f"  {'component':<22} {'hand-set':>10} {'learned':>10} {'delta':>9} {'|learned|':>10}")
     mean_w = summary["mean_weights"]
     sum_abs = sum(abs(v) for v in mean_w.values())
@@ -410,11 +410,11 @@ def main() -> int:
     t0 = time.time()
     diag, summary = run()
 
-    # Pull M8 MIXED-state weights for the comparison table.
+    # Pull M8 INDETERMINATE-state weights for the comparison table.
     from compute.ccqs import STATE_WEIGHTS
-    m8_mixed = STATE_WEIGHTS["MIXED"]
+    m8_indeterminate = STATE_WEIGHTS["INDETERMINATE"]
 
-    _print_report(diag, summary, m8_mixed)
+    _print_report(diag, summary, m8_indeterminate)
     logger.info(f"Total elapsed: {time.time() - t0:.1f}s")
     return 0
 

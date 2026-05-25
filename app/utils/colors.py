@@ -63,12 +63,12 @@ def color_state(s):
     if not isinstance(s, str):
         return "white"
     return {
-        "TRENDING":  "rgb(204,238,204)",
-        "PULLBACK":  "rgb(230,236,245)",
-        "COILING":   "rgb(255,237,170)",
-        "CLIMACTIC": "rgb(255,210,210)",
-        "BROKEN":    "rgb(255,200,200)",
-        "MIXED":     "rgb(240,240,240)",
+        "TRENDING":      "rgb(204,238,204)",
+        "PULLBACK":      "rgb(230,236,245)",
+        "CONSOLIDATING": "rgb(255,237,170)",
+        "EXHAUSTION":    "rgb(255,210,210)",
+        "DETERIORATING": "rgb(255,200,200)",
+        "INDETERMINATE": "rgb(240,240,240)",
     }.get(s, "white")
 
 

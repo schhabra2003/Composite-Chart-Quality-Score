@@ -212,7 +212,7 @@ def get_emerging_leaders_today() -> pd.DataFrame:
 
 @st.cache_data(ttl=TTL, show_spinner=False)
 def get_newly_broken_today() -> pd.DataFrame:
-    """Tickers that moved INTO BROKEN state today."""
+    """Tickers that moved INTO DETERIORATING state today."""
     state = _read_parquet("state.parquet")
     ccqs = _read_parquet("ccqs.parquet")
     if state.empty or ccqs.empty:
@@ -227,8 +227,8 @@ def get_newly_broken_today() -> pd.DataFrame:
     prev_s = state.xs(prev, level="date")["primary_state"]
     joined = pd.concat({"prev_state": prev_s, "today_state": today_s}, axis=1).dropna()
     broken = joined[
-        (joined["today_state"].astype(str) == "BROKEN")
-        & (joined["prev_state"].astype(str) != "BROKEN")
+        (joined["today_state"].astype(str) == "DETERIORATING")
+        & (joined["prev_state"].astype(str) != "DETERIORATING")
     ]
     if broken.empty:
         return pd.DataFrame()
@@ -303,11 +303,11 @@ def load_components_for_ticker(ticker: str) -> pd.DataFrame:
     try:
         primary_state = state.xs((ticker, latest))["primary_state"]
     except KeyError:
-        primary_state = "MIXED"
+        primary_state = "INDETERMINATE"
 
     try:
         from compute.ccqs import STATE_WEIGHTS
-        weights = STATE_WEIGHTS.get(str(primary_state), STATE_WEIGHTS.get("MIXED", {}))
+        weights = STATE_WEIGHTS.get(str(primary_state), STATE_WEIGHTS.get("INDETERMINATE", {}))
     except Exception:
         weights = {}
 

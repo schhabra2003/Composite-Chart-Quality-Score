@@ -76,7 +76,7 @@ TIER_ORDER = [
     "ELITE_LEADER", "STRONG_LEADER", "EMERGING_LEADER", "ESTABLISHED_LEADER",
     "STRONG_PERFORMER", "NEUTRAL", "WEAK_PERFORMER", "DETERIORATING", "WEAK_LAGGARD",
 ]
-STATE_ORDER = ["TRENDING", "PULLBACK", "COILING", "CLIMACTIC", "BROKEN", "MIXED"]
+STATE_ORDER = ["TRENDING", "PULLBACK", "CONSOLIDATING", "EXHAUSTION", "DETERIORATING", "INDETERMINATE"]
 
 tiers_present = [t for t in TIER_ORDER if t in df["leadership_tier"].astype(str).unique()]
 states_present = [s for s in STATE_ORDER if s in df["primary_state"].astype(str).unique()]
@@ -173,7 +173,7 @@ with tab_production:
             config={"displayModeBar": False},
         )
     with col_b:
-        st.markdown("### Newly Broken")
+        st.markdown("### Newly Deteriorating")
         st.plotly_chart(
             newly_broken_table(get_newly_broken_today().head(15)),
             use_container_width=True,

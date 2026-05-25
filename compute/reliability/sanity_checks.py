@@ -83,7 +83,7 @@ def run_sanity_checks() -> dict:
     )
 
     # 2. State probabilities sum ≈ 1.
-    pcols = ["p_TRENDING", "p_PULLBACK", "p_COILING", "p_CLIMACTIC", "p_BROKEN", "p_MIXED"]
+    pcols = ["p_TRENDING", "p_PULLBACK", "p_CONSOLIDATING", "p_EXHAUSTION", "p_DETERIORATING", "p_INDETERMINATE"]
     sums = state[pcols].sum(axis=1).dropna()
     bad = int(((sums - 1.0).abs() > 1e-3).sum())
     checks.append(
@@ -91,7 +91,7 @@ def run_sanity_checks() -> dict:
     )
 
     # 3. State p_adj sum ≈ 1.
-    p_adj_cols = [f"p_adj_{s.upper()}" for s in ["TRENDING", "PULLBACK", "COILING", "CLIMACTIC", "BROKEN", "MIXED"]]
+    p_adj_cols = [f"p_adj_{s.upper()}" for s in ["TRENDING", "PULLBACK", "CONSOLIDATING", "EXHAUSTION", "DETERIORATING", "INDETERMINATE"]]
     sums = state[p_adj_cols].sum(axis=1).dropna()
     bad = int(((sums - 1.0).abs() > 1e-3).sum())
     checks.append(

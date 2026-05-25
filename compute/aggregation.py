@@ -130,7 +130,7 @@ def _classify_theme(agg: pd.DataFrame) -> pd.Series:
         (agg["theme_ccqs"] < 50)
         & agg["momentum_class"].isin(["DECELERATING", "WEAKENING"])
     )
-    broken = agg["pct_broken"] >= 30.0
+    broken = agg["pct_deteriorating"] >= 30.0
 
     # Apply lowest priority first.
     tier[broken.fillna(False)] = "BROKEN_THEME"
@@ -265,11 +265,11 @@ def aggregate_themes(
         g["grade"].apply(lambda s: s.isin(["S", "A"]).mean()) * 100.0
     )
     agg["pct_grade_d"] = g["grade"].apply(lambda s: (s == "D").mean()) * 100.0
-    agg["pct_climactic"] = (
-        g["primary_state"].apply(lambda s: (s == "CLIMACTIC").mean()) * 100.0
+    agg["pct_exhaustion"] = (
+        g["primary_state"].apply(lambda s: (s == "EXHAUSTION").mean()) * 100.0
     )
-    agg["pct_broken"] = (
-        g["primary_state"].apply(lambda s: (s == "BROKEN").mean()) * 100.0
+    agg["pct_deteriorating"] = (
+        g["primary_state"].apply(lambda s: (s == "DETERIORATING").mean()) * 100.0
     )
 
     agg["n_elite_leaders"] = g["leadership_tier"].apply(
@@ -491,8 +491,8 @@ def aggregate_themes(
         + 0.10 * z("theme_avg_dist_days", negate=True)
     )
     health_score = (
-        0.50 * z("pct_climactic", negate=True)
-        + 0.50 * z("pct_broken", negate=True)
+        0.50 * z("pct_exhaustion", negate=True)
+        + 0.50 * z("pct_deteriorating", negate=True)
     )
 
     theme_ccqs_z = (

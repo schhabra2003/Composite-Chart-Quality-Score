@@ -4,17 +4,17 @@ CCQS V1 — State Classification (SPEC Section 8)
 Per-stock probabilistic state classification using softmax over
 log-likelihoods. Six states:
 
-    TRENDING    — clean uptrend in progress
-    PULLBACK    — buyable pullback within uptrend
-    COILING     — pre-breakout consolidation
-    CLIMACTIC   — parabolic / late-stage exhaustion
-    BROKEN      — structurally damaged downtrend
-    MIXED       — indeterminate / transitioning
+    TRENDING        — clean uptrend in progress
+    PULLBACK        — buyable pullback within uptrend
+    CONSOLIDATING   — pre-breakout consolidation
+    EXHAUSTION      — parabolic / late-stage exhaustion
+    DETERIORATING   — structurally damaged downtrend
+    INDETERMINATE   — transitioning / no clear regime
 
 Outputs (per ticker, date):
     primary_state       (string)
     state_confidence    (max probability)
-    p_TRENDING, p_PULLBACK, p_COILING, p_CLIMACTIC, p_BROKEN, p_MIXED
+    p_TRENDING, p_PULLBACK, p_CONSOLIDATING, p_EXHAUSTION, p_DETERIORATING, p_INDETERMINATE
     p_adj_TRENDING ... (confidence-blended versions used for Bayesian
                        averaging downstream)
 
@@ -44,7 +44,7 @@ logger.remove()
 logger.add(sys.stdout, level="INFO", format="<level>{level: <8}</level> | {message}")
 logger.add(LOG_DIR / "ccqs.log", level="DEBUG", rotation="10 MB", retention="30 days")
 
-STATES: list[str] = ["TRENDING", "PULLBACK", "COILING", "CLIMACTIC", "BROKEN", "MIXED"]
+STATES: list[str] = ["TRENDING", "PULLBACK", "CONSOLIDATING", "EXHAUSTION", "DETERIORATING", "INDETERMINATE"]
 PROB_COLS: list[str] = [f"p_{s}" for s in STATES]
 PROB_ADJ_COLS: list[str] = [f"p_adj_{s}" for s in STATES]
 
@@ -58,7 +58,7 @@ def normal_logpdf(x: pd.Series, mu: float, sigma: float) -> pd.Series:
 
     Drops the σ-dependent normalization constant so log-likelihoods peak at
     zero and decline with the squared standardised distance. This matches the
-    scale of the MIXED prior (-0.5) baked into SPEC §8.
+    scale of the INDETERMINATE prior (-0.5) baked into SPEC §8.
     """
     sigma = max(float(sigma), 1e-6)
     z = (x.astype(float) - mu) / sigma
@@ -97,7 +97,7 @@ def _ll_pullback(f: pd.DataFrame) -> pd.Series:
     )
 
 
-def _ll_coiling(f: pd.DataFrame) -> pd.Series:
+def _ll_consolidating(f: pd.DataFrame) -> pd.Series:
     return (
         normal_logpdf(f["bb_width_pct_252d"], 15.0, 12.0)
         + normal_logpdf(f["adx_14"], 15.0, 8.0)
@@ -106,7 +106,7 @@ def _ll_coiling(f: pd.DataFrame) -> pd.Series:
     )
 
 
-def _ll_climactic(f: pd.DataFrame) -> pd.Series:
+def _ll_exhaustion(f: pd.DataFrame) -> pd.Series:
     return (
         normal_logpdf(f["atr_x_50"], 6.0, 2.0)
         + normal_logpdf(f["rsi_14"], 75.0, 8.0)
@@ -115,7 +115,7 @@ def _ll_climactic(f: pd.DataFrame) -> pd.Series:
     )
 
 
-def _ll_broken(f: pd.DataFrame) -> pd.Series:
+def _ll_deteriorating(f: pd.DataFrame) -> pd.Series:
     return (
         normal_logpdf(f["pct_ma_50"], -12.0, 10.0)
         + normal_logpdf(f["distribution_days_25"], 8.0, 4.0)
@@ -124,17 +124,17 @@ def _ll_broken(f: pd.DataFrame) -> pd.Series:
     )
 
 
-def _ll_mixed(f: pd.DataFrame) -> pd.Series:
+def _ll_indeterminate(f: pd.DataFrame) -> pd.Series:
     return pd.Series(-2.5, index=f.index)
 
 
 _LIKELIHOOD = {
     "TRENDING": _ll_trending,
     "PULLBACK": _ll_pullback,
-    "COILING": _ll_coiling,
-    "CLIMACTIC": _ll_climactic,
-    "BROKEN": _ll_broken,
-    "MIXED": _ll_mixed,
+    "CONSOLIDATING": _ll_consolidating,
+    "EXHAUSTION": _ll_exhaustion,
+    "DETERIORATING": _ll_deteriorating,
+    "INDETERMINATE": _ll_indeterminate,
 }
 
 
@@ -153,14 +153,14 @@ def _softmax_rowwise(ll_matrix: np.ndarray) -> np.ndarray:
 
 
 def _confidence_blend(probs: np.ndarray) -> np.ndarray:
-    """Confidence blending toward MIXED per SPEC §8.
+    """Confidence blending toward INDETERMINATE per SPEC §8.
 
     max_prob ≥ 0.7  → unchanged
-    max_prob ≥ 0.5  → 70% original + 30% MIXED
-    max_prob < 0.5  → 50% original + 50% MIXED
+    max_prob ≥ 0.5  → 70% original + 30% INDETERMINATE
+    max_prob < 0.5  → 50% original + 50% INDETERMINATE
     """
     n_rows, n_states = probs.shape
-    mixed_idx = STATES.index("MIXED")
+    indeterminate_idx = STATES.index("INDETERMINATE")
 
     max_p = np.nanmax(probs, axis=1)
     out = probs.copy()
@@ -170,12 +170,12 @@ def _confidence_blend(probs: np.ndarray) -> np.ndarray:
 
     if medium_mask.any():
         block = probs[medium_mask] * 0.7
-        block[:, mixed_idx] += 0.3
+        block[:, indeterminate_idx] += 0.3
         out[medium_mask] = block
 
     if low_mask.any():
         block = probs[low_mask] * 0.5
-        block[:, mixed_idx] += 0.5
+        block[:, indeterminate_idx] += 0.5
         out[low_mask] = block
 
     return out

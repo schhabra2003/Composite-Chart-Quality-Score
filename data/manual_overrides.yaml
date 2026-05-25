@@ -38,12 +38,13 @@ flag_tickers: {}
 #   Use sparingly — the state classifier is usually correct. Reach for this
 #   only when you have strong outside context (e.g., known corp action).
 #
-#   Valid states: TRENDING, PULLBACK, COILING, CLIMACTIC, BROKEN, MIXED
+#   Valid states: TRENDING, PULLBACK, CONSOLIDATING, EXHAUSTION,
+#                  DETERIORATING, INDETERMINATE
 #
 #   Example:
 #     force_state:
-#       XYZ: BROKEN          # despite chart, fundamentals are deteriorating
-#       ABC: COILING         # pre-spinoff consolidation, classifier confused
+#       XYZ: DETERIORATING   # despite chart, fundamentals are deteriorating
+#       ABC: CONSOLIDATING   # pre-spinoff consolidation, classifier confused
 # ---------------------------------------------------------------------------
 force_state: {}
 

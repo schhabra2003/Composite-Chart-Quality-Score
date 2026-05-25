@@ -37,29 +37,29 @@ logger.add(LOG_DIR / "ccqs.log", level="DEBUG", rotation="10 MB", retention="30 
 
 
 SETUP_LABELS: list[str] = [
-    # Climactic (1-4)
+    # Exhaustion (1-4)
     "Climax Parabolic", "Climax Bearish Divergence",
     "Climax Volume Confirmed", "Climax Extended",
-    # Broken (5-8)
+    # Deteriorating (5-8)
     "Broken Capitulation", "Broken Bullish Divergence",
-    "Broken Distribution", "Broken Downtrend",
+    "Distribution Pattern", "Trend Failure",
     # Elite Leader (9-10)
     "Elite Leader Continuation", "Elite Leader Pullback",
     # Tier S / Premium Long (11-13)
     "Tier S Pullback", "Emerging Leader (Multibagger Setup)",
     "Theme Leader Pullback",
     # Trending (14-15)
-    "Strong Continuation", "Trending Leadership",
+    "Trend Continuation", "Trending Leadership",
     # Pullback (16-17)
     "Pullback to 21EMA", "Pullback to 50MA",
-    # Coiling (18-22)
+    # Consolidating (18-22)
     "Coil Within Strong Theme", "Strong Coil Pre-Breakout",
-    "VCP Setup", "BB Squeeze with RS", "Range-Bound Coil",
+    "VCP Setup", "BB Squeeze with RS", "Range Consolidation",
     # Failure / Transition (23)
     "Failed Breakout",
     # State-aware catch-alls (24-29) — assigned when no specific rule fired.
-    "Healthy Trend", "Healthy Pullback", "Healthy Consolidation",
-    "Late Stage", "Weak Setup", "Mixed / Indeterminate",
+    "Sustained Uptrend", "Routine Pullback", "Constructive Consolidation",
+    "Late-Cycle Pattern", "Low-Confidence Pattern", "Indeterminate Pattern",
 ]
 
 
@@ -162,14 +162,14 @@ def classify_setups(
         "Broken Bullish Divergence", 0.80,
     )
 
-    # ---- 7. Broken Distribution ------------------------------------------
+    # ---- 7. Distribution Pattern -----------------------------------------
     _apply(
         (pct_ma_50 < -5) & (dist_days >= 8),
-        "Broken Distribution", 0.85,
+        "Distribution Pattern", 0.85,
     )
 
-    # ---- 8. Broken Downtrend ---------------------------------------------
-    _apply(pct_ma_50 < -8, "Broken Downtrend", 0.70)
+    # ---- 8. Trend Failure ------------------------------------------------
+    _apply(pct_ma_50 < -8, "Trend Failure", 0.70)
 
     # ---- 9. Elite Leader Continuation ------------------------------------
     _apply(
@@ -209,14 +209,14 @@ def classify_setups(
         "Theme Leader Pullback", 0.80,
     )
 
-    # ---- 14. Strong Continuation -----------------------------------------
+    # ---- 14. Trend Continuation ------------------------------------------
     _apply(
         (sma_stack >= 85)
         & (adx_14 >= 25)
         & (atr_x_50 < 4.5)
         & (rs_spy >= 80)
         & (supertrend_dir == 1),
-        "Strong Continuation", 0.90,
+        "Trend Continuation", 0.90,
     )
 
     # ---- 15. Trending Leadership -----------------------------------------
@@ -263,8 +263,8 @@ def classify_setups(
         "BB Squeeze with RS", 0.75,
     )
 
-    # ---- 22. Range-Bound Coil --------------------------------------------
-    _apply(bb_sq | (bb_w < 15), "Range-Bound Coil", 0.70)
+    # ---- 22. Range Consolidation -----------------------------------------
+    _apply(bb_sq | (bb_w < 15), "Range Consolidation", 0.70)
 
     # ---- 23. Failed Breakout ---------------------------------------------
     # Tightened: a true failed breakout requires both a flag AND post-failure
@@ -289,15 +289,15 @@ def classify_setups(
         confidence[mask] = conf
         assigned[mask] = True
 
-    _catchall("TRENDING", "Healthy Trend", 0.65)
-    _catchall("PULLBACK", "Healthy Pullback", 0.65)
-    _catchall("COILING", "Healthy Consolidation", 0.65)
-    _catchall("CLIMACTIC", "Late Stage", 0.65)
-    _catchall("BROKEN", "Weak Setup", 0.65)
+    _catchall("TRENDING", "Sustained Uptrend", 0.65)
+    _catchall("PULLBACK", "Routine Pullback", 0.65)
+    _catchall("CONSOLIDATING", "Constructive Consolidation", 0.65)
+    _catchall("EXHAUSTION", "Late-Cycle Pattern", 0.65)
+    _catchall("DETERIORATING", "Low-Confidence Pattern", 0.65)
 
-    # Final fallback for MIXED / unknown.
+    # Final fallback for INDETERMINATE / unknown.
     remaining = ~assigned
-    setup[remaining] = "Mixed / Indeterminate"
+    setup[remaining] = "Indeterminate Pattern"
     confidence[remaining] = 0.55
 
     out = pd.DataFrame(index=idx)
