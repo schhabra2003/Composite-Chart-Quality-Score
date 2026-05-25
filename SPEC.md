@@ -1,6 +1,6 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — Phase 5.5 naming standardization (2026-05-24)
+**Version:** 1.0 (Locked) — Phase 5.5 + 5.6 naming standardization (2026-05-24)
 **Date:** May 2026
 **Author:** Shreyaansh Chhabra (ADFM)
 **Purpose:** Pure technical, momentum & strength screening tool for L/S discretionary equity analysis.
@@ -331,7 +331,7 @@ inside `state.parquet`. `STATE_WEIGHTS` lookup keys renamed in
 [compute/ccqs.py](compute/ccqs.py) accordingly. Bayesian-averaging math is
 identical because the dict keys move together with the lookups.
 
-**Setup label renames** (10 of 29 labels):
+**Setup label renames** (12 of 29 labels; last two added in Phase 5.6):
 
 | Old | New |
 |-----|-----|
@@ -430,6 +430,32 @@ the 2–15% spec band). Top-10 setup distribution uses the new vocabulary
 ("Indeterminate Pattern" 20.16%, "Range Consolidation" 12.17%,
 "Low-Confidence Pattern" 11.61%, "Routine Pullback" 9.54%, "Sustained
 Uptrend" 8.26%, ...).
+
+---
+
+### Phase 5.6 — Coil follow-up (2026-05-24)
+
+Phase 5.5 renamed the `COILING` state to `CONSOLIDATING` and the
+`Range-Bound Coil` setup to `Range Consolidation`, but two
+Consolidating-state setups still carried the old "Coil" vocabulary
+(`Coil Within Strong Theme`, `Strong Coil Pre-Breakout`). This
+follow-up commit drops those references so the setup naming aligns
+fully with the state vocabulary. The exhaustion / deteriorating
+sub-setup names (`Climax *`, `Broken Capitulation`, `Broken Bullish
+Divergence`) and the `Distribution *` basket-metric names are
+preserved as deliberate chart-pattern terms of art.
+
+| Old | New |
+|-----|-----|
+| Coil Within Strong Theme | Consolidation Within Strong Theme |
+| Strong Coil Pre-Breakout | Tight Consolidation Pre-Breakout |
+
+`scripts/phase_5_5_data_migration.py` was extended with the two
+additional `SETUP_RENAMES` entries and re-run; the script is
+idempotent, so it only touched the new labels and left the rest of the
+caches untouched. Validation: 11/11 sanity checks pass; CCQS
+bit-identical vs the 2026-05-22 snapshot (max|diff| = 0.00e+00, 0/863
+grade mismatches); no residual `Coil` labels in any setups parquet.
 
 ---
 
