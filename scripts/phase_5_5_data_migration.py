@@ -58,6 +58,10 @@ SETUP_RENAMES: dict[str, str] = {
     "Late Stage": "Late-Cycle Pattern",
     "Broken Downtrend": "Trend Failure",
     "Broken Distribution": "Distribution Pattern",
+    # Phase 5.6 follow-up: drop remaining "Coil" references for consistency
+    # with the COILING -> CONSOLIDATING state rename.
+    "Coil Within Strong Theme": "Consolidation Within Strong Theme",
+    "Strong Coil Pre-Breakout": "Tight Consolidation Pre-Breakout",
 }
 
 

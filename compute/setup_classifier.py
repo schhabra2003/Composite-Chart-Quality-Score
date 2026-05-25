@@ -2,7 +2,7 @@
 CCQS V1 — Setup Classification (SPEC Section 10)
 
 24 priority-ordered setup categories. First-match-wins along the priority
-chain. Theme-aware setups (Coil Within Strong Theme) require the
+chain. Theme-aware setups (Consolidation Within Strong Theme) require the
 aggregation layer's `theme_class`; if unavailable they never fire.
 
 Run:
@@ -53,7 +53,7 @@ SETUP_LABELS: list[str] = [
     # Pullback (16-17)
     "Pullback to 21EMA", "Pullback to 50MA",
     # Consolidating (18-22)
-    "Coil Within Strong Theme", "Strong Coil Pre-Breakout",
+    "Consolidation Within Strong Theme", "Tight Consolidation Pre-Breakout",
     "VCP Setup", "BB Squeeze with RS", "Range Consolidation",
     # Failure / Transition (23)
     "Failed Breakout",
@@ -241,14 +241,14 @@ def classify_setups(
         "Pullback to 50MA", 0.80,
     )
 
-    # ---- 18. Coil Within Strong Theme ------------------------------------
+    # ---- 18. Consolidation Within Strong Theme --------------------------
     # Requires theme_class from aggregation layer; never fires in Phase 3.
-    _apply(bb_sq & theme_strong, "Coil Within Strong Theme", 0.85)
+    _apply(bb_sq & theme_strong, "Consolidation Within Strong Theme", 0.85)
 
-    # ---- 19. Strong Coil Pre-Breakout ------------------------------------
+    # ---- 19. Tight Consolidation Pre-Breakout ---------------------------
     _apply(
         bb_sq & (vcp_q >= 70) & (rs_spy >= 85) & (vol_z >= 0.5),
-        "Strong Coil Pre-Breakout", 0.90,
+        "Tight Consolidation Pre-Breakout", 0.90,
     )
 
     # ---- 20. VCP Setup ---------------------------------------------------

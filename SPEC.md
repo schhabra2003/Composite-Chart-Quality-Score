@@ -345,6 +345,8 @@ identical because the dict keys move together with the lookups.
 | Late Stage | Late-Cycle Pattern |
 | Broken Downtrend | Trend Failure |
 | Broken Distribution | Distribution Pattern |
+| Coil Within Strong Theme | Consolidation Within Strong Theme |
+| Strong Coil Pre-Breakout | Tight Consolidation Pre-Breakout |
 
 **Aggregation column renames** (`theme_aggregates.parquet`):
 
@@ -1931,17 +1933,17 @@ def classify_setup(features, state_probs, ccqs):
     
     # ===== CONSOLIDATING SETUPS (Priority 18-22) =====
     
-    # 18. Coil Within Strong Theme
+    # 18. Consolidation Within Strong Theme
     if (features['bb_squeeze_flag'] and
         features.get('theme_class') in ('ELITE_THEME', 'STRONG_THEME')):
-        return 'Coil Within Strong Theme', 0.85
+        return 'Consolidation Within Strong Theme', 0.85
     
-    # 19. Strong Coil Pre-Breakout
+    # 19. Tight Consolidation Pre-Breakout
     if (features['bb_squeeze_flag'] and
         features['vcp_quality_score'] >= 70 and
         features['rs_rating_spy'] >= 85 and
         features['volume_z_20_252'] >= 0.5):
-        return 'Strong Coil Pre-Breakout', 0.90
+        return 'Tight Consolidation Pre-Breakout', 0.90
     
     # 20. VCP Setup
     if (features['vcp_quality_score'] >= 60 and
@@ -2007,8 +2009,8 @@ def classify_setup(features, state_probs, ccqs):
 | 15 | Trending Leadership | LONG | WEEKS-MONTHS |
 | 16 | Pullback to 21EMA | LONG | DAYS-WEEKS |
 | 17 | Pullback to 50MA | LONG | WEEKS |
-| 18 | Coil Within Strong Theme | LONG | WEEKS-MONTHS |
-| 19 | Strong Coil Pre-Breakout | LONG | WEEKS |
+| 18 | Consolidation Within Strong Theme | LONG | WEEKS-MONTHS |
+| 19 | Tight Consolidation Pre-Breakout | LONG | WEEKS |
 | 20 | VCP Setup | LONG | WEEKS |
 | 21 | BB Squeeze with RS | LONG | WEEKS |
 | 22 | Range Consolidation | WAIT | - |
@@ -2381,7 +2383,7 @@ Show: all top RS leaders with full multi-benchmark context.
 Names with:
 - `leadership_tier == 'EMERGING_LEADER'`
 - In themes classified `EMERGING_THEME` or `STRONG_THEME`
-- Setup: 'Emerging Leader (Multibagger Setup)' or 'Coil Within Strong Theme'
+- Setup: 'Emerging Leader (Multibagger Setup)' or 'Consolidation Within Strong Theme'
 
 This is the "where to look for next NVDA" view.
 
