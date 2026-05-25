@@ -24,8 +24,10 @@ from app.utils.data_loader import (
     load_dashboard_data,
     load_key_metrics_for_ticker,
     load_oos_metrics,
+    load_regime_context,
     load_themes_data,
     load_ticker_history,
+    reliability_flags,
 )
 from app.utils.data_loader_sandbox import (
     load_sandbox_comparison_stocks,
@@ -67,6 +69,9 @@ df, snapshot_date = load_dashboard_data()
 if df.empty:
     st.error("No CCQS data found. Run the pipeline to populate data/cache/.")
     st.stop()
+
+# Regime context for Priority 3d display-layer warnings (no methodology change).
+regime_ctx = load_regime_context()
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +117,21 @@ st.markdown(
     f"{len(filtered):,} after filters</div>",
     unsafe_allow_html=True,
 )
+
+# Priority 3d: top-of-page banner when SPY 20d realized vol is in the HIGH
+# tercile. Honest disclosure — CCQS has documented negative IC at 60d/126d
+# in this regime (Priority 2b). No methodology change; display-layer only.
+_mv = regime_ctx.get("market_vol", {}) if regime_ctx else {}
+if _mv.get("current_regime") == "HIGH":
+    st.warning(
+        "**Market volatility regime: HIGH.** SPY 20d realized vol "
+        f"is {_mv.get('spy_vol_20d_latest', '?')} (≥ tercile threshold "
+        f"{_mv.get('tercile_hi', '?')}). CCQS has documented IC of "
+        "−0.014 at 60d and −0.025 at 126d in this regime (Priority 2b). "
+        "Use the composite with reduced confidence today; consider "
+        "shorter horizons or wait for the regime to normalize.",
+        icon="⚠️",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -217,6 +237,35 @@ with tab_production:
             unsafe_allow_html=True,
         )
 
+        # Priority 3d: reliability flags chips. Honest disclosure of regimes
+        # where CCQS has documented weaker signal (Priority 2b findings).
+        # Display-layer only — CCQS values themselves are unchanged.
+        flags = reliability_flags(
+            ticker=str(sel),
+            basket=str(row["basket"]) if pd.notna(row.get("basket")) else "",
+            primary_state=str(row.get("primary_state", "")),
+            regime_context=regime_ctx,
+        )
+        if flags:
+            chips = []
+            for f in flags:
+                color = "#A87A00" if f["severity"] == "warn" else "#3D6A8C"
+                bg = "#FFF4D6" if f["severity"] == "warn" else "#E7F0F8"
+                chips.append(
+                    f"<span title='{f['detail']}' "
+                    f"style='display:inline-block;padding:2px 8px;margin:4px 6px 0 0;"
+                    f"border:1px solid {color};background:{bg};color:{color};"
+                    f"border-radius:10px;font-size:0.78rem;'>"
+                    f"{f['label']}</span>"
+                )
+            st.markdown(
+                "<div style='margin-top:8px;'>"
+                "<span style='font-size:0.78rem;color:rgb(90,95,102);"
+                "margin-right:6px;'>Reliability:</span>"
+                + "".join(chips) + "</div>",
+                unsafe_allow_html=True,
+            )
+
         st.markdown("<br/>", unsafe_allow_html=True)
         left, right = st.columns([3, 2])
         with left:
@@ -276,15 +325,19 @@ with tab_production:
         st.markdown("### Methodology")
         st.markdown(
             """
-**CCQS** is a per-ticker composite of ten standardized components: relative strength,
-RS leadership, RS-line behaviour, trend slope, structure, multi-timeframe coherence,
-extension, climax/exhaustion, demand, and momentum. Each is z-scored within the
-universe, then combined with state-conditional weights — TRENDING setups give more
-weight to trend and demand; PULLBACK setups upweight structure and MTF coherence.
+**CCQS** is a per-ticker composite of seven contributing standardized components
+(post Phase 7): relative strength, RS leadership, RS-line behaviour, trend slope,
+structure, multi-timeframe coherence, and extension. Two additional components
+— `s_climax` (removed in Phase 6) and `s_demand` (zeroed in Phase 7 after the
+Priority 2 bootstrap analysis showed it averaged −0.009 OOS IC) — are kept in
+the schema as zero-weight diagnostics. `s_momentum` carries 1% in every state.
+Each component is z-scored cross-sectionally per date, then combined with
+state-conditional weights and a confidence-blended Bayesian average across the
+six states.
 
-The resulting raw score is rescaled to 0–100 and bucketed into grades S/A/B/C/D.
-Leadership tier and primary state are computed independently and shown alongside
-the CCQS for context.
+The resulting score is per-date z-renormalized, mapped to 0–100 via the normal
+CDF, then per-date winsorized at p1/p99. Grades S/A/B/C/D come from per-date
+quantile cuts (top 8% → S, next 12% → A, etc.).
 
 **Out-of-sample IC** is the Spearman rank correlation between today's CCQS and
 forward returns at each horizon, evaluated on data the model never saw. A t-stat
@@ -293,6 +346,63 @@ above 2.0 indicates the signal is statistically distinguishable from noise.
 **Component contributions** in stock detail are z × weight under the ticker's
 current state. The sum (after rescale) approximates the CCQS itself; large
 positive contributions are what's driving the score.
+
+See **SPEC.md** for the full methodology spec, including the Phase 7 Priority 3a
+validation, the Priority 2 bootstrap analysis of every weight cell, and the
+Priority 3c finding on confidence-blending and per-state weight customization.
+            """
+        )
+
+        st.markdown("### Where CCQS Works Best")
+        st.markdown(
+            """
+Empirically validated regimes (Priority 2b, full-history OOS IC analysis):
+
+- **Smaller dollar-volume stocks** — Q1 by 20d $-volume shows 60d IC = +0.048,
+  126d IC = +0.061. Signal works strongest where the market is less efficient.
+- **Moderate-to-high realized vol names** — Q3–Q5 by 60d realized vol show
+  the largest IC magnitudes at 60d and 126d.
+- **Low-to-mid market volatility regimes** — SPY 20d vol in the bottom or
+  middle tercile: 60d IC = +0.040, 126d IC = +0.045.
+- **Cyclical / recovery sectors** — top baskets by 60d IC include Hotels &
+  Casinos (+0.21), Liquid Cooling (+0.18), Auto Affordability (+0.14),
+  Oilfield Services (+0.14), Heavy Machinery (+0.10), Large-Cap Pharma (+0.10).
+- **CONSOLIDATING state** — strongest single state, significant IC at all
+  four horizons (5d, 20d, 60d, 126d).
+- **Longer horizons (60d, 126d)** — 126d unconditional t = 7.4 in the per-date
+  framework. Phase 7 walk-forward t = 2.0 at 126d.
+            """
+        )
+
+        st.markdown("### Known Limitations")
+        st.markdown(
+            """
+Documented regimes where CCQS shows reduced or negative predictive power
+(Priority 2b conditional IC + Priority 3 simplification findings):
+
+- **Mega-caps (top dollar-volume quintile)** — 60d IC = −0.017, 126d IC = −0.007.
+  The composite has a known small-cap / inefficiency-premium bias.
+- **High market-vol crises** — SPY 20d vol in the top tercile shows
+  60d IC = −0.014, 126d IC = −0.025. Signal failure during stress events.
+- **Defensive sectors** — Household & Personal Care, Gold Royalty, Integrated
+  Energy Majors, Gaming Publishers, Railroads, Beverages, Diagnostics,
+  Industrial Automation, Offshore Drilling, LNG Shipping all show
+  significantly negative basket-level 60d IC. The composite carries a clear
+  cyclical / non-defensive bias.
+- **Speculative-euphoria regimes (e.g. 2021 meme/SPAC year)** — 2021 had
+  negative IC at every horizon. The composite favours quality/momentum which
+  underperforms in liquidity-driven low-quality rallies.
+- **EXHAUSTION state at 20d** — uniquely flat (IC ≈ 0, t = −0.3). The composite
+  cannot predict 20d returns for EXHAUSTION-state stocks; 5d and 126d still
+  carry signal in this state.
+- **COVID-2020 long horizons** — Phase 7 lost ~0.005 of 126d IC in 2020
+  specifically, because `s_demand` had captured COVID-specific liquidity-shock
+  signal that the carrier-only composite misses.
+
+See SPEC.md "Phase 7" and "Priority 3 — Simplification investigation summary"
+sections for the full bootstrap CIs, per-bucket IC numbers, and the
+confidence-blending architectural caveat behind why Priority 3b/3c were not
+implemented.
             """
         )
 

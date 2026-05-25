@@ -170,6 +170,88 @@ def load_anomalies() -> dict:
     return _read_json("anomalies.json")
 
 
+# ---------------------------------------------------------------------------
+# Regime context (Priority 3d — display-layer warnings)
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=TTL, show_spinner=False)
+def load_regime_context() -> dict:
+    """Load the regime_context.json baked at dashboard-cache build time.
+
+    Returns a dict with keys:
+        - market_vol: {current_regime, spy_vol_20d_latest, tercile_lo, tercile_hi, latest_date}
+        - dvol_quintile_by_ticker: {ticker: 1..5}  (5 = largest dollar volume)
+        - defensive_baskets: list[str]
+
+    Empty dict if file missing (graceful — no warnings rendered).
+    """
+    return _read_json("regime_context.json")
+
+
+def reliability_flags(ticker: str, basket: str, primary_state: str,
+                       regime_context: dict) -> list[dict]:
+    """Compute display-layer reliability flags for a stock.
+
+    Returns a list of {label, severity, detail} dicts to be rendered as
+    chips below the Stock Detail header. Empty list when nothing to flag.
+
+    No methodology change — these flags are based on Priority 2b conditional
+    IC findings about where CCQS is and is not reliable. CCQS itself is
+    unchanged.
+    """
+    if not regime_context:
+        return []
+
+    flags: list[dict] = []
+
+    # 1. Mega-cap (dollar-volume Q5)
+    q = regime_context.get("dvol_quintile_by_ticker", {}).get(ticker)
+    if q == 5:
+        flags.append({
+            "label": "Mega-cap",
+            "severity": "warn",
+            "detail": "CCQS shows IC -0.017 at 60d and -0.007 at 126d in the "
+                      "top dollar-volume quintile (Priority 2b). Use the score "
+                      "with reduced confidence here.",
+        })
+
+    # 2. Defensive sector / basket
+    defensive = set(regime_context.get("defensive_baskets", []))
+    if basket and basket in defensive:
+        flags.append({
+            "label": "Defensive sector",
+            "severity": "warn",
+            "detail": "CCQS has documented negative IC on this basket "
+                      "(Priority 2b bottom-10). The composite carries a "
+                      "cyclical bias and is less reliable for stable / "
+                      "yield-dominated names.",
+        })
+
+    # 3. Market vol HIGH regime
+    mv = regime_context.get("market_vol", {})
+    if mv.get("current_regime") == "HIGH":
+        flags.append({
+            "label": "High market vol regime",
+            "severity": "warn",
+            "detail": f"SPY 20d realized vol is {mv.get('spy_vol_20d_latest','?')} "
+                      f"(>= tercile threshold {mv.get('tercile_hi','?')}). CCQS "
+                      "IC turns negative at 60d/126d in this regime "
+                      "(Priority 2b). Use with reduced confidence today.",
+        })
+
+    # 4. EXHAUSTION state — 20d signal is statistically zero
+    if str(primary_state) == "EXHAUSTION":
+        flags.append({
+            "label": "EXHAUSTION 20d caveat",
+            "severity": "info",
+            "detail": "In EXHAUSTION state, CCQS has near-zero 20d "
+                      "predictability (IC ~ 0, t = -0.3 per Priority 2b). "
+                      "5d, 60d, and 126d still carry signal.",
+        })
+
+    return flags
+
+
 def _today_and_prev_dates(df: pd.DataFrame) -> tuple | None:
     if df.empty or "date" not in df.index.names:
         return None

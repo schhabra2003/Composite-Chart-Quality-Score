@@ -1,6 +1,6 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — Phase 7 (s_demand removal + carrier redistribution) + Phase 5.5–5.8 + Phase 6 foundation fixes + Priority 2 empirical validation (2026-05-25)
+**Version:** 1.0 (Locked) — Priority 3 closeout (Phase 7 weights + Priority 3d display warnings) + Phase 5.5–5.8 + Phase 6 foundation fixes + Priority 2 empirical validation (2026-05-25)
 **Date:** May 2026
 **Author:** Shreyaansh Chhabra (ADFM)
 **Purpose:** Pure technical, momentum & strength screening tool for L/S discretionary equity analysis.
@@ -986,6 +986,155 @@ liquidity crisis.
 **TV reference snapshots** — *not* refreshed in this commit. Per
 Priority 3 plan, refresh deferred until Priority 3b and 3c complete
 so we make a single pin update covering all of Priority 3.
+
+---
+
+### Priority 3 — Simplification investigation summary (2026-05-25)
+
+Three weight-matrix simplification hypotheses were tested with the
+in-memory CCQS framework + paired bootstrap + walk-forward OOS. One
+shipped (3a, now Phase 7). Two were skipped on regime-level
+degradation evidence (3b and 3c). The skipped tests revealed an
+architectural feature worth documenting.
+
+| Test | Construction | Headline OOS Δ vs Phase 7 | Status |
+|---|---|---|---|
+| **3a** | s_demand → 0 in all states; redistribute to four carriers | 5d/60d/126d sig improved | **Shipped (Phase 7)** |
+| **3b** | Reduced 4-carrier-only (zero s_rsl, s_trend_slope, s_extension, s_momentum everywhere) | 5d/20d marginal improvement; EXHAUSTION 60d −48%, 126d −26% | Skipped |
+| **3c** | Hybrid (zero non-carriers in TRENDING/PULLBACK/DETERIORATING/INDETERMINATE only; preserve EXHAUSTION + CONSOLIDATING) | Essentially identical to 3b; EXHAUSTION regression persisted | Skipped |
+
+**Architectural finding: confidence-blending mutes per-state weight
+customization for low-confidence states.**
+
+Phase X.2.1 introduced a confidence-blending step in
+[compute/state.py](compute/state.py): when `state_confidence < 0.7`, the
+state probabilities are blended toward INDETERMINATE (50/50 if
+`max(p) < 0.5`, 70/30 if `< 0.7`). The blended probabilities `p_adj_<s>`
+are then used for Bayesian-averaging the state-conditional component
+weights:
+
+    ccqs_z_raw = Σ_state p_adj_<state> · Σ_comp w[state][comp] · z_comp
+
+This design correctly prevents low-confidence state classifications from
+dominating CCQS. But it also means **a row classified as state X uses
+state X's weight column only partially** — the rest comes from the
+state columns its `p_adj` mass falls on. The Priority 3c investigation
+quantified this for the live cache:
+
+| Primary state | n rows | Mean state_confidence | Mean p_adj of own column | Mean p_adj of INDETERMINATE column |
+|---|---:|---:|---:|---:|
+| TRENDING | 262,002 | 0.61 | 0.47 | 0.38 |
+| PULLBACK | 303,456 | 0.54 | 0.38 | 0.46 |
+| **CONSOLIDATING** | 81,002 | 0.51 | **0.33** | **0.51** |
+| **EXHAUSTION** | 34,215 | 0.60 | **0.45** | **0.45** |
+| DETERIORATING | 436,066 | 0.69 | 0.61 | 0.32 |
+| INDETERMINATE | 436,659 | 0.73 | 0.83 | 0.83 |
+
+Implications:
+
+1. **INDETERMINATE acts as a universal fallback column.** Across the
+   six states, INDETERMINATE's column contributes a weighted average of
+   45–80% of every state's CCQS. Changes to the INDETERMINATE column
+   propagate to every state's stocks.
+2. **State-conditional differentiation has reduced reach for
+   low-confidence states.** TRENDING / PULLBACK / CONSOLIDATING /
+   EXHAUSTION all have mean confidence 0.51–0.61, so their own
+   columns contribute only 33–47% of their stocks' CCQS. Customizing
+   those columns has limited effect on those stocks specifically.
+3. **High-confidence states are where weight customization matters
+   most.** INDETERMINATE (own column 83%) and DETERIORATING (own
+   column 61%) are the two states whose customized weights actually
+   reach their stocks at full magnitude.
+4. **EXHAUSTION-state long-horizon signal cannot be cleanly isolated.**
+   The 3c hybrid preserved EXHAUSTION's column exactly but still lost
+   60d/126d EXHAUSTION-state signal — because EXHAUSTION-state stocks
+   pull 45% from INDETERMINATE, and 3c zeroed non-carriers in
+   INDETERMINATE.
+
+This is not a defect; it's a deliberate property of the
+confidence-blending design. But it sets a practical ceiling on what
+state-conditional weight tuning can achieve within the current
+architecture. Future simplification work that wants to remove non-carrier
+components further would need to either (a) relax confidence-blending
+(architectural change with downstream effects), (b) accept the
+low-confidence-state signal cost as the price of simplification, or
+(c) work on a different axis (e.g. feature-level rather than
+component-level reduction).
+
+**Audit trail for skipped tests preserved.** The detailed Priority 3b
+and 3c findings live in commit message history and the original
+investigation outputs (`/tmp/p3b_results.json`, `/tmp/p3c_results.json`
+on the build machine; reproducible by re-running
+`/tmp/p3b_carrier_only.py` and `/tmp/p3c_hybrid.py`). The decision not
+to implement either is documented here. **Priority 3a (Phase 7,
+s_demand removal) captured the available empirical wins within the
+current architecture.**
+
+---
+
+### Priority 3d — Conditional performance warnings, display layer (2026-05-25)
+
+Honest disclosure surface in the Streamlit dashboard. **No methodology
+change** — CCQS values, grades, components, state probabilities, and
+the OOS validation framework are all bit-identical. Only the display
+layer is touched.
+
+Motivated by Priority 2b's conditional-IC findings: CCQS has documented
+regimes where signal is reduced or negative. The dashboard now surfaces
+these directly so users do not silently misuse the score in
+out-of-domain conditions.
+
+**Implementation surface:**
+
+1. New regime context bake into the slim dashboard cache:
+   [`compute/build_dashboard_cache.py`](compute/build_dashboard_cache.py)
+   writes a `regime_context.json` containing:
+   - Per-ticker dollar-volume quintile for the latest snapshot date
+     (Q5 = mega-caps where CCQS turns negative at 60d/126d)
+   - SPY 20d realized vol tercile thresholds + current regime label
+   - Frozen list of 10 "defensive" baskets that had significantly
+     negative basket-level 60d IC in the Priority 2b analysis
+2. Dashboard top-of-page banner: when SPY 20d vol is in the HIGH
+   tercile, a warning explicitly says CCQS IC turns negative at
+   longer horizons in this regime. Hidden in LOW / MID regimes.
+3. Stock Detail reliability chips: rendered below the existing header.
+   Up to four chips per stock:
+   - "Mega-cap" — for tickers in dollar-volume Q5
+   - "Defensive sector" — for tickers in the 10 defensive baskets
+   - "High market vol regime" — when SPY regime is HIGH (also already
+     shown as top-of-page banner)
+   - "EXHAUSTION 20d caveat" — for tickers classified as EXHAUSTION
+     state, flagging the documented near-zero 20d IC (t = -0.3)
+   Each chip has a tooltip with the specific IC numbers from
+   Priority 2b. Chips disappear when nothing applies (clean stocks
+   in normal regimes show no chips).
+4. New "Where CCQS Works Best" and "Known Limitations" expanders
+   in the System Health section: concise plain-language summary of
+   Priority 2b findings (best-performing regimes, basket lists, OOS IC
+   numbers per horizon).
+5. Updated methodology blurb: corrected to reflect post-Phase-7 state
+   (seven contributing components plus two zero-weight diagnostics,
+   per-date winsorization, confidence-blended Bayesian state averaging).
+
+**Defensive basket list:** Frozen from the Priority 2b bottom-10 by
+60d basket-level IC. To refresh, re-run `/tmp/p2b_conditional_ic.py`
+and update `DEFENSIVE_BASKETS` in
+[`compute/build_dashboard_cache.py`](compute/build_dashboard_cache.py).
+The list is intentionally static so the dashboard doesn't need to run
+the IC analysis at request time.
+
+Current frozen list: Household and Personal Care; Gold Royalty and
+Streamers; Integrated Energy Majors; Gaming Publishers; Offshore
+Drilling; Railroads; Diagnostics and Life Science Tools; LNG and LPG
+Shipping; Beverages and Tobacco; Industrial Automation.
+
+**Validation.** `data/cache/ccqs.parquet` vs
+`data/cache/dashboard/ccqs.parquet` max |diff| = 0.000000000 — no
+methodology change. Grade equality preserved 100%. The dashboard
+compiles, imports, and the regime-context helpers produce expected
+flag counts on test tickers (AAPL → Mega-cap; XOM → Mega-cap +
+Defensive sector; EXHAUSTION-state ticker → EXHAUSTION caveat; small
+non-defensive ticker → no flags).
 
 ---
 
