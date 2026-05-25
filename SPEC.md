@@ -1,6 +1,12 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — Priority 3 closeout (Phase 7 weights + Priority 3d display warnings) + Phase 5.5–5.8 + Phase 6 foundation fixes + Priority 2 empirical validation (2026-05-25)
+**Version:** 1.0 (Locked) — **Priority 3 closeout (final methodology state, 2026-05-25)**.
+Phase 7 (Priority 3a: `s_demand` removal + carrier redistribution) + Priority 3d
+(conditional performance warnings, display-layer only) + Phase 5.5–5.8 (vocabulary
+audit, COILING/CLIMACTIC/BROKEN renames, setup label accuracy audit) + Phase 6
+(per-date winsorization, `s_climax` removal) + Priority 2 (bootstrap CIs on all 54
+weight cells, conditional IC analysis across regimes) + the Methodology Lock
+(Phase X.2.1 / Phase X.3 OOS baseline).
 **Date:** May 2026
 **Author:** Shreyaansh Chhabra (ADFM)
 **Purpose:** Pure technical, momentum & strength screening tool for L/S discretionary equity analysis.
@@ -25,6 +31,78 @@ As of Phase X.3 / Phase 5.2 (May 2026), the CCQS methodology is locked. The foll
 6. Extended-window OOS IC (post-backfill) computed as secondary validation, labeled as such, NOT used as replacement baseline.
 
 This lock applies to all future development. Any proposed methodology change must reference this section and provide motivation that does not derive from historical chart observation.
+
+---
+
+## Where We Stand (2026-05-25, post Priority 3 closeout)
+
+**Methodology snapshot.** CCQS V1 ships with 9 computed components (7
+contributing to the score, 2 zero-weighted diagnostics). State-conditional
+weights live in a 9 × 6 matrix; weights are validated by paired block
+bootstrap (Priority 2a) and per-date / walk-forward OOS IC (Phase X.3
+canonical). Per-date winsorization is in place since Phase 6.
+
+**Where the signal works** (Priority 2b conditional analysis):
+
+- Smaller dollar-volume stocks — Q1 by 20d $-vol: 60d IC +0.048, 126d IC +0.061
+- Moderate-to-high realized-vol names — Q3–Q5 carry the largest IC magnitudes
+- Low-to-mid market vol regimes — 60d IC +0.040, 126d IC +0.045
+- Cyclical / recovery sectors — Hotels & Casinos (+0.21), Liquid Cooling
+  (+0.18), Auto Affordability (+0.14), Oilfield Services (+0.14),
+  Heavy Machinery (+0.10), Large-Cap Pharma (+0.10)
+- CONSOLIDATING state — significant IC at all four horizons (5d/20d/60d/126d)
+- Longer horizons — 126d walk-forward t = 2.02 (post-Phase-7) cleared
+  institutional threshold
+
+**Where the signal does not work** (Priority 2b, surfaced in the
+dashboard as reliability chips per Priority 3d):
+
+- Mega-caps (Q5 dollar volume) — 60d IC −0.017, 126d IC −0.007
+- High market-vol regimes — 60d IC −0.014, 126d IC −0.025
+- 10 defensive baskets — Household & Personal Care, Gold Royalty,
+  Integrated Energy Majors, Gaming Publishers, Offshore Drilling,
+  Railroads, Diagnostics, LNG Shipping, Beverages, Industrial Automation
+- Speculative-euphoria regimes (2021 meme/SPAC year) — negative IC at every horizon
+- EXHAUSTION state at 20d — IC ≈ 0, t = −0.3 (other horizons retain signal)
+- COVID-2020 long horizons — Phase 7 lost ~0.005 of 126d IC in 2020
+
+**Validation evidence summary:**
+
+- Phase X.3 baseline preserved: 1d t = 4.16, 126d t = 2.59, 252d t = 2.05
+- Phase 7 walk-forward OOS at 126d clears t > 2.0 (was 1.82, now 2.02)
+- Every weight cell bootstrapped with 90% CI (Priority 2a, 54 cells × 4 horizons)
+- Bootstrap CI excludes zero for: s_rs (10/24 cells), s_structure (11/24),
+  s_rs_leadership (8/24), s_mtf (6/24) — the four carriers
+- Bootstrap CI never excludes zero positively for: s_demand (0/24,
+  6 negatives — zeroed in Phase 7)
+- Grade distribution stable: S 6.37 / A 9.49 / B 19.73 / C 19.74 / D 23.73
+- TV parity: 10 / 10 canaries pass 140 / 140 field checks at spec tolerance
+
+**Architectural finding worth flagging.** Phase X.2.1's confidence-blending
+toward INDETERMINATE means EXHAUSTION-state stocks pull 45 % of their CCQS
+from the INDETERMINATE weight column. State-conditional weight tuning has
+reduced reach for the four low-confidence states (TRENDING / PULLBACK /
+CONSOLIDATING / EXHAUSTION). Further per-state simplification within the
+current architecture would require relaxing confidence-blending — a
+material redesign. See the *Priority 3 — Empirical Methodology Refinement*
+section below for the full table.
+
+**What was tried and rejected** (audit trail in commit history + this
+SPEC):
+
+- Priority 3b — Pure 4-carrier-only composite: marginal 5d/20d
+  unconditional gain, but EXHAUSTION 60d/126d down −48%/−27%.
+- Priority 3c — State-aware hybrid (preserve EXHAUSTION+CONSOLIDATING):
+  EXHAUSTION regression persisted because of cross-state Bayesian
+  averaging.
+
+**Next-phase considerations.** Within the Methodology Lock framework,
+no near-term methodology change is on the table. Honest signal
+characterization is in place via Priority 3d display warnings. The
+next set of architectural questions (relaxing confidence-blending,
+feature-level reduction, regime-aware pre-trade filtering) require
+either new OOS evidence of signal degradation or independent research
+findings before consideration per Methodology Lock §3.
 
 ---
 
@@ -1138,6 +1216,193 @@ non-defensive ticker → no flags).
 
 ---
 
+### Priority 3 — Empirical Methodology Refinement (closeout summary, 2026-05-25)
+
+Comprehensive empirical investigation of CCQS methodology based on the
+Priority 2 bootstrap (per-cell IC + paired bootstrap CIs) and conditional
+IC findings (sector, cap, vol, state, time). Four sub-priorities were
+scoped, executed, and either shipped or rejected on empirical evidence.
+
+#### Sub-priority results
+
+**Priority 3a — `s_demand` removal (SHIPPED as Phase 7)**
+
+- Hypothesis: Zero `s_demand` and redistribute its 10-15% per-state
+  weight to the four carrier components improves OOS IC.
+- Validation: Statistically significant improvement at 5d (+13% IC),
+  60d (+34%), and 126d (+11%) under both the per-date paired bootstrap
+  framework (CI excludes zero) and the Phase X.3 walk-forward framework
+  (paired t = 2.01 / 2.77 / 2.64). 20d directionally improved (+14%)
+  but not statistically significant.
+- The post-Phase-7 126d walk-forward t-statistic clears the t > 2.0
+  institutional threshold (1.82 → 2.02) — first time the 126d
+  walk-forward unconditional crossed that bar.
+- No regime gets meaningfully worse. Two minor regressions confined to
+  2020 long horizons (60d −0.0022, 126d −0.0071) documented as the
+  COVID-recovery liquidity-shock caveat.
+- Grade distribution preserved exactly (S 6.37 / A 9.49 / B 19.73 /
+  C 19.74 / D 23.73). Spearman 0.9901.
+- **Status: IMPLEMENTED Phase 7, commit `619ba4e`.**
+
+**Priority 3b — Reduced 4-carrier-only composite (REJECTED)**
+
+- Hypothesis: Zero `s_rsl`, `s_trend_slope`, `s_extension`, `s_momentum`
+  in every state and redistribute their 4-8% per-state weight to the
+  four carriers — fully simplify to the empirically-most-significant
+  components.
+- Validation: Marginal 5d / 20d unconditional improvement (+~4%); 60d
+  and 126d flat. **EXHAUSTION state at 60d −48% (+0.0157 → +0.0079)
+  and at 126d −27% (+0.0360 → +0.0261).**
+- Failed the "no regime meaningfully worse" decision criterion. The
+  small-weight non-carriers turn out to carry significant positive IC
+  in EXHAUSTION state at long horizons (s_rsl IC +0.061, s_momentum
+  +0.059, s_trend_slope +0.056 — all CI excludes zero at 126d).
+- **Status: REJECTED — empirical evidence against. Audit trail
+  preserved (commit message + `/tmp/p3b_results.json` reproducible).**
+
+**Priority 3c — State-aware hybrid (REJECTED — architectural finding)**
+
+- Hypothesis: Zero the four non-carriers only in TRENDING / PULLBACK /
+  DETERIORATING / INDETERMINATE; preserve EXHAUSTION and CONSOLIDATING
+  weight columns exactly. Attempts to capture 3b's unconditional gains
+  while preserving the EXHAUSTION-state long-horizon signal.
+- Validation: Unconditional results essentially identical to 3b. **The
+  EXHAUSTION 60d / 126d regression persisted (−48% / −26%)** despite
+  the EXHAUSTION column being preserved.
+- **Architectural insight:** the per-state IC of EXHAUSTION-classified
+  stocks does not isolate to EXHAUSTION's own weight column because of
+  Phase X.2.1's confidence-blending. EXHAUSTION-state stocks have mean
+  `state_confidence` = 0.60, so they pull only 45% from EXHAUSTION's
+  column and 45% from INDETERMINATE — and 3c zeroed the non-carriers
+  in INDETERMINATE.
+- **Status: REJECTED — architectural constraint discovered. Audit
+  trail and architectural finding preserved.**
+
+**Priority 3d — Conditional performance warnings (SHIPPED)**
+
+- Hypothesis: Honest disclosure of where CCQS works and doesn't,
+  surfaced in the Streamlit dashboard. No methodology change.
+- Implementation: `regime_context.json` baked at dashboard-cache build
+  time; reliability chips in Stock Detail (Mega-cap / Defensive sector
+  / High market vol / EXHAUSTION 20d); top-of-page banner when SPY 20d
+  vol is in the HIGH tercile; "Where CCQS Works Best" and "Known
+  Limitations" expanders with concrete Priority 2b IC numbers.
+- Validation: CCQS bit-identical (max |diff| = 0.000000000), grade
+  equality 100%, flag generation unit-tested on 4 representative
+  tickers, live deployment visual inspection confirmed all elements
+  rendering correctly.
+- **Status: IMPLEMENTED, commit `37646b0`.**
+
+#### Architectural insight — confidence-blending limits per-state weight customization
+
+Phase X.2.1 introduced confidence-blending toward INDETERMINATE for
+low-confidence state classifications. The blended probabilities
+`p_adj_<s>` Bayesian-average the state-conditional weight columns:
+
+    ccqs_z_raw = Σ_state p_adj_<state> · Σ_comp w[state][comp] · z_comp
+
+Live cache (post-Phase-7) per-state own-column reliance:
+
+| Primary state | n rows | Mean state_confidence | Mean p_adj of own column | Mean p_adj of INDETERMINATE column |
+|---|---:|---:|---:|---:|
+| TRENDING | 262,002 | 0.61 | 0.47 | 0.38 |
+| PULLBACK | 303,456 | 0.54 | 0.38 | 0.46 |
+| CONSOLIDATING | 81,002 | 0.51 | 0.33 | 0.51 |
+| EXHAUSTION | 34,215 | 0.60 | 0.45 | 0.45 |
+| DETERIORATING | 436,066 | 0.69 | 0.61 | 0.32 |
+| INDETERMINATE | 436,659 | 0.73 | 0.83 | 0.83 |
+
+Implications:
+
+1. The INDETERMINATE column is a universal fallback contributing
+   45–80% of every state's CCQS via Bayesian averaging. **Changes to
+   the INDETERMINATE column propagate to every state's stocks.**
+2. State-conditional differentiation has reduced reach for the four
+   low-confidence states (TRENDING / PULLBACK / CONSOLIDATING /
+   EXHAUSTION). Customizing those columns has 33–47% pass-through.
+3. The two states with high own-column reliance — INDETERMINATE (83%)
+   and DETERIORATING (61%) — are where weight customization actually
+   reaches its target stocks at full magnitude.
+4. **Further per-state simplification within the current architecture
+   is constrained**: removing non-carrier components anywhere in the
+   matrix loses EXHAUSTION-state long-horizon signal because EXHAUSTION
+   stocks pull 45% of their CCQS from INDETERMINATE.
+
+This is not a defect — it's a deliberate property of the
+confidence-blending design (preventing low-confidence classifications
+from dominating). But it sets a practical ceiling on what
+state-conditional weight tuning can achieve. Future simplification work
+that wants to remove components further would need to either:
+
+  - Relax confidence-blending (architectural change with downstream
+    effects on every other Phase X stage's interpretation)
+  - Accept the low-confidence-state signal cost as the price of
+    simplification (Priority 3b/3c approach, rejected here)
+  - Work on a different axis: feature-level reduction (Lasso on raw
+    features rather than component-level), state-conditional
+    confidence-blending parameters, or universe-level
+    pre-trade filtering instead of methodology changes
+
+#### Final methodology state (post Priority 3)
+
+| Layer | Status |
+|---|---|
+| Components computed | **9** (`s_rs`, `s_rs_leadership`, `s_rsl`, `s_trend_slope`, `s_structure`, `s_mtf`, `s_extension`, `s_demand`, `s_momentum`) |
+| Components contributing to CCQS | **7** (`s_climax` removed Phase 6, `s_demand` zero-weighted Phase 7 — kept as diagnostic) |
+| Carrier components (≥0.10 weight in any state) | **4** — `s_rs`, `s_rs_leadership`, `s_structure`, `s_mtf` |
+| State columns in matrix | 6 — TRENDING, PULLBACK, CONSOLIDATING, EXHAUSTION, DETERIORATING, INDETERMINATE |
+| Total weight cells | 54 (9 × 6) — 12 cells at 0%, 42 active |
+| Winsorization | Per-date `p1`/`p99` (Phase 6) — eliminates the 24,562-row global tie problem |
+| Confidence blending | Phase X.2.1 thresholds preserved (50/50 blend if max p < 0.5, 70/30 if < 0.7) |
+| Weight validation | Bootstrap CIs on every cell (Priority 2a) + walk-forward OOS (Phase X.3 + Phase 7 paired t-test) |
+| Conditional performance | Documented across 6 states, 5 dvol quintiles, 5 vol quintiles, 3 market-vol terciles, 91 baskets, 8 years (Priority 2b) |
+| Display-layer transparency | Phase 7 + Priority 3d reliability chips, regime banner, Where Works Best / Known Limitations expanders |
+
+#### Validation status snapshot
+
+- **Phase X.3 baseline preserved** per Methodology Lock §6 — 1d t=4.16,
+  126d t=2.59, 252d t=2.05. Phase 7 changes verified to preserve or
+  improve these (walk-forward 126d t = 1.82 → 2.02).
+- **Priority 2 empirical validation completed** — every weight cell
+  bootstrapped, every regime conditionally analyzed. Findings
+  documented and acted on.
+- **Where CCQS works** (Priority 2b, validated): smaller dollar-volume
+  stocks (Q1 60d IC +0.048), moderate-to-high vol names,
+  low-to-mid-vol market regimes, cyclical / recovery sectors (top
+  baskets +0.10 to +0.21), CONSOLIDATING state at all horizons,
+  60d / 126d horizons.
+- **Where CCQS does not work** (Priority 2b, documented): mega-caps
+  (60d IC −0.017), high market-vol crises (60d IC −0.014),
+  10 defensive baskets (Household & Personal Care, Gold Royalty,
+  Integrated Energy Majors, Gaming Publishers, Offshore Drilling,
+  Railroads, Diagnostics, LNG Shipping, Beverages, Industrial
+  Automation), speculative-euphoria regimes (2021 negative every
+  horizon), EXHAUSTION state at 20d (IC ≈ 0, t = −0.3), COVID-2020
+  long horizons (Phase 7 trade-off).
+- **TV reference snapshots** refreshed 2026-05-25 to current Phase 7
+  values — all 10 canaries pass 140 / 140 field checks at the spec
+  tolerances.
+- **Audit trail preserved** in commit history (Phase 5.5 → 5.8,
+  Phase 6, Phase 7, Priority 3d) and SPEC narrative sections.
+
+#### Closeout
+
+After Priority 3, the tool is at its final methodology state for the
+foreseeable future. The next-level changes that remain on the table
+require either:
+  - New OOS evidence of signal degradation (per Methodology Lock §3a)
+  - Architectural changes to confidence-blending (a meaningful
+    redesign with consequences across every state-aware downstream
+    consumer)
+  - New data sources or research findings (Methodology Lock §3b)
+
+Within the current architecture, the available empirical wins have
+been captured. Display-layer transparency is in place. Documented
+limitations are honest and specific. The matrix that ships is the
+matrix the bootstrap supports.
+
+---
+
 ### Phase X.4 — Targeted 20-60d horizon audit (2026-05-22)
 
 Goal: push 20d and 60d OOS IC toward statistical significance (t > 2.0) while
@@ -1405,7 +1670,7 @@ principle 4).
 7. [Component Scoring — 9 Components](#7-component-scoring--9-components)
 8. [State Classification — 6 States](#8-state-classification--6-states)
 9. [Composite Scoring & Grading](#9-composite-scoring--grading)
-10. [Setup Categories — 24 Setups](#10-setup-categories--24-setups)
+10. [Setup Categories — 29 Setups](#10-setup-categories--29-setups)
 11. [Leadership & Theme Classification](#11-leadership--theme-classification)
 12. [Aggregation Layer — Theme Strength](#12-aggregation-layer--theme-strength)
 13. [Reliability Architecture — 8 Layers](#13-reliability-architecture--8-layers)

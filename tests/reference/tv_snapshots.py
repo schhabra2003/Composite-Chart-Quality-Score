@@ -7,14 +7,35 @@ test in `test_tv_parity.py` re-derives the same fields from the live
 parquet outputs and asserts they fall within the per-field tolerance below.
 
 When indicators are recalibrated or upstream data changes:
-  1.  Update TV_SNAPSHOTS values from `tests/reference/regenerate.py`
-      (uses the latest snapshot folder under `data/snapshots/YYYY-MM-DD/`).
+  1.  Update TV_SNAPSHOTS values from the latest pipeline output. A simple
+      pull script lives in `/tmp/p3a_demand_removal.py`-style format; pull
+      each canary's row from `data/cache/{ccqs,state,leadership,setups,
+      features,ohlcv_daily}.parquet` at REFERENCE_DATE and round to the
+      precision shown below.
   2.  Visually re-cross-check ≥3 tickers against TradingView screenshots
-      on the same date.
+      on the same date (technical-indicator fields only — close, RSI,
+      ADX, ATR, %MA — these are direct TV equivalents).
   3.  Note the snapshot date and reason for the refresh below.
 
-Last refreshed: 2026-05-22 (Phase 4 build).
-Setup labels updated 2026-05-25 (Phase 5.8 Tier A vocabulary audit).
+Refresh log:
+  2026-05-22  Phase 4 build — initial pin.
+  2026-05-25  Setup labels updated for Phase 5.8 Tier A vocabulary audit
+              (NVDA / META / JPM / UNH setup fields only — partial refresh).
+  2026-05-25  **Full refresh to Phase 7 (post Priority 3a `s_demand`
+              removal + carrier redistribution).** CCQS / grade /
+              state_confidence pins re-pulled from live cache; setup
+              labels reflect Phase 5.7 + 5.8 vocabulary; leadership
+              tier values unchanged from Phase 4 (Phase 5.5 rename
+              preserved DETERIORATING as a tier name). Drift from the
+              Phase 4 baseline is expected and explained by accumulated
+              Phase X.3 weight redistribution + Phase 7 `s_demand`
+              removal. All technical-indicator values (close, RSI, ADX,
+              ATR, %MA) remain accurate against TradingView since those
+              do not depend on the composite weights. Phase X.3 OOS IC
+              baseline (1d t=4.16, 126d t=2.59, 252d t=2.05) is
+              preserved per Methodology Lock §6.
+
+Last refreshed: 2026-05-25 (Phase 7 build — Priority 3 closeout).
 """
 from __future__ import annotations
 
@@ -42,16 +63,16 @@ TV_SNAPSHOTS: dict[str, dict] = {
     "NVDA": {
         "date": REFERENCE_DATE,
         "close": 215.33,
-        "rs_rating_spy": 69.63,
+        "rs_rating_spy": 69.54,
         "pct_ma_50": 9.41,
         "pct_ma_200": 15.13,
-        "adx_14": 28.74,
+        "adx_14": 28.73,
         "rsi_14": 53.71,
         "atr_x_50": 2.44,
-        "ccqs": 81.53,
-        "grade": "A",
+        "ccqs": 77.40,
+        "grade": "B",
         "state": "TRENDING",
-        "state_confidence": 0.672,
+        "state_confidence": 0.671,
         "leadership_tier": "STRONG_PERFORMER",
         "setup": "Trending (Generic)",
         "setup_confidence": 0.65,
@@ -59,13 +80,13 @@ TV_SNAPSHOTS: dict[str, dict] = {
     "MSFT": {
         "date": REFERENCE_DATE,
         "close": 418.57,
-        "rs_rating_spy": 31.50,
+        "rs_rating_spy": 31.36,
         "pct_ma_50": 4.53,
         "pct_ma_200": -9.09,
         "adx_14": 17.09,
         "rsi_14": 54.42,
         "atr_x_50": 1.65,
-        "ccqs": 35.68,
+        "ccqs": 25.71,
         "grade": "C",
         "state": "PULLBACK",
         "state_confidence": 0.427,
@@ -76,13 +97,13 @@ TV_SNAPSHOTS: dict[str, dict] = {
     "META": {
         "date": REFERENCE_DATE,
         "close": 610.26,
-        "rs_rating_spy": 29.46,
+        "rs_rating_spy": 29.32,
         "pct_ma_50": -1.22,
         "pct_ma_200": -8.84,
         "adx_14": 20.56,
         "rsi_14": 45.34,
         "atr_x_50": -0.49,
-        "ccqs": 21.51,
+        "ccqs": 15.78,
         "grade": "D",
         "state": "DETERIORATING",
         "state_confidence": 0.811,
@@ -93,13 +114,13 @@ TV_SNAPSHOTS: dict[str, dict] = {
     "GOOGL": {
         "date": REFERENCE_DATE,
         "close": 382.97,
-        "rs_rating_spy": 86.37,
+        "rs_rating_spy": 86.42,
         "pct_ma_50": 12.26,
         "pct_ma_200": 29.30,
         "adx_14": 44.55,
         "rsi_14": 57.49,
         "atr_x_50": 4.23,
-        "ccqs": 92.70,
+        "ccqs": 91.17,
         "grade": "A",
         "state": "TRENDING",
         "state_confidence": 0.769,
@@ -110,16 +131,16 @@ TV_SNAPSHOTS: dict[str, dict] = {
     "TSLA": {
         "date": REFERENCE_DATE,
         "close": 426.01,
-        "rs_rating_spy": 61.67,
+        "rs_rating_spy": 61.50,
         "pct_ma_50": 9.70,
         "pct_ma_200": 3.90,
         "adx_14": 21.05,
         "rsi_14": 58.30,
         "atr_x_50": 2.29,
-        "ccqs": 73.83,
+        "ccqs": 68.99,
         "grade": "B",
         "state": "INDETERMINATE",
-        "state_confidence": 0.549,
+        "state_confidence": 0.548,
         "leadership_tier": "STRONG_PERFORMER",
         "setup": "Theme Leader Pullback",
         "setup_confidence": 0.80,
@@ -127,14 +148,14 @@ TV_SNAPSHOTS: dict[str, dict] = {
     "AMZN": {
         "date": REFERENCE_DATE,
         "close": 266.32,
-        "rs_rating_spy": 71.23,
+        "rs_rating_spy": 71.24,
         "pct_ma_50": 10.08,
         "pct_ma_200": 15.51,
         "adx_14": 31.12,
         "rsi_14": 57.98,
         "atr_x_50": 3.66,
-        "ccqs": 96.36,
-        "grade": "S",
+        "ccqs": 85.92,
+        "grade": "A",
         "state": "TRENDING",
         "state_confidence": 0.830,
         "leadership_tier": "STRONG_PERFORMER",
@@ -144,16 +165,16 @@ TV_SNAPSHOTS: dict[str, dict] = {
     "JPM": {
         "date": REFERENCE_DATE,
         "close": 306.38,
-        "rs_rating_spy": 47.44,
+        "rs_rating_spy": 47.34,
         "pct_ma_50": 1.57,
         "pct_ma_200": 0.27,
         "adx_14": 20.08,
         "rsi_14": 52.69,
         "atr_x_50": 0.79,
-        "ccqs": 42.45,
+        "ccqs": 43.89,
         "grade": "C",
         "state": "DETERIORATING",
-        "state_confidence": 0.351,
+        "state_confidence": 0.352,
         "leadership_tier": "NEUTRAL",
         "setup": "Deteriorating (Generic)",
         "setup_confidence": 0.65,
@@ -161,13 +182,13 @@ TV_SNAPSHOTS: dict[str, dict] = {
     "TSM": {
         "date": REFERENCE_DATE,
         "close": 404.52,
-        "rs_rating_spy": 83.86,
+        "rs_rating_spy": 83.93,
         "pct_ma_50": 8.42,
         "pct_ma_200": 27.27,
         "adx_14": 19.94,
         "rsi_14": 55.46,
         "atr_x_50": 2.22,
-        "ccqs": 92.29,
+        "ccqs": 86.87,
         "grade": "A",
         "state": "TRENDING",
         "state_confidence": 0.523,
@@ -178,13 +199,13 @@ TV_SNAPSHOTS: dict[str, dict] = {
     "LLY": {
         "date": REFERENCE_DATE,
         "close": 1065.00,
-        "rs_rating_spy": 65.08,
+        "rs_rating_spy": 65.01,
         "pct_ma_50": 12.90,
         "pct_ma_200": 14.73,
         "adx_14": 20.34,
         "rsi_14": 68.31,
         "atr_x_50": 4.03,
-        "ccqs": 73.59,
+        "ccqs": 73.74,
         "grade": "B",
         "state": "INDETERMINATE",
         "state_confidence": 0.917,
@@ -195,16 +216,16 @@ TV_SNAPSHOTS: dict[str, dict] = {
     "UNH": {
         "date": REFERENCE_DATE,
         "close": 388.47,
-        "rs_rating_spy": 75.89,
+        "rs_rating_spy": 76.00,
         "pct_ma_50": 17.49,
         "pct_ma_200": 19.89,
         "adx_14": 48.41,
         "rsi_14": 67.84,
         "atr_x_50": 6.26,
-        "ccqs": 85.09,
+        "ccqs": 85.56,
         "grade": "A",
         "state": "TRENDING",
-        "state_confidence": 0.597,
+        "state_confidence": 0.595,
         "leadership_tier": "STRONG_PERFORMER",
         "setup": "Trending (Generic)",
         "setup_confidence": 0.65,
