@@ -1,3 +1,6 @@
+# Phase 8a (2026-05-26): pinned versions unchanged; comment added to force
+# Streamlit Cloud to rebuild the container from scratch and pick up the new
+# compute/ccqs.py STATE_WEIGHTS for the residual-momentum addition.
 pandas==2.2.3
 numpy==2.1.3
 scipy==1.14.1
