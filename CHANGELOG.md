@@ -317,6 +317,31 @@ bypasses the guard.
 Net effect: exactly one full pipeline execution per weekday at
 4:30 PM ET, year-round. No DST drift.
 
+### Phase 14R.K — Workflow push race-condition fix (2026-05-26) ✓ SHIPPED
+
+The Phase 14R.H DST-aware workflow ran successfully end-to-end in run #3
+(all compute steps green: fetch OHLCV 1m29s → data quality 5s → features
+1m20s → standardization 2m3s → pipeline 12m43s → dashboard build 3s)
+BUT the final `git push HEAD:main` step failed with:
+
+  ! [rejected] HEAD -> main (fetch first)
+  error: failed to push some refs
+
+Root cause: a developer push to main during the workflow's ~17-minute
+run shifted HEAD on remote main. The workflow's commit was based on the
+remote main at workflow START; by push time, remote main had moved.
+
+Fix: wrap the push in a 3-attempt retry loop with `git fetch origin main`
++ `git pull --rebase origin main` before each push. This absorbs
+concurrent commits cleanly. If a developer pushes 3 times during one
+workflow run (extremely unlikely), the workflow fails — but that's a
+graceful upper bound.
+
+This was the failure mode that caused run #3 to be reported as failed
+even though every actual computation step (fetch + compute + tests +
+cache build) was completely successful. Pipeline output for 2026-05-26
+was correct; only the metadata-update step was rejected.
+
 ### Phase 14R.J — Hard-gate test suite for pipeline reliability (2026-05-26) ✓ SHIPPED
 
 Comprehensive test suite added to gate the daily CI pipeline. If ANY

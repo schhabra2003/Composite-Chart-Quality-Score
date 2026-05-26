@@ -149,10 +149,25 @@ jobs:
           git add data/cache/dashboard/
           if git diff --cached --quiet; then
             echo "No dashboard cache changes to commit."
-          else
-            git commit -m "ci: refresh dashboard cache ($(date -u +%Y-%m-%d))"
-            git push origin HEAD:main
+            exit 0
           fi
+          git commit -m "ci: refresh dashboard cache ($(date -u +%Y-%m-%d))"
+          # Robust push with rebase-on-conflict retry. The pipeline runs for
+          # ~15-20 minutes; in that window a developer may push to main, which
+          # would cause a non-fast-forward rejection of our push. Retry with
+          # rebase up to 3 times to absorb concurrent commits.
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git pull --rebase origin main
+            if git push origin HEAD:main; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "Push attempt $attempt failed; retrying after fetch+rebase..."
+            sleep 5
+          done
+          echo "Push failed after 3 attempts"
+          exit 1
 
       - name: Soft-gate legacy spot-check tests
         run: |
