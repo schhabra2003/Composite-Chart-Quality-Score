@@ -317,6 +317,65 @@ bypasses the guard.
 Net effect: exactly one full pipeline execution per weekday at
 4:30 PM ET, year-round. No DST drift.
 
+### Phase 14R.J — Hard-gate test suite for pipeline reliability (2026-05-26) ✓ SHIPPED
+
+Comprehensive test suite added to gate the daily CI pipeline. If ANY
+test fails, the dashboard cache is NOT committed back to main — the
+prior good cache stays live. This is the "no issues whatsoever" promise.
+
+**New tests** (48 tests total, all passing locally):
+
+1. **`tests/test_universe_coverage.py`** (7 tests) — yfinance fetched all
+   universe tickers correctly:
+   - Benchmarks SPY/QQQ present
+   - ≥ 95% of declared universe in cache
+   - OHLCV latest date within 7 days
+   - No silent failures (every missing ticker explicitly in failed_tickers.json)
+   - Data quality firewall ≥ 90% PASS+WARNING
+   - Benchmarks PASS firewall
+
+2. **`tests/test_cache_freshness.py`** (29 tests) — dashboard caches
+   present, non-empty, current:
+   - All 8 parquet files + 4 JSON files exist
+   - All parquets non-empty
+   - CCQS latest date within 7 days
+   - 11 components present in dashboard `components.parquet`
+   - Cache size within expected 15-40 MB band
+   - Regime context current
+   - All 11 sanity checks pass
+
+3. **`tests/test_pipeline_integrity.py`** (12 tests) — pipeline outputs
+   internally consistent and sane:
+   - 11 sanity checks pass
+   - CCQS values in [0, 100]
+   - CCQS distribution non-degenerate
+   - Grade distribution covers all 5 grades
+   - 11 components present, no all-NaN columns
+   - State/tier/setup distributions non-degenerate
+   - STATE_WEIGHTS sum to 1.0 per state
+   - Confidence-blending mechanism intact
+   - All output parquets share latest date
+
+4. **`tests/reference/test_tv_parity.py`** (existing) — 10 canary tickers
+   numerically pinned (140 field checks).
+
+**CI workflow integration:** All four suites run as HARD gates (no
+`continue-on-error`) BEFORE the dashboard-cache commit step. If any
+fail, the workflow fails, no cache is pushed to main, and the prior
+good cache remains live. Legacy `test_phase2_spot_check` and
+`test_phase3_validation` continue as soft gates AFTER the commit
+(aligned to earlier baselines).
+
+**Net effect:** Daily CCQS pipeline is now guarded against:
+- Silent data-fetch failures (universe coverage test)
+- Stale or missing caches (freshness test)
+- Pipeline integrity failures (sanity, distributions, ranges)
+- Numerical regressions against the 10 TV canaries
+
+User direction satisfied: "every day from Monday-Friday without any
+fail" with explicit test coverage of "all stocks data fetches properly
+and computation happens with no issues whatsoever."
+
 ### Phase 15 — Small Cap CCQS (CCQS-SC) development [PLANNED]
 
 Separate Small Cap CCQS tool with independent empirical methodology.

@@ -108,7 +108,40 @@ jobs:
       - name: Build slim dashboard cache for Streamlit Cloud
         run: python -m compute.build_dashboard_cache
 
-      - name: Commit refreshed dashboard cache to main
+      # CRITICAL HARD GATES (Phase 14R.J).
+      # Tests run BEFORE the dashboard-cache commit, so a broken pipeline
+      # cannot pollute the live site. If ANY of these four suites fail,
+      # the workflow fails, no commit happens, and the prior good cache
+      # stays in place on `main`. This is the "no issues whatsoever"
+      # promise per user direction.
+      #
+      # Four hard-gate test suites:
+      #   1. test_universe_coverage   — yfinance fetched all universe tickers,
+      #                                 latest date recent, benchmarks present,
+      #                                 data quality firewall passes ≥ 90%.
+      #   2. test_cache_freshness     — dashboard caches present + non-empty,
+      #                                 latest date within 7 days, 11 sanity
+      #                                 checks pass, regime context current.
+      #   3. test_pipeline_integrity  — 11 sanity checks pass, CCQS in [0,100],
+      #                                 grade/state/tier/setup distributions
+      #                                 non-degenerate, STATE_WEIGHTS sum to
+      #                                 1.0, confidence-blend mechanism intact.
+      #   4. tests/reference/test_tv_parity — 10 canary tickers numerically
+      #                                       pinned (140 field checks).
+      #
+      # Legacy spot-check tests run AFTER the commit (soft gates).
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Hard-gate tests (universe / cache / pipeline / TV parity)
+        run: |
+          pytest tests/test_universe_coverage.py \
+                 tests/test_cache_freshness.py \
+                 tests/test_pipeline_integrity.py \
+                 tests/reference/test_tv_parity.py \
+                 -v --tb=short
+
+      - name: Commit refreshed dashboard cache to main (only if hard-gate tests pass)
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -120,9 +153,8 @@ jobs:
             git push origin HEAD:main
           fi
 
-      - name: Run data-dependent tests against fresh outputs
+      - name: Soft-gate legacy spot-check tests
         run: |
-          pip install pytest
           pytest tests/test_phase2_spot_check.py tests/test_phase3_validation.py -v --tb=short
         continue-on-error: true
 
