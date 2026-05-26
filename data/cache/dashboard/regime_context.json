@@ -3,8 +3,8 @@
   "market_vol": {
     "latest_date": "2026-05-22",
     "spy_vol_20d_latest": 0.1029,
-    "tercile_lo": 0.1135,
-    "tercile_hi": 0.1673,
+    "tercile_lo": 0.1137,
+    "tercile_hi": 0.1674,
     "current_regime": "LOW"
   },
   "dvol_quintile_by_ticker": {

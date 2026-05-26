@@ -2,9 +2,15 @@ name: Daily CCQS Pipeline
 
 on:
   schedule:
-    # Mon-Fri at 23:00 UTC (~18:00 ET / 19:00 EDT) — after US market close
-    - cron: '0 23 * * 1-5'
-  workflow_dispatch: {}  # allow manual triggering from Actions UI
+    # Mon-Fri at 21:30 UTC.
+    # 4:30 PM EST (US winter) / 5:30 PM EDT (US summer).
+    # Always 30+ minutes after the 4:00 PM ET market close.
+    # GitHub Actions cron is fixed UTC; this UTC slot gives us 4:30 PM ET
+    # for the half of the year EST is active. During EDT it runs 5:30 PM ET,
+    # which is also fine (still post-close, still daily). We accept the
+    # 1-hour DST drift rather than two cron lines + duplicate work.
+    - cron: '30 21 * * 1-5'
+  workflow_dispatch: {}  # manual trigger from Actions UI
 
 # Need write access to push the refreshed dashboard cache back to main.
 permissions:
@@ -13,7 +19,7 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
@@ -28,7 +34,28 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Fetch OHLCV and compute features
+      # The full pipeline requires three pre-feature inputs that are
+      # gitignored on the repo (.gitignore: data/cache/*, except the
+      # slim dashboard subset). The CI runner starts with a fresh
+      # checkout so none of these are present — we must build them
+      # from scratch every run.
+      #
+      # Order (matches local-dev README):
+      #   1. compute.loader        → fetches OHLCV from yfinance for the
+      #                              full universe + benchmarks, writes
+      #                              data/cache/ohlcv_daily.parquet
+      #   2. compute.data_quality  → reads OHLCV, writes
+      #                              data/cache/data_quality_report.json
+      #                              (PASS / WARNING / FAIL gates)
+      #   3. compute.features      → consumes both above, writes
+      #                              data/cache/features.parquet
+      - name: Fetch OHLCV from yfinance
+        run: python -m compute.loader
+
+      - name: Run data-quality firewall
+        run: python -m compute.data_quality
+
+      - name: Compute features
         run: python -m compute.features
 
       - name: Standardize features (z-scores)
