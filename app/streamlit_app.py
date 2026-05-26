@@ -1,6 +1,8 @@
 """CCQS — single-page analytical dashboard.
 
 Five sections, sidebar filters, footer. No decoration; data carries every signal.
+
+Updated 2026-05-25 — Grade band shading added to CCQS Trajectory chart.
 """
 from __future__ import annotations
 
