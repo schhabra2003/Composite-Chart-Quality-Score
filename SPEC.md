@@ -1609,6 +1609,80 @@ after) and every other year dominates this regression in expectation.
 
 ---
 
+### Phase 8a.1 — Short-horizon recovery investigation (CLOSED — rejected, 2026-05-26)
+
+**Hypothesis.** Phase 8a's residual-momentum addition slightly eroded the
+5d and 20d t-statistics (5d 2.57 → 2.33; 20d 2.78 → 1.95). Phase 8a.1
+tested whether a new `s_short_term_reversal` component — built from
+sign-flipped 3-day / 5-day returns and other Jegadeesh-1990-style
+reversal candidates — could recover that signal without giving back any
+of the 60d/126d gains Phase 8a delivered.
+
+**Result: REJECTED.**
+
+Five reversal feature candidates were built, combined into five
+composite component variants, orthogonalized against
+(`s_rs` + `s_residual_momentum` + `s_momentum`), and integrated into
+three weight configurations (uniform 5%, uniform 10%, state-dependent
+heavier-in-TRENDING/PULLBACK). Stricter decision criteria than Phase 8a
+were applied per the user's instruction (CI-includes-zero counts as
+failure).
+
+The empirical evidence said no:
+
+  - Orthogonal IC vs existing components: only **5d** carried genuine
+    incremental signal beyond `s_rs + s_residual_momentum + s_momentum`
+    (best orthogonal t = +2.27). At 20d the orthogonal t dropped to
+    +0.94; at 60d/126d it was essentially zero or slightly negative.
+  - Per-date integration tests: CI overlapped zero at all four horizons
+    for every config (Cfg B 5d Δ = +0.0009, CI = [−0.0003, +0.0020]).
+  - **Walk-forward paired t-test: no significance at any horizon** for
+    any config. The 20d paired t was actually slightly **negative**
+    (−0.13 for Cfg B) — adding reversal made 20d very mildly worse in
+    walk-forward.
+  - Per-state breakdown: **EXHAUSTION regressed catastrophically across
+    every horizon** (5d −0.013, 20d −0.017, 60d −0.002, 126d −0.012).
+    EXHAUSTION 20d flipped sign (+0.0109 → −0.0063). This is the
+    Priority-3c-discovered architectural fragility — confidence-blending
+    makes EXHAUSTION-state stocks dependent on the wider matrix, and
+    shrinking RS-family weights to make room for reversal hits the very
+    components EXHAUSTION-state stocks rely on.
+
+**Decision criteria scorecard (4 fails, 2 passes):**
+- 5d t recovers above 2.5: ✗ (best 5d walk-forward t = 1.41 in Cfg C)
+- 20d t recovers above 2.0: ✗ (walk-forward paired t negative)
+- 60d/126d preserved within 10%: ✓
+- No new regime regressions: ✗ (EXHAUSTION −15-34% across all horizons)
+- Statistical significance in both frameworks: ✗
+- Implementation complexity reasonable: ✓
+
+**Architectural conclusion (documented for future reference).** Existing
+components — particularly `s_rs` (which incorporates 63d / 126d / 189d /
+252d return-slope ranks) and `s_residual_momentum` (which already
+delivers idiosyncratic-momentum signal at long horizons) — implicitly
+capture most of the short-term reversal alpha that exists in this
+universe. Adding an explicit reversal component competes for weight
+allocation without producing incremental walk-forward signal, and the
+weight reshuffle damages EXHAUSTION-state stocks.
+
+**Phase 8a tradeoff appears to be at architectural limit for the current
+confidence-blended methodology.** The tool is optimized for medium-to-
+long horizon analysis (60d / 126d are the institutional-quality primary
+use cases); the 5d/20d horizons are functional but lower-quality and
+not easily improvable without architectural redesign (relaxing
+confidence-blending, or building a separate short-horizon model).
+
+For short-horizon timing decisions, the recommended practice is to use
+CCQS as quality / leadership context and a complementary short-horizon
+tool for entry/exit timing, rather than expecting a single composite to
+optimize all horizons simultaneously.
+
+Full investigation outputs preserved at `/tmp/p8a1_short_reversal.py`
+and `/tmp/p8a1_results.json` (reproducible on the build machine).
+No production code changes.
+
+---
+
 ### Phase X.4 — Targeted 20-60d horizon audit (2026-05-22)
 
 Goal: push 20d and 60d OOS IC toward statistical significance (t > 2.0) while
