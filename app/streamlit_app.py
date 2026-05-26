@@ -242,20 +242,30 @@ with tab_production:
             unsafe_allow_html=True,
         )
 
-        # Priority 3d: reliability flags chips. Honest disclosure of regimes
-        # where CCQS has documented weaker signal (Priority 2b findings).
-        # Display-layer only — CCQS values themselves are unchanged.
+        # Priority 3d + Phase 11E.2: reliability flags chips. Honest disclosure
+        # of regimes where CCQS has documented weaker signal (Priority 2b
+        # findings) AND where CCQS ranking inverts (Phase 11D tier × CCQS
+        # decile spread analysis). Display-layer only — CCQS values are
+        # unchanged.
         flags = reliability_flags(
             ticker=str(sel),
             basket=str(row["basket"]) if pd.notna(row.get("basket")) else "",
             primary_state=str(row.get("primary_state", "")),
             regime_context=regime_ctx,
+            leadership_tier=str(row.get("leadership_tier", "")) or None,
         )
         if flags:
             chips = []
             for f in flags:
-                color = "#A87A00" if f["severity"] == "warn" else "#3D6A8C"
-                bg = "#FFF4D6" if f["severity"] == "warn" else "#E7F0F8"
+                # Phase 11E.2: added "ok" severity (green) for high-quality
+                # regimes where CCQS is empirically reliable.
+                sev = f["severity"]
+                if sev == "warn":
+                    color, bg = "#A87A00", "#FFF4D6"
+                elif sev == "ok":
+                    color, bg = "#1F6B3E", "#E0F2E6"
+                else:
+                    color, bg = "#3D6A8C", "#E7F0F8"
                 chips.append(
                     f"<span title='{f['detail']}' "
                     f"style='display:inline-block;padding:2px 8px;margin:4px 6px 0 0;"

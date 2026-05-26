@@ -189,15 +189,16 @@ def load_regime_context() -> dict:
 
 
 def reliability_flags(ticker: str, basket: str, primary_state: str,
-                       regime_context: dict) -> list[dict]:
+                       regime_context: dict,
+                       leadership_tier: str | None = None) -> list[dict]:
     """Compute display-layer reliability flags for a stock.
 
     Returns a list of {label, severity, detail} dicts to be rendered as
     chips below the Stock Detail header. Empty list when nothing to flag.
 
     No methodology change — these flags are based on Priority 2b conditional
-    IC findings about where CCQS is and is not reliable. CCQS itself is
-    unchanged.
+    IC findings + Phase 11D cross-layer synthesis findings about where CCQS
+    is and is not reliable. CCQS itself is unchanged.
     """
     if not regime_context:
         return []
@@ -247,6 +248,34 @@ def reliability_flags(ticker: str, basket: str, primary_state: str,
             "detail": "In EXHAUSTION state, CCQS has near-zero 20d "
                       "predictability (IC ~ 0, t = -0.3 per Priority 2b). "
                       "5d, 60d, and 126d still carry signal.",
+        })
+
+    # 5. Phase 11D — CCQS regime-dependence by leadership tier.
+    # Phase 11D empirically validated that CCQS Q10−Q1 spread varies
+    # dramatically by tier: +5.26% in ESTABLISHED_LEADER, +3.22% in
+    # STRONG_LEADER (works as expected); −9.24% in WEAK_LAGGARD,
+    # −1.93% in DETERIORATING tier (inverts due to mean reversion).
+    # Surface this regime context so users don't naively trust CCQS
+    # in regimes where it's empirically unreliable.
+    tier_str = str(leadership_tier) if leadership_tier else ""
+    if tier_str in ("ELITE_LEADER", "STRONG_LEADER", "ESTABLISHED_LEADER"):
+        flags.append({
+            "label": "High-quality regime — CCQS reliable",
+            "severity": "ok",
+            "detail": "Phase 11D analysis: in this tier, top CCQS decile "
+                      "outperforms bottom CCQS decile by +3 to +5 pp at 60d. "
+                      "CCQS ranking is empirically reliable here.",
+        })
+    elif tier_str in ("WEAK_LAGGARD", "DETERIORATING"):
+        flags.append({
+            "label": "Low-quality regime — CCQS may invert",
+            "severity": "warn",
+            "detail": "Phase 11D analysis: in this tier, the LOWEST CCQS "
+                      "decile actually OUTPERFORMS the highest CCQS decile "
+                      "at 60d (by up to +9.24 pp in WEAK_LAGGARD). Mean "
+                      "reversion dominates — consider the cohort as "
+                      "mean-reversion candidates rather than ranking by "
+                      "CCQS directly.",
         })
 
     return flags

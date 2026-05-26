@@ -1,8 +1,8 @@
 """
 CCQS V1 — Setup Classification (SPEC Section 10)
 
-23 priority-ordered specific setups + 5 state-aware catch-alls + 1 final
-fallback ("Indeterminate Pattern") = 28 active labels. First-match-wins
+21 priority-ordered specific setups + 5 state-aware catch-alls + 1 final
+fallback ("Indeterminate Pattern") = 27 active labels. First-match-wins
 along the priority chain.
 
 Phase 11.B.1 (2026-05-26): removed "Consolidation Within Strong Theme"
@@ -12,6 +12,19 @@ through, so the rule never fired (n=0 over 1.53M rows in the Phase 11B
 audit). The aggregation layer's `theme_class` remains available for a
 future revival of theme-aware setups, but the empty rule is no longer
 on the cascade.
+
+Phase 11E.1 (2026-05-26): removed "Emerging Leader" setup from the
+cascade. The Phase 11B investigation found Emerging Leader and VCP
+Setup statistically equivalent at 60d forward returns (Welch's t-test
+p=0.94; means +3.94% vs +3.91%) AND both underperformed the universe
+(both t < −4.5 vs universe mean +5.20%). The "Emerging Leader"
+branding implied multibagger-discovery edge that the math did not
+deliver — the gating selected rs_spy 60-85 + rs_slope ≥ 10 + mtf_coh
+≥ 2 stocks whose obvious-acceleration signal was already priced in
+(mean reversion of extremes). The 8,999 rows previously labeled
+Emerging Leader are absorbed by lower-priority setups (typically
+Trending Leadership for stocks with rs ≥ 80, otherwise catch-alls).
+VCP Setup retained at #19 unchanged.
 
 Run:
     python -m compute.setup_classifier
@@ -53,20 +66,22 @@ SETUP_LABELS: list[str] = [
     "Distribution Pattern", "Sustained Weakness",
     # Elite Leader (9-10)
     "Elite Leader Continuation", "Elite Leader Pullback",
-    # Premium Long (11-13)
-    "Premium Pullback", "Emerging Leader",
+    # Premium Long (11-12) — Phase 11E.1: removed "Emerging Leader"
+    # (statistically equivalent to VCP Setup at p=0.94; both underperformed
+    # universe at 60d).
+    "Premium Pullback",
     "Theme Leader Pullback",
-    # Trending (14-15)
+    # Trending (13-14)
     "Trend Continuation", "Trending Leadership",
-    # Pullback (16-17)
+    # Pullback (15-16)
     "Pullback to 21EMA", "Pullback to 50MA",
-    # Consolidating (18-21) — Phase 11.B.1: removed dead
+    # Consolidating (17-20) — Phase 11.B.1: removed dead
     # "Consolidation Within Strong Theme" (n=0, theme_strong hardcoded False).
     "Tight Consolidation Pre-Breakout",
     "VCP Setup", "BB Squeeze with RS", "Range Consolidation",
-    # Failure / Transition (22)
+    # Failure / Transition (21)
     "Failed Breakout",
-    # State-aware catch-alls (23-28) — assigned when no specific rule fired.
+    # State-aware catch-alls (22-27) — assigned when no specific rule fired.
     "Trending (Generic)", "Routine Pullback", "Consolidating (Generic)",
     "Exhaustion (Generic)", "Deteriorating (Generic)", "Indeterminate Pattern",
 ]
@@ -206,25 +221,16 @@ def classify_setups(
         "Premium Pullback", 0.95,
     )
 
-    # ---- 12. Emerging Leader ---------------------------------------------
-    # Mid-tier RS rapidly accelerating with multi-timeframe + volume confirm.
-    # Prior "(Multibagger Setup)" parenthetical claimed a forward outcome the
-    # math does not predict — dropped.
-    _apply(
-        (rs_spy >= 60) & (rs_spy <= 85)
-        & (rs_slope_60 >= 10)
-        & (mtf_coh >= 2)
-        & volume_lead,
-        "Emerging Leader", 0.85,
-    )
-
-    # ---- 13. Theme Leader Pullback ---------------------------------------
+    # ---- 12. Theme Leader Pullback ---------------------------------------
+    # (Previous #12 "Emerging Leader" removed in Phase 11E.1 — statistically
+    # equivalent to VCP Setup at p=0.94, both underperformed universe; see
+    # module docstring.)
     _apply(
         is_basket_leader & (p_pullback > 0.4),
         "Theme Leader Pullback", 0.80,
     )
 
-    # ---- 14. Trend Continuation ------------------------------------------
+    # ---- 13. Trend Continuation ------------------------------------------
     _apply(
         (sma_stack >= 85)
         & (adx_14 >= 25)
@@ -234,7 +240,7 @@ def classify_setups(
         "Trend Continuation", 0.90,
     )
 
-    # ---- 15. Trending Leadership -----------------------------------------
+    # ---- 14. Trending Leadership -----------------------------------------
     _apply(
         (sma_stack >= 75)
         & (rs_spy >= 80)
@@ -242,21 +248,21 @@ def classify_setups(
         "Trending Leadership", 0.85,
     )
 
-    # ---- 16. Pullback to 21EMA -------------------------------------------
+    # ---- 15. Pullback to 21EMA -------------------------------------------
     near_21ema = ((close - ema_21).abs() / atr_14.clip(lower=1e-6)) < 0.7
     _apply(
         (sma_stack >= 80) & near_21ema & (rs_spy >= 75),
         "Pullback to 21EMA", 0.85,
     )
 
-    # ---- 17. Pullback to 50MA --------------------------------------------
+    # ---- 16. Pullback to 50MA --------------------------------------------
     near_50ma = ((close - sma_50).abs() / atr_14.clip(lower=1e-6)) < 1.2
     _apply(
         (sma_stack >= 75) & near_50ma & (rs_spy >= 70),
         "Pullback to 50MA", 0.80,
     )
 
-    # ---- 18. Tight Consolidation Pre-Breakout ---------------------------
+    # ---- 17. Tight Consolidation Pre-Breakout ---------------------------
     # (Previous #18 "Consolidation Within Strong Theme" removed in Phase
     # 11.B.1 — dead code that never fired; see module docstring.)
     _apply(
@@ -264,22 +270,22 @@ def classify_setups(
         "Tight Consolidation Pre-Breakout", 0.90,
     )
 
-    # ---- 19. VCP Setup ---------------------------------------------------
+    # ---- 18. VCP Setup ---------------------------------------------------
     _apply(
         (vcp_q >= 60) & (rs_spy >= 75) & (sma_stack >= 75),
         "VCP Setup", 0.80,
     )
 
-    # ---- 20. BB Squeeze with RS ------------------------------------------
+    # ---- 19. BB Squeeze with RS ------------------------------------------
     _apply(
         bb_sq & (bb_w < 20) & (rs_spy >= 70),
         "BB Squeeze with RS", 0.75,
     )
 
-    # ---- 21. Range Consolidation -----------------------------------------
+    # ---- 20. Range Consolidation -----------------------------------------
     _apply(bb_sq | (bb_w < 15), "Range Consolidation", 0.70)
 
-    # ---- 22. Failed Breakout ---------------------------------------------
+    # ---- 21. Failed Breakout ---------------------------------------------
     # Tightened: a true failed breakout requires both a flag AND post-failure
     # weakness (below the 50MA) AND non-leadership. Otherwise a "flag tap"
     # on a strong stock got mis-labeled as failure.
@@ -288,7 +294,7 @@ def classify_setups(
         "Failed Breakout", 0.85,
     )
 
-    # ---- 23-28. State-aware catch-alls -----------------------------------
+    # ---- 22-27. State-aware catch-alls -----------------------------------
     # Anything still unassigned gets a label that reflects its primary state,
     # rather than collapsing into a single "Mixed" bucket. This keeps
     # downstream consumers informed about whether the stock is in a healthy

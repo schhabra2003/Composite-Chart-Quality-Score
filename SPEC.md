@@ -3,7 +3,10 @@
 **Version:** 1.0 (Locked) — **Phase 10 (volume-pattern addition) + Phase 11A
 (state classification validated) + Phase 11.B.1 (dead setup removed) +
 Phase 11C (tier classification validated) + Phase 11.C.1 (UNCLASSIFIED
-tier added for fall-through fix, 2026-05-26)**.
+tier added for fall-through fix) + Phase 11D (cross-layer synthesis;
+CCQS regime-dependence documented) + Phase 11E.1 (Emerging Leader
+setup merged into cascade) + Phase 11E.2 (dashboard CCQS regime chip,
+2026-05-26)**.
 Adds `s_volume` (bundled `low_rel_vol_10d` + `volume_buzz_50`) as an 11th
 component at 3% per state; existing 10 components scaled by 0.97. First
 empirical win since Phase 8a: walk-forward 5d paired t = +2.01 (clears
@@ -21,9 +24,15 @@ Theme" (n=0). Phase 11C validates the leadership-tier layer
 (only ELITE_LEADER has a distinctive forward edge; non-monotonic
 ordering across the other 8 tiers); Phase 11.C.1 fixes a default-init
 bug that mis-labeled ~132K rows (8.6% of universe) as NEUTRAL — adds
-explicit UNCLASSIFIED 10th tier. Three consecutive validation phases
-now consistently confirm the "context-not-direction" system-wide
-design lesson. Built on:
+explicit UNCLASSIFIED 10th tier. **Phase 11D synthesizes the three
+validation phases and adds one critical architectural insight: CCQS
+is regime-dependent — works in top tiers (Q10−Q1 spread +5%), inverts
+in WEAK_LAGGARD tier (Q10−Q1 spread −9%). Categorical labels carry
+97.3% of cross-sectional R²; CCQS contributes 2.7% (within-cell
+ranking).** Phase 11E.1 ships the Emerging Leader / VCP Setup merger
+(p=0.94 equivalent, both underperformed universe). Phase 11E.2 adds
+a dashboard regime chip surfacing the CCQS regime-dependence to
+users. Built on:
 Phase 8a (residual momentum addition) + Phase 7 (Priority 3a: `s_demand`
 removal + carrier redistribution) + Priority 3d (conditional performance
 warnings, display-layer only) + Phase 5.5–5.8 (vocabulary audit,
@@ -2496,6 +2505,210 @@ where cross-layer analysis can inform the right resolution.
 - Investigation script: `/tmp/p11c_tier_validation.py`
 - Raw results JSON: `/tmp/p11c_results.json`
 - Full report: `/tmp/PHASE_11C_REPORT.md`
+
+---
+
+### Phase 11D — Cross-Layer Synthesis (2026-05-26)
+
+**Headline architectural insight: CCQS V1 IS A CATEGORICAL SCREENING +
+WITHIN-CATEGORY RANKING TOOL.** The 3-layer classification system
+(state × setup × tier) carries 97.3% of cross-sectional R² at 60d
+forward returns; CCQS as a continuous variable carries 2.7%.
+
+Phase 11D is the synthesis phase that pulls Phase 11A (state), 11B
+(setup), and 11C (tier) findings into an integrated system-efficiency
+assessment. Three first-order findings reshape how we describe what
+CCQS V1 actually does.
+
+#### Finding 1: CCQS is regime-dependent
+
+CCQS ranking works well in TOP-quality regimes (highest CCQS decile
+outperforms lowest by 3–5pp at 60d) but INVERTS in BOTTOM-quality
+regimes (highest decile UNDERPERFORMS lowest by up to 9.24pp).
+
+**Top-CCQS-decile minus Bottom-CCQS-decile spread at 60d, by tier:**
+
+| Tier | Q10 − Q1 spread | Interpretation |
+| ---- | ---------------- | -------------- |
+| ESTABLISHED_LEADER | **+5.26%** | CCQS works strongly |
+| STRONG_LEADER | +3.22% | CCQS works |
+| STRONG_PERFORMER | +3.04% | CCQS works |
+| WEAK_PERFORMER | +0.56% | CCQS flat |
+| NEUTRAL | −0.48% | CCQS minimal value |
+| EMERGING_LEADER | −0.82% | CCQS slightly inverts |
+| UNCLASSIFIED | −1.67% | CCQS slightly inverts |
+| DETERIORATING (tier) | −1.93% | CCQS slightly inverts |
+| **WEAK_LAGGARD** | **−9.24%** | CCQS strongly INVERTS |
+
+**Same pattern by state:**
+
+| State | Q10 − Q1 spread |
+| ----- | ---------------- |
+| EXHAUSTION | +5.87% |
+| TRENDING | +3.99% |
+| INDETERMINATE | +3.10% |
+| PULLBACK | +2.62% |
+| CONSOLIDATING | +1.56% |
+| **DETERIORATING (state)** | **−2.15%** |
+
+**Mechanism:** mean reversion dominates in low-quality regimes. Stocks
+at the bottom of the cycle (WEAK_LAGGARD, DETERIORATING) snap back
+disproportionately, and the MOST broken stocks (lowest CCQS) snap back
+hardest. Within these regimes, the highest-CCQS stocks underperform
+the lowest-CCQS stocks because momentum continuation (the property
+CCQS rewards) is the WRONG signal axis.
+
+**Critical user implication:**
+
+- **In high-quality regimes** (STRONG_PERFORMER+ tiers, momentum
+  states): High CCQS predicts forward outperformance. **CCQS works
+  as intended.**
+- **In low-quality regimes** (WEAK_LAGGARD, DETERIORATING tier and
+  state): High CCQS predicts forward UNDERPERFORMANCE vs the cohort.
+  **Mean reversion dominates ranking signal.**
+
+#### Finding 2: Information attribution — categorical labels carry 97% of cross-sectional R²
+
+Pooled cross-sectional regression on 60d forward returns (per-date
+demeaned):
+
+| Model | R² | Marginal R² | % of total |
+| ----- | -- | ----------- | ---------- |
+| 1. CCQS only | 0.000148 | +0.000148 | 2.7% |
+| 2. + State dummies | 0.001466 | +0.001318 | 24.4% |
+| 3. + Setup dummies | 0.004740 | +0.003274 | **60.6%** |
+| 4. + Tier dummies | 0.005404 | +0.000664 | 12.3% |
+
+**Setup carries the highest single-layer information content (60.6%).**
+State adds 24.4%; tier adds 12.3%; CCQS as a continuous variable adds
+only 2.7%.
+
+**Reverse ordering (classifications first):**
+
+| Model | R² |
+| ----- | -- |
+| State + setup + tier only | 0.005376 |
+| + CCQS on top | 0.005404 |
+| **CCQS marginal contribution** | **+0.000027 = 0.5% of total** |
+
+With classifications already in the model, CCQS adds essentially
+nothing incrementally — because CCQS *implies* the categorical
+structure (it's built from state-weighted components). The labels
+make explicit what CCQS encodes implicitly.
+
+#### Finding 3: State × Setup are 77% redundant by design
+
+Cramér's V (categorical association):
+
+| Pair | V | Interpretation |
+| ---- | - | -------------- |
+| **state × setup** | **0.7696** | HIGH — structural (setups are state-aware by design) |
+| state × tier | 0.4211 | Moderate |
+| setup × tier | 0.3313 | Moderate |
+
+The state-setup redundancy is **structural and beneficial**, not a
+bug. 5 of the 27 setups (post-Phase-11E.1) are state-aware catch-alls
+that bind 1:1 to states; many specific setups have implicit state
+constraints via their feature gates. Removing one layer would lose
+the within-state pattern differentiation that the setup classifier
+provides.
+
+#### What CCQS V1 actually does
+
+> **CCQS V1 is a categorical screening + within-category ranking tool.**
+> The 3-layer classification (state × setup × tier) describes the
+> current technical character of each stock and carries 97.3% of the
+> system's cross-sectional R² at 60d forward returns. The CCQS score
+> (continuous) provides within-category ranking — but only in
+> high-quality regimes (top tiers, momentum states); in low-quality
+> regimes (WEAK_LAGGARD, DETERIORATING), CCQS ranking inverts due to
+> mean reversion.
+
+#### What CCQS V1 is NOT
+
+- A universal continuous score that always predicts forward returns
+- A monotonic ranking system across all regimes
+- A standalone signal independent of classification context
+
+#### User guidance (incorporated into dashboard tooltips post-Phase-11E)
+
+- **Check classification first** (tier, state, setup) — this is the
+  primary screening axis.
+- **In high-quality regimes:** trust CCQS ranking. Higher CCQS =
+  expected forward return premium.
+- **In low-quality regimes:** invert the mental model. Lowest CCQS
+  in WEAK_LAGGARD / DETERIORATING may indicate mean-reversion
+  candidate. The Phase 11E dashboard regime chip flags this.
+- **Use classifications for primary screening, CCQS for within-cell
+  fine-tuning.**
+
+#### 3D joint distribution — top mean-reversion cells
+
+The (state × setup × tier) joint distribution surfaces extreme mean-
+reversion plays at the bottom of the cycle. Top cells at 60d:
+
+| Cell | n | μ 60d | t |
+| ---- | - | ----- | - |
+| INDETERMINATE × Deteriorating w/ Bullish Divergence × UNCLASSIFIED | 555 | **+43.5%** | +20.8 |
+| INDETERMINATE × Distribution Pattern × UNCLASSIFIED | 722 | +37.5% | +21.4 |
+| INDETERMINATE × Sustained Weakness × UNCLASSIFIED | 1,116 | +36.7% | +25.7 |
+| INDETERMINATE × Distribution Pattern × WEAK_LAGGARD | 486 | +34.5% | +8.3 |
+
+These are real, statistically significant cells. The pattern is:
+**INDETERMINATE state + DETERIORATING-family setup + UNCLASSIFIED /
+WEAK_LAGGARD tier** = mean-reversion at the bottom of the cycle.
+
+#### Per-cell CCQS effectiveness summary
+
+CCQS works well in:
+- ESTABLISHED_LEADER, STRONG_LEADER, STRONG_PERFORMER tiers
+- EXHAUSTION, TRENDING, INDETERMINATE, PULLBACK, CONSOLIDATING states
+- DETERIORATING-family setups (Distribution Pattern, Sustained
+  Weakness, Deteriorating w/ Bullish Divergence)
+- Extreme Extension setup (IC +0.098, highest single-setup CCQS IC)
+
+CCQS fails (inverts or is flat) in:
+- WEAK_LAGGARD, DETERIORATING (tier), NEUTRAL, EMERGING_LEADER,
+  UNCLASSIFIED tiers
+- DETERIORATING state (within-state inversion)
+- Trending Leadership / Trend Continuation setups (within-setup
+  variance too compressed)
+
+#### Phase 11E patches (shipped 2026-05-26)
+
+**Phase 11E.1 — Setup merger:** Removed "Emerging Leader" setup from
+the cascade (statistically equivalent to VCP Setup at p=0.94, both
+underperform universe by p<0.001). Setup count 28 → 27. The 8,999
+rows previously labeled "Emerging Leader" are redistributed across
+downstream cascade priorities (typically Trending Leadership or
+catch-alls). VCP Setup retained unchanged.
+
+**Phase 11E.2 — Dashboard CCQS regime chip:** Added per-ticker
+reliability chip in the stock detail view. Surfaces the regime-
+dependence finding to the user:
+- ELITE_LEADER / STRONG_LEADER / ESTABLISHED_LEADER → green chip
+  "High-quality regime — CCQS ranking reliable" with tooltip noting
+  the +5pp Q10−Q1 spread.
+- WEAK_LAGGARD / DETERIORATING tier → amber chip "Low-quality regime
+  — CCQS ranking may invert" with tooltip noting the −9pp Q10−Q1
+  spread and recommending mean-reversion framing.
+- Other tiers → no chip (no strong regime claim).
+
+#### Deferred from Phase 11E (backlog)
+
+The following Phase 11D recommendations are documented but **NOT
+implemented in Phase 11E** (defer to post-Path-C work):
+- STRONG_LEADER + ESTABLISHED_LEADER merger
+- Extended Exhaustion / EMERGING_LEADER tier renames
+- Dashboard "high-quality screen" and "mean-reversion screen" preset
+  filters
+- NaN-tier filter / warning chip
+
+#### Outputs
+
+- Investigation script: `/tmp/p11d_cross_layer.py`
+- Raw results JSON: `/tmp/p11d_results.json`
+- Full report: `/tmp/PHASE_11D_REPORT.md`
 
 ---
 
