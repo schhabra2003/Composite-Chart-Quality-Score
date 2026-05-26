@@ -33,7 +33,7 @@ Refresh log:
               Phase 5.7 + 5.8 vocabulary. Empirical validation (Phase 8a
               investigation) showed walk-forward 126d t-statistic
               improves 1.87 → 2.02 with the addition.
-  2026-05-26  **CCQS refresh to Phase 10 (volume-pattern addition).**
+  2026-05-26  CCQS refresh to Phase 10 (volume-pattern addition).
               Phase 10 adds `s_volume` as an 11th component at 3% per
               state, with the existing 10 components scaled by 0.97.
               CCQS drift vs Phase 8a is small (max |Δ| = 1.93 for TSLA;
@@ -47,8 +47,17 @@ Refresh log:
               (1.95 → 2.04); EXHAUSTION-state IC +0.006 to +0.016 at
               every horizon (resolves fragility documented across Phase
               3c / 8a.1 / 8b).
+  2026-05-26  **PATH C COMPLETE through Phase 12 (closeout doc).**
+              No further numerical changes from Phase 11.B.1 (dead
+              setup removal), 11.C.1 (UNCLASSIFIED tier added — fall-
+              through fix), 11E.1 (Emerging Leader setup removed), or
+              11E.2 (dashboard regime chip) — none of those four
+              patches affect CCQS computation. TV reference pins remain
+              identical to the Phase 10 baseline above. Pipeline
+              re-verified post-Phase-12 documentation work.
 
-Last refreshed: 2026-05-26 (Phase 10 build — volume-pattern addition).
+Last refreshed: 2026-05-26 (Phase 12 closeout — Path C complete;
+methodology baseline Phase 11E.2; values unchanged from Phase 10).
 """
 from __future__ import annotations
 

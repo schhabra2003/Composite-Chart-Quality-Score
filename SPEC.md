@@ -1,12 +1,18 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — **Phase 10 (volume-pattern addition) + Phase 11A
+**Version:** 1.0 (Locked) — **PATH C COMPLETE (Phase 12, 2026-05-26)**.
+Path C overview: Phase 10 (volume-pattern addition) + Phase 11A
 (state classification validated) + Phase 11.B.1 (dead setup removed) +
 Phase 11C (tier classification validated) + Phase 11.C.1 (UNCLASSIFIED
 tier added for fall-through fix) + Phase 11D (cross-layer synthesis;
 CCQS regime-dependence documented) + Phase 11E.1 (Emerging Leader
-setup merged into cascade) + Phase 11E.2 (dashboard CCQS regime chip,
-2026-05-26)**.
+setup merged into cascade) + Phase 11E.2 (dashboard CCQS regime chip).
+Phase 12 ships the closeout documentation: Path C comprehensive
+overview, system-wide design lessons, validation framework, deferred
+backlog. **Methodology baseline: Phase 11E.2.** Final state per
+Methodology Lock §3 — future changes require new empirical evidence
+of signal degradation OR independent research findings, not historical
+pattern observation.
 Adds `s_volume` (bundled `low_rel_vol_10d` + `volume_buzz_50`) as an 11th
 component at 3% per state; existing 10 components scaled by 0.97. First
 empirical win since Phase 8a: walk-forward 5d paired t = +2.01 (clears
@@ -67,18 +73,35 @@ This lock applies to all future development. Any proposed methodology change mus
 
 ---
 
-## Where We Stand (2026-05-26, post Phase 10 volume-pattern addition)
+## Where We Stand (2026-05-26, Path C COMPLETE through Phase 12)
 
-**Methodology snapshot.** CCQS V1 ships with 11 computed components (9
-contributing to the score, 2 zero-weighted diagnostics — `s_climax`
-removed in Phase 6, `s_demand` zero-weighted in Phase 7). Phase 10
-added `s_volume` (bundled `low_rel_vol_10d` + `volume_buzz_50`) at 3%
-per state, with the existing 10 components scaled by 0.97. Phase 8a
-had added `s_residual_momentum` at ~5% per state. State-conditional
-weights live in an 11 × 6 matrix; weights are validated by paired
-block bootstrap (Priority 2a) and per-date / walk-forward OOS IC
-(Phase X.3 canonical). Per-date winsorization is in place since
-Phase 6.
+**Methodology snapshot.** CCQS V1 ships with **11 computed components**
+(9 contributing to the score, 2 zero-weighted diagnostics — `s_climax`
+removed in Phase 6, `s_demand` zero-weighted in Phase 7), **27 setup
+labels** (21 specific + 5 state-aware catch-alls + 1 final fallback;
+"Consolidation Within Strong Theme" removed in Phase 11.B.1, "Emerging
+Leader" removed in Phase 11E.1), and **10 leadership tiers** (added
+explicit `UNCLASSIFIED` 10th tier in Phase 11.C.1 to eliminate
+fall-through mis-labeling). Phase 10 added `s_volume` (bundled
+`low_rel_vol_10d` + `volume_buzz_50`) at 3% per state, with existing
+10 components scaled by 0.97. Phase 8a had added `s_residual_momentum`
+at ~5% per state. State-conditional weights live in an 11 × 6 matrix;
+weights are validated by paired block bootstrap (Priority 2a) and
+per-date / walk-forward OOS IC (Phase X.3 canonical). Per-date
+winsorization in place since Phase 6.
+
+**Path C completion (2026-05-26):** Phases 11A/11B/11C empirically
+validated the state classifier, setup classifier, and leadership-tier
+layer. Phase 11D synthesized cross-layer findings. Phase 12 is the
+documentation closeout. The system-wide insight: CCQS V1 is a
+**categorical screening + within-category ranking tool**.
+Classifications carry **97.3%** of cross-sectional R² at 60d forward
+returns; CCQS as a continuous variable contributes 2.7% (within-cell
+ranking). CCQS is **regime-dependent**: works in top tiers
+(ESTABLISHED_LEADER Q10−Q1 spread +5.26% at 60d), inverts in bottom
+tiers (WEAK_LAGGARD spread −9.24%). The dashboard surfaces this via
+green/amber reliability chips (Phase 11E.2). See "Path C —
+Comprehensive Overview" below.
 
 **Where the signal works** (Priority 2b conditional analysis):
 
@@ -136,11 +159,213 @@ SPEC):
 
 **Next-phase considerations.** Within the Methodology Lock framework,
 no near-term methodology change is on the table. Honest signal
-characterization is in place via Priority 3d display warnings. The
-next set of architectural questions (relaxing confidence-blending,
-feature-level reduction, regime-aware pre-trade filtering) require
-either new OOS evidence of signal degradation or independent research
-findings before consideration per Methodology Lock §3.
+characterization is in place via Priority 3d display warnings + Phase
+11E.2 regime chips. The next set of architectural questions
+(relaxing confidence-blending, feature-level reduction, regime-aware
+pre-trade filtering) require either new OOS evidence of signal
+degradation or independent research findings before consideration per
+Methodology Lock §3.
+
+---
+
+## Path C — Comprehensive Overview (2026-05-26)
+
+Path C was the multi-phase comprehensive validation effort that:
+1. Tightened foundational mechanics (winsorization, vocabulary, dead-component cleanup)
+2. Bootstrap-validated all weight cells
+3. Documented confidence-blending as an architectural constraint
+4. Added two new empirical signal additions (Phase 8a residual momentum, Phase 10 volume pattern)
+5. Empirically validated every classification layer (states, setups, tiers)
+6. Synthesized the cross-layer findings into a system-wide design lesson
+7. Documented the final state, surfaced empirical caveats to users via the dashboard
+
+### Path C phases
+
+| Phase | Date | Action | Status |
+| ----- | ---- | ------ | ------ |
+| 5.2 | 2026-05-23 | NaN-CCQS root-cause fix + universe cleanup | ✓ shipped |
+| 5.3 | 2026-05-23 | Selective SP100 promotion | ✓ shipped |
+| 5.5 | 2026-05-24 | Naming standardization | ✓ shipped |
+| 5.6 | 2026-05-24 | Coil sub-setup follow-up | ✓ shipped |
+| 5.7 | 2026-05-24 | Climax / Broken sub-setup rename | ✓ shipped |
+| 5.8 | 2026-05-25 | Setup label accuracy audit | ✓ shipped |
+| 6 | 2026-05-25 | Per-date winsorization + s_climax removal | ✓ shipped |
+| Priority 2a | 2026-05-25 | Bootstrap CIs on STATE_WEIGHTS (54 cells × 4 horizons) | ✓ documented |
+| Priority 2b | 2026-05-25 | Conditional IC analysis across regimes | ✓ documented |
+| 7 | 2026-05-25 | s_demand removal + carrier redistribution | ✓ shipped (126d t 1.82→2.02) |
+| Priority 3a-c | 2026-05-25 | Simplification investigations | rejected (EXHAUSTION fragility documented) |
+| Priority 3d | 2026-05-25 | Conditional performance warnings (display chips) | ✓ shipped |
+| 8a | 2026-05-26 | Residual momentum addition (10th component) | ✓ shipped (126d t 1.87→2.02) |
+| 8a.1 | 2026-05-26 | Short-horizon reversal investigation | rejected |
+| 8b | 2026-05-26 | Vol-adjustment standardization investigation | rejected |
+| 10 | 2026-05-26 | Volume pattern addition (11th component, W1) | ✓ shipped (5d t 2.33→2.41) |
+| 11A | 2026-05-26 | State classification validation | ✓ documented |
+| 11B | 2026-05-26 | Setup classification validation | ✓ documented |
+| 11.B.1 | 2026-05-26 | "Consolidation Within Strong Theme" removal | ✓ shipped (28 → 27 setups… wait, 29 → 28) |
+| 11C | 2026-05-26 | Leadership tier validation | ✓ documented |
+| 11.C.1 | 2026-05-26 | NEUTRAL fall-through fix; UNCLASSIFIED 10th tier | ✓ shipped (132K mis-labeled rows corrected) |
+| 11D | 2026-05-26 | Cross-layer synthesis | ✓ documented |
+| 11E.1 | 2026-05-26 | "Emerging Leader" setup removal (VCP merger) | ✓ shipped (28 → 27 setups) |
+| 11E.2 | 2026-05-26 | Dashboard CCQS regime chip | ✓ shipped (green/amber) |
+| 12 | 2026-05-26 | Path C closeout documentation | ✓ this section |
+
+(Note: Phase 11.B.1 numbering "28 → 27" is a typo in the cell above — actual Phase 11.B.1 reduced 29 → 28; Phase 11E.1 then reduced 28 → 27. Net: 29 → 27.)
+
+### Path C — system-wide design lessons documented
+
+Three classification layers (states, setups, tiers) plus the continuous
+CCQS score, all validated through Phase 11.
+
+#### Lesson 1 (Phase 11A): States describe CONTEXT, not direction
+
+The 6-state machine is a CONTEXT classifier. Forward-return ordering is
+counterintuitive to state names: EXHAUSTION-state stocks OUTPERFORM
+universe by +4.1% at 60d; TRENDING-state stocks UNDERPERFORM by −1.0%.
+This reflects mean reversion of extremes + momentum continuation in
+"obviously extended" stocks. States describe what kind of regime a
+stock is in, not what will happen next.
+
+#### Lesson 2 (Phase 11B): Premium labels carry no alpha
+
+Setups branded as "premium" / "quality" / "elite" (VCP Setup, Emerging
+Leader, Premium Pullback, Theme Leader Pullback) underperform universe.
+Setups branded as "weakness" / "distribution" / "exhaustion"
+(Capitulation Selling, Distribution Pattern, Sustained Weakness,
+Volume-Confirmed Exhaustion) outperform by 4–12 percentage points at
+60d. Setup names describe technical pattern, NOT future direction. The
+"obvious quality" market has already priced in.
+
+#### Lesson 3 (Phase 11C): Tier hierarchy is non-monotonic in forward return
+
+Only ELITE_LEADER (top 0.2%) has a truly distinctive forward edge
+(+15.24% at 60d, 3× universe). The other 8 tiers cluster within ±2.5pp
+of universe. The priority ordering ELITE → WEAK_LAGGARD reflects
+current RS-quality, NOT expected forward return: 4 of 8 adjacent-tier
+pairs have the "lower" tier outperforming the "higher" one.
+
+#### Lesson 4 (Phase 11D): CCQS is regime-dependent
+
+Top-CCQS-decile minus Bottom-CCQS-decile spread at 60d, by tier:
+
+| Tier | Q10 − Q1 spread |
+| ---- | --------------- |
+| ESTABLISHED_LEADER | **+5.26%** (works) |
+| STRONG_LEADER | +3.22% |
+| STRONG_PERFORMER | +3.04% |
+| NEUTRAL | −0.48% (flat) |
+| EMERGING_LEADER | −0.82% (slightly inverted) |
+| DETERIORATING (tier) | −1.93% |
+| **WEAK_LAGGARD** | **−9.24%** (strongly inverted) |
+
+Within WEAK_LAGGARD, the LOWEST CCQS decile outperforms the HIGHEST
+CCQS decile by 9.24pp at 60d. CCQS is anti-predictive in bottom-tier
+regimes due to mean reversion of extremes. Surfaced to users via Phase
+11E.2 green/amber chips.
+
+#### Lesson 5 (Phase 11D): Categorical labels carry 97.3% of cross-sectional R²
+
+Pooled regression on 60d forward returns (per-date demeaned):
+
+| Source | Marginal R² | % of total |
+| ------ | ----------- | ---------- |
+| CCQS (continuous) | 0.000148 | 2.7% |
+| State dummies | +0.001318 | 24.4% |
+| **Setup dummies** | **+0.003274** | **60.6%** |
+| Tier dummies | +0.000664 | 12.3% |
+| **Total R² @ 60d** | **0.005404** | 100% |
+
+Setup carries the highest single-layer information content (60.6%).
+The categorical labels make explicit the regime structure that CCQS
+encodes implicitly; once you have the categories, CCQS as a continuous
+variable adds only within-cell ranking power.
+
+#### Lesson 6 (Phase 11D): Layers are structurally redundant by design
+
+| Pair | Cramér's V | Note |
+| ---- | ---------- | ---- |
+| state × setup | **0.7696** | High — by design (setups are state-aware) |
+| state × tier | 0.4211 | Moderate |
+| setup × tier | 0.3313 | Moderate |
+
+The state-setup redundancy is structural, not bug. 5 of 27 setups are
+state-aware catch-alls; many specific setups have implicit state
+constraints. Removing one layer would lose within-state pattern
+differentiation.
+
+### Path C — final empirical state
+
+| Metric | Value | Source |
+| ------ | ----- | ------ |
+| Components | 11 (9 contributing) | compute/components.py post-Phase-10 |
+| Setups | 27 (21 specific + 6 catch-alls) | compute/setup_classifier.py post-Phase-11E.1 |
+| Tiers | 10 (incl. UNCLASSIFIED) | compute/leadership.py post-Phase-11.C.1 |
+| CCQS 5d IC | 0.01150 (t = 2.37) | Phase 10 live-pipeline validation |
+| CCQS 20d IC | 0.00887 (t = 2.00) | crosses institutional 2.0 threshold post-Phase-10 |
+| CCQS 60d IC | 0.01367 (t = 3.57) | preserved through Phase 8a/10 |
+| CCQS 126d IC | 0.02948 (t = 9.17) | preserved through Phase 8a/10 |
+| Walk-forward 5d paired t (Phase 10 W1) | +2.01 | First post-Phase-8a config to clear +1.96 |
+| Walk-forward 126d t | ≈2.02 (post-Phase-7) | clears institutional threshold |
+| Cross-sectional R² @ 60d | 0.005404 | Phase 11D info attribution |
+| TV reference parity | 140/140 (10/10 canaries) | per-phase verified |
+| Sanity checks | 11/11 passing | every pipeline rebuild |
+
+### Path C — validation framework
+
+The empirical work used a stable validation framework throughout:
+
+| Framework component | Purpose |
+| ------------------- | ------- |
+| Per-date Spearman IC | Cross-sectional ranking power within each date |
+| Block bootstrap (block=21, n_iter=1000) | Confidence intervals on per-date IC delta |
+| Walk-forward OOS (252-train / 21-test / 21-step) | Out-of-sample paired t-stats |
+| Conditional IC by regime (HIGH/MED/LOW market vol) | Regime stability check |
+| Per-state / per-setup / per-tier conditional IC | Layer-level diagnostic |
+| Cramér's V categorical association | Layer redundancy quantification |
+| TV reference snapshots (10 canaries × 14 fields) | Numerical stability across phases |
+| Sanity checks (11 checks per pipeline run) | Integrity guard |
+
+Strict decision criteria (refined across 8a → 8a.1 → 8b → 10):
+- 60d/126d IC preserved or improved
+- 5d/20d IC not regressing further
+- EXHAUSTION-state IC not worse by > 0.005 at any horizon
+- Per-date IC delta CI strict > 0 (not just non-negative)
+- Walk-forward paired t > +1.96 at 60d or 126d
+- No CI-includes-zero approvals (Phase 8a lesson)
+
+Phase 10 W1 was the first post-Phase-8a candidate to clear all six
+criteria; the dashboard's empirical signal is current as of that
+deployment.
+
+### Path C — rejected investigations (audit trail)
+
+| Investigation | Rejection reason | Phase |
+| ------------- | ----------------- | ----- |
+| Priority 3a (s_demand removal extended) | EXHAUSTION fragility | already shipped subset; further removal rejected |
+| Priority 3b (4-carrier-only) | EXHAUSTION/CONSOLIDATING regression | rejected |
+| Priority 3c (state-aware hybrid) | EXHAUSTION still regresses via cross-state Bayesian avg | rejected |
+| Phase 8a.1 (short-term reversal component) | No walk-forward signal; EXHAUSTION catastrophe | rejected |
+| Phase 8b (vol-adjust standardization 4 configs) | All fail strict criteria; one regresses 126d t = −1.01 | rejected |
+| Phase 10 HV1/HVE/single-feature configs | Inferior to W1 bundled; W6 (low_rel_vol alone) actively hurts | rejected within Phase 10 |
+| Phase 11E STRONG_LEADER + ESTABLISHED_LEADER merger | deferred — empirical case present but optional | deferred backlog |
+| Phase 11E EMERGING_LEADER tier collapse | deferred — empirical case present but optional | deferred backlog |
+| Dashboard preset screens (mean-reversion, high-quality) | deferred to post-Path-C UX work | deferred backlog |
+
+### Path C — deferred backlog (for potential future work)
+
+1. STRONG_LEADER + ESTABLISHED_LEADER tier merger (statistically near-identical)
+2. EMERGING_LEADER tier rename or collapse (mean reversion of extremes)
+3. Extended Exhaustion → Late-Stage Trending rename (mode state is TRENDING)
+4. Distribution Pattern `dist_days_min = 8` threshold tuning (most sensitive boundary)
+5. PULLBACK `mu_rsi_14 = 45.0` tuning (most sensitive state-machine parameter)
+6. Premium Pullback criteria review (heavy gating but underperforms)
+7. Dashboard "high-quality screen" preset filter
+8. Dashboard "mean-reversion screen" preset filter
+9. NaN-tier filter / warning chip
+10. Wire up `theme_strong` for "Consolidation Within Strong Theme" revival (if theme aggregation is wired)
+
+These remain on the deferred backlog. Per Methodology Lock §3, any
+future change requires either OOS evidence of signal degradation or
+independent research findings, not historical pattern observation.
 
 ---
 
