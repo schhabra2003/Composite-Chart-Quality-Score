@@ -2,22 +2,63 @@ name: Daily CCQS Pipeline
 
 on:
   schedule:
-    # Mon-Fri at 21:30 UTC.
-    # 4:30 PM EST (US winter) / 5:30 PM EDT (US summer).
-    # Always 30+ minutes after the 4:00 PM ET market close.
-    # GitHub Actions cron is fixed UTC; this UTC slot gives us 4:30 PM ET
-    # for the half of the year EST is active. During EDT it runs 5:30 PM ET,
-    # which is also fine (still post-close, still daily). We accept the
-    # 1-hour DST drift rather than two cron lines + duplicate work.
+    # Mon-Fri, fires at exactly 4:30 PM ET year-round (30 min after market
+    # close). GitHub Actions cron is UTC and has no DST awareness, so we
+    # use TWO cron entries — one for each DST regime — and gate the
+    # actual pipeline behind a TZ-aware guard job. Only one of the two
+    # cron firings actually does work each day; the other is a no-op
+    # within ~10 seconds of the guard check.
+    #
+    #   - cron: '30 20 * * 1-5'  → 4:30 PM ET during EDT (Mar-Nov)
+    #   - cron: '30 21 * * 1-5'  → 4:30 PM ET during EST (Nov-Mar)
+    #
+    # The `guard` job below uses TZ=America/New_York to check the actual
+    # ET hour and emits should_run=true ONLY when ET hour == 16. The
+    # `refresh` job has `needs: guard` and `if: needs.guard.outputs.should_run == 'true'`,
+    # so the heavy pipeline executes exactly once per weekday at 4:30 PM ET.
+    - cron: '30 20 * * 1-5'
     - cron: '30 21 * * 1-5'
-  workflow_dispatch: {}  # manual trigger from Actions UI
+  workflow_dispatch: {}  # manual trigger from Actions UI (bypasses guard)
 
 # Need write access to push the refreshed dashboard cache back to main.
 permissions:
   contents: write
 
 jobs:
+  # ----------------------------------------------------------------------
+  # DST-aware time guard. Always runs (cheap), but only signals
+  # should_run=true when the current ET wall-clock hour is 16 (4 PM).
+  # Manual workflow_dispatch always proceeds (bypasses the hour check).
+  # ----------------------------------------------------------------------
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      should_run: ${{ steps.tzcheck.outputs.should_run }}
+    steps:
+      - name: Check ET hour (DST guard)
+        id: tzcheck
+        run: |
+          ET_HOUR=$(TZ=America/New_York date +%H)
+          ET_FULL=$(TZ=America/New_York date)
+          UTC_FULL=$(date -u)
+          echo "UTC time: $UTC_FULL"
+          echo "ET  time: $ET_FULL"
+          echo "ET hour:  $ET_HOUR"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual dispatch — proceeding regardless of hour."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$ET_HOUR" = "16" ]; then
+            echo "ET hour is 16 (4 PM) — proceeding."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ET hour is $ET_HOUR (not 16). Skipping scheduled run."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   refresh:
+    needs: guard
+    if: needs.guard.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:

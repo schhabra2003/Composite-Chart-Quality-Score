@@ -299,6 +299,24 @@ Files reverted:
 
 See `SPEC.md` §Phase 14R.
 
+### Phase 14R.H — DST-aware cron fix (2026-05-26) ✓ SHIPPED
+
+CI workflow `.github/workflows/pipeline.yml` updated so the scheduled
+pipeline fires at exactly **4:30 PM ET year-round (M-F)**, regardless of
+DST. Previously a single cron (`30 21 * * 1-5` UTC) was correct only
+during EST (winter); during EDT (summer, current) it fired at 5:30 PM
+ET, one hour late.
+
+Implementation: two cron entries (`30 20` for EDT + `30 21` for EST)
+plus a TZ-aware `guard` job that checks `TZ=America/New_York date +%H`.
+The heavy `refresh` job has `needs: guard` and only runs when the
+guard signals `should_run=true` (ET hour == 16). The wrong-DST cron
+firing exits in ~10 seconds via the guard. Manual `workflow_dispatch`
+bypasses the guard.
+
+Net effect: exactly one full pipeline execution per weekday at
+4:30 PM ET, year-round. No DST drift.
+
 ### Phase 15 — Small Cap CCQS (CCQS-SC) development [PLANNED]
 
 Separate Small Cap CCQS tool with independent empirical methodology.
