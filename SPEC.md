@@ -1,6 +1,8 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — **Phase 10 (volume-pattern addition, 2026-05-26)**.
+**Version:** 1.0 (Locked) — **Phase 10 (volume-pattern addition) + Phase 11A
+(state classification validated) + Phase 11.B.1 (dead setup removed,
+2026-05-26)**.
 Adds `s_volume` (bundled `low_rel_vol_10d` + `volume_buzz_50`) as an 11th
 component at 3% per state; existing 10 components scaled by 0.97. First
 empirical win since Phase 8a: walk-forward 5d paired t = +2.01 (clears
@@ -8,7 +10,13 @@ empirical win since Phase 8a: walk-forward 5d paired t = +2.01 (clears
 20d t-stat 1.95 → 2.04 (crosses back above institutional 2.0); 60d/126d
 preserved (NS deltas). EXHAUSTION-state IC +0.006 to +0.016 across every
 horizon — resolves the architectural fragility documented across Priority
-3c / Phase 8a.1 / Phase 8b. Built on:
+3c / Phase 8a.1 / Phase 8b. Phase 11A empirically validates all 6 states
+as statistically distinguishable; documents critical "context-classifier,
+not buy/sell signal" insight (TRENDING underperforms universe, EXHAUSTION
+outperforms by +0.07 at 60d). Phase 11B confirms the same "context, not
+direction" pattern at the setup layer (the "premium label, no alpha"
+finding); Phase 11.B.1 removes dead setup "Consolidation Within Strong
+Theme" (n=0). Built on:
 Phase 8a (residual momentum addition) + Phase 7 (Priority 3a: `s_demand`
 removal + carrier redistribution) + Priority 3d (conditional performance
 warnings, display-layer only) + Phase 5.5–5.8 (vocabulary audit,
@@ -1945,6 +1953,352 @@ at every horizon.)
 Full investigation outputs preserved at `/tmp/p10_volume_features.py`,
 `/tmp/p10b_volume_refined.py`, `/tmp/p10c_conditional.py`, the three
 JSON results files, and `/tmp/PHASE_10_REPORT.md`.
+
+---
+
+### Phase 11A — State Classification Validation (2026-05-26)
+
+**Headline finding: THE STATE CLASSIFIER IS A CONTEXT CLASSIFIER, NOT A
+BUY/SELL SIGNAL.**
+
+The 6-state classification system (TRENDING, PULLBACK, CONSOLIDATING,
+EXHAUSTION, DETERIORATING, INDETERMINATE) describes WHERE a stock is in
+its cycle, NOT what will happen next. Forward-return ordering is
+counterintuitive to the state names — and that's not a bug, it's
+empirical reality.
+
+#### Forward-return ranking (60d horizon)
+
+| Rank | State | μ 60d return | Δ vs universe | Annualized IR | Hit rate |
+| ---- | ----- | ------------ | ------------- | ------------- | -------- |
+| 1 | **EXHAUSTION** | **+9.3%** | **+4.1%** | +0.54 | 58.0% |
+| 2 | INDETERMINATE | +6.3% | +1.1% | +0.42 | 59.1% |
+| 3 | DETERIORATING | +5.7% | +0.5% | +0.44 | 59.1% |
+| — | Universe | +5.2% | — | — | — |
+| 4 | TRENDING | +4.2% | **−1.0%** | +0.41 | 57.8% |
+| 5 | PULLBACK | +4.1% | **−1.1%** | +0.39 | 58.3% |
+| 6 | CONSOLIDATING | +2.7% | **−2.5%** | +0.24 | 55.8% |
+
+At 126d the asymmetry intensifies: EXHAUSTION delivers +18.4%
+(1.6× universe); TRENDING delivers +10.9% (essentially universe-level).
+At every horizon and in every pairwise comparison, the 6 states are
+statistically distinguishable (p < 0.001 with these sample sizes).
+No state is empirically redundant.
+
+#### Implications for user interpretation
+
+**TRENDING is NOT a buy signal.** Stocks classified as "clean uptrend
+in progress" UNDERPERFORM the universe mean at every horizon. This
+reflects the well-documented winner's-curse / mean-reversion-of-extremes
+effect in equity returns. By the time a stock obviously TRENDS, the
+incremental edge is already partially priced in.
+
+**EXHAUSTION is NOT a sell signal.** Stocks classified as
+"parabolic / late-stage exhaustion" produce the HIGHEST forward
+returns. Momentum continues. The EXHAUSTION label captures CHARACTER
+(extended, parabolic, high vol) — not DIRECTION.
+
+**States describe character / condition, not future direction.**
+Forward-direction signal comes from CCQS itself (which combines
+components weighted by state probability), from the leadership tier,
+and from setup classification — but NOT from state alone.
+
+#### What the state machine IS good for
+
+- **Understanding stock's current cycle position** — where is it in
+  the trend / pullback / consolidation / exhaustion arc?
+- **Risk awareness** — EXHAUSTION stocks are parabolic and volatile;
+  CONSOLIDATING stocks have lost drive; DETERIORATING stocks may
+  continue lower for a long time (12.9d mean run, 92.3% daily stickiness).
+- **Strategy matching** — different trading strategies are appropriate
+  for different states; the dashboard's setup classifier already maps
+  setups to states.
+- **Filtering and screening** — finding only stocks in TRENDING with
+  CCQS > 80 is meaningful; "TRENDING alone" is not.
+
+#### What the state machine is NOT good for
+
+- Direct forward-return prediction in isolation
+- Standalone buy/sell signal
+- Replacing CCQS as the quality measure
+
+#### Additional findings
+
+**Persistence** (run-length analysis):
+
+| State | Mean run | Median | p90 | Sticky % (1-day) |
+| ----- | -------- | ------ | --- | ---------------- |
+| DETERIORATING | 12.9d | 4d | 38d | **92.3%** (broken stocks stay broken) |
+| INDETERMINATE | 6.4d | 2d | 13d | 84.5% |
+| TRENDING | 5.6d | 3d | 15d | 82.3% |
+| EXHAUSTION | 4.3d | 2d | 11d | 76.7% |
+| CONSOLIDATING | 3.9d | 2d | 9d | 74.5% |
+| PULLBACK | 3.6d | 2d | 8d | 72.4% (noisiest active state) |
+
+Overall local stability: **72.27%** of (ticker, date) cells have the
+same primary_state on both the previous and following trading day —
+appropriate noise floor (not so sticky that the classifier is over-
+confident; not so noisy that thresholds are jittery).
+
+**Transition matrix** (all transitions physically sensible):
+- TRENDING → PULLBACK (11.0%) — natural rest in uptrend
+- EXHAUSTION → TRENDING (12.9%) — parabolic resolves to trend, NOT crash
+- PULLBACK → INDETERMINATE (12.1%) — pullbacks often resolve to noise
+- DETERIORATING → DETERIORATING (92.3%) — once broken, stay broken
+- EXHAUSTION → CONSOLIDATING (0.0%), EXHAUSTION → DETERIORATING (0.0%) —
+  no overnight crashes; non-physical transitions correctly suppressed
+
+**Threshold sensitivity** (perturb each Gaussian μ or σ by ±20%, observe
+state population shift):
+
+Most parameters are mid-slope (single-parameter ±20% moves population
+by 1–5%). The state machine isn't at razor-edge cliffs. **Standout:**
+`PULLBACK mu_rsi_14 = 45.0` is the most sensitive (|Δpop| = 13.55%
+combined; −20% perturbation shrinks PULLBACK by 9.8%). Not broken —
+just on a steep part of the RSI distribution. Worth a focused 1-D grid
+search if precision tuning becomes a priority (filed as deferred
+follow-up, not required for system correctness).
+
+**Confidence-blend mechanism** (Phase X.2.1 — blend toward INDETERMINATE
+when max_p is low):
+
+| Bucket | n | mean p_adj_INDETERMINATE | Expected | Verified |
+| ------ | - | ------------------------ | -------- | -------- |
+| low_conf (<0.5) | 406,167 | 0.6306 | ≥ 0.50 from 50/50 rule | ✓ |
+| med_conf (0.5–0.7) | 511,069 | 0.5024 | ≥ 0.30 from 70/30 rule | ✓ |
+| hi_conf (≥0.7) | 612,011 | 0.4405 | unchanged | ✓ |
+
+Distribution: 26.6% of rows are low-confidence (50/50 blend); 33.4% are
+medium (70/30 blend); 40.0% are high-confidence (unchanged). The
+mechanism is operating exactly as designed.
+
+**Forward returns by confidence quintile (60d):**
+
+| Quintile | μ 60d | Hit rate |
+| -------- | ----- | -------- |
+| Q1 (low) | +4.40% | 58.3% |
+| Q2 | +5.07% | 58.8% |
+| Q3 | +5.46% | 58.8% |
+| Q4 | +5.40% | 58.5% |
+| Q5 (high) | +6.02% | 58.2% |
+
+State **confidence predicts magnitude, not direction.** The mean
+forward return increases monotonically with confidence (Q5 / Q1 = 1.37×),
+but hit rates are essentially identical (~58% in every quintile).
+Higher-confidence states tend to be in stronger momentum regimes (hence
+larger absolute moves) but the direction is determined by component
+signals inside CCQS, not by state confidence alone.
+
+#### Recommendations
+
+1. **KEEP ALL 6 STATES.** Every state is statistically distinguishable
+   from every other state at every horizon. No state is redundant.
+2. **Document the "context, not direction" framing** prominently
+   (this SPEC entry + dashboard tooltips — the latter to be added in
+   Phase 11D synthesis after 11B/11C complete).
+3. **Defer threshold tuning** (PULLBACK mu_rsi_14) — not urgent.
+4. **No architectural changes** to the state machine itself.
+
+#### Outputs
+
+- Investigation script: `/tmp/p11a_state_validation.py`
+- Raw results JSON: `/tmp/p11a_results.json`
+- Full report: `/tmp/PHASE_11A_REPORT.md`
+
+---
+
+### Phase 11B — Setup Classification Validation (2026-05-26)
+
+**Headline finding: THE "PREMIUM LABEL, NO ALPHA" PATTERN.**
+
+Setups carrying premium-sounding names (VCP Setup, Emerging Leader,
+Premium Pullback, Theme Leader Pullback) UNDERPERFORM the universe mean
+at 60d. Setups carrying weakness-related names (Capitulation Selling,
+Distribution Pattern, Sustained Weakness, Volume-Confirmed Exhaustion)
+OUTPERFORM. This parallels Phase 11A's state-as-context finding at the
+setup layer. **Names describe TECHNICAL PATTERN observed currently, not
+future direction.**
+
+This is a SYSTEM-WIDE design lesson now documented across both layers:
+neither state labels nor setup labels function as standalone buy/sell
+signals. The actual buy/sell signal is CCQS, which combines components
+weighted by state probability — both state and setup serve as
+RISK/STRATEGY CONTEXT, not as direct forward-return predictors.
+
+#### Forward-return ranking (60d, universe baseline +5.20%)
+
+**Top performers (significantly above universe):**
+
+| Setup | n | μ 60d | Δ vs uni | Mode state |
+| ----- | - | ----- | -------- | ---------- |
+| Volume-Confirmed Exhaustion | 465 | **+16.70%** | +11.50% | EXHAUSTION |
+| Exhaustion (Generic) | 3,481 | +12.74% | +7.54% | EXHAUSTION |
+| Capitulation Selling | 2,870 | +11.26% | +6.06% | DETERIORATING |
+| Elite Leader Continuation | 284 | +11.20% | +6.00% | TRENDING |
+| Sustained Weakness | 87,960 | +10.19% | +4.99% | DETERIORATING |
+| Distribution Pattern | 95,536 | +9.62% | +4.42% | DETERIORATING |
+| Deteriorating w/ Bullish Divergence | 57,534 | +9.20% | +4.00% | DETERIORATING |
+| Trending Leadership | 40,491 | +7.89% | +2.69% | TRENDING |
+| Exhaustion w/ Bearish Divergence | 10,241 | +7.56% | +2.36% | EXHAUSTION |
+| Trend Continuation | 44,005 | +7.46% | +2.26% | TRENDING |
+| BB Squeeze with RS | 7,750 | +7.19% | +1.99% | CONSOLIDATING |
+| Pullback to 21EMA | 25,002 | +6.08% | +0.88% | PULLBACK |
+| Pullback to 50MA | 14,010 | +5.97% | +0.77% | PULLBACK |
+| Extreme Extension | 16,589 | +5.56% | +0.36% | EXHAUSTION |
+
+**Premium-labeled underperformers (statistically below universe):**
+
+| Setup | n | μ 60d | Δ vs uni | t vs uni |
+| ----- | - | ----- | -------- | -------- |
+| Extended Exhaustion | 18,141 | +4.81% | −0.39% | **−2.91\*** |
+| Premium Pullback | 10,245 | +4.62% | −0.58% | **−2.72\*** |
+| Failed Breakout | 25,973 | +4.54% | −0.66% | **−5.02\*** |
+| Theme Leader Pullback | 58,974 | +4.47% | −0.73% | **−7.29\*** |
+| Indeterminate Pattern | 252,633 | +4.14% | −1.06% | **−19.93\*** |
+| Deteriorating (Generic) | 170,499 | +4.00% | −1.20% | **−26.98\*** |
+| **Emerging Leader** | 8,999 | +3.94% | −1.26% | **−6.70\*** |
+| **VCP Setup** | 4,270 | +3.91% | −1.29% | **−4.60\*** |
+| Routine Pullback | 141,673 | +3.78% | −1.42% | **−27.46\*** |
+| Range Consolidation | 181,954 | +3.28% | −1.92% | **−36.08\*** |
+| Trending (Generic) | 123,230 | +3.22% | −1.98% | **−36.69\*** |
+| Consolidating (Generic) | 25,568 | +2.40% | −2.80% | **−20.35\*** |
+
+#### Key interpretation
+
+**What setup classifications ARE good for:**
+- Pattern recognition and categorization
+- Risk awareness (e.g., Exhaustion patterns = parabolic stocks)
+- Strategy matching (different strategies for different patterns)
+- Filtering and screening
+
+**What setup classifications are NOT good for:**
+- Direct forward-return prediction based on label alone
+- "Buy the premium-labeled stocks" approach
+- Standalone signal without CCQS context
+
+The label tells you WHAT KIND of stock you're looking at; CCQS tells you
+whether the components inside are firing on aligned positive momentum
+signals. The combination is the signal.
+
+#### Statistical equivalences
+
+**34 setup pairs (out of 325 tested) are statistically equivalent (Welch's
+t-test p > 0.05).** Most notable:
+
+| Setup A | Setup B | p | Interpretation |
+| ------- | ------- | - | -------------- |
+| **VCP Setup** | **Emerging Leader** | 0.940 | Both "buy" setups, identical performance, both underperform universe |
+| Capitulation Selling | Elite Leader Continuation | 0.978 | Coincidental — very different categories |
+| Pullback to 21EMA | Pullback to 50MA | 0.670 | Two MA references, indistinguishable forward returns |
+| Failed Breakout | Premium Pullback | 0.756 | Different gates, same outcome |
+| Sustained Weakness | Distribution Pattern | (high overlap, see Jaccard) | DETERIORATING-family overlap |
+
+The VCP Setup ≡ Emerging Leader equivalence is empirically meaningful:
+both setups carry "high-quality long" branding, both have multi-condition
+gates, both underperform universe, and they're statistically
+indistinguishable from each other AND from Deteriorating (Generic) AND
+from Routine Pullback. Strong candidate for merge or removal in Phase
+11.D synthesis.
+
+#### Cascade design validation
+
+For most setups, **cascade-assigned rows outperform "would-have-matched"
+rows that were masked by higher-priority assignments.** Strongest
+evidence:
+
+| Setup | Cascade μ 60d | Masked μ 60d | Cascade enrichment |
+| ----- | ------------- | ------------ | ------------------ |
+| Volume-Confirmed Exhaustion | +16.70% | +6.80% | +9.90% |
+| Elite Leader Continuation | +11.20% | +8.05% | +3.15% |
+| Trend Continuation | +7.46% | +4.86% | +2.60% |
+| Exhaustion w/ Bearish Divergence | +7.56% | +5.99% | +1.57% |
+| Trending Leadership | +7.89% | +6.62% | +1.27% |
+
+Range Consolidation and Failed Breakout show "masked outperforms
+cascade" — but this is EXPECTED, not a bug: these setups sit near the
+bottom of the cascade, so when a row qualifies for them AND for a higher-
+priority setup, the higher-priority assignment is correct (it carries
+the better forward return). The "masked" rows are the ones that got
+captured by higher-priority setups.
+
+**Conclusion: first-match-wins priority captures the higher-edge subset.
+The cascade design is empirically validated.**
+
+#### Cross-setup overlap (Jaccard similarity of would-match masks)
+
+| Setup A | Setup B | Jaccard | Note |
+| ------- | ------- | ------- | ---- |
+| Trend Continuation | Trending Leadership | 0.418 | Trend Continuation ⊂ Trending Leadership (every TC qualifies as TL) |
+| Distribution Pattern | Sustained Weakness | 0.378 | DETERIORATING-family overlap |
+| Pullback to 21EMA | Pullback to 50MA | 0.323 | Adjacent-MA overlap |
+| Extended Exhaustion | Trending Leadership | 0.214 | Extended exhaustion stocks often also trend leaders |
+
+Some overlap is expected (related patterns share gating logic). No
+overlap is excessive enough to warrant immediate merge — except the
+already-flagged VCP/Emerging Leader pair.
+
+#### Threshold sensitivity
+
+Most setup thresholds are mid-slope (single-parameter ±20% perturbations
+move would-match population by 1–6%). Current values are operating in
+reasonable working zones. Standouts:
+
+- **Distribution Pattern's `dist_days_min = 8`** is the most sensitive
+  (|Δpop| = 10.9%). Lowering to 6.4 would expand population by 13%.
+- **Sustained Weakness's `pct_ma_50_max = −8`** also sensitive
+  (|Δpop| = 6.5%).
+- **Trending Leadership's `rs_spy_min = 80`** sensitive (|Δpop| = 6.2%).
+
+No threshold appears badly chosen. No single perturbation reveals an
+obvious "we're missing a lot of signal here" gap.
+
+#### Low-sample setups (statistical caveats)
+
+Findings statistically weak for:
+- **Volume-Confirmed Exhaustion (n=465)** — moderate confidence; the
+  +16.70% return is significant (t=+3.20) but the small sample size
+  means a wider confidence band than other setups.
+- **Elite Leader Continuation (n=284)** — moderate confidence.
+- **Elite Leader Pullback (n=4)** — too small for inference. The
+  conjunction (`p_pullback > 0.5 AND ELITE_LEADER`) is empirically rare.
+- **Tight Consolidation Pre-Breakout (n=7)** — too small for inference.
+  Very restrictive gates make this label fire essentially never.
+
+These rare setups are retained in the cascade because the underlying
+gating logic is conceptually sound — but their empirical performance
+cannot be evaluated with statistical confidence given the sample sizes.
+
+#### Phase 11.B.1 patch (shipped 2026-05-26)
+
+**Removed dead setup: "Consolidation Within Strong Theme"** (n=0). The
+rule required `theme_strong = pd.Series(False, ...)` from the aggregation
+layer, which was never wired through to the setup_classifier. Never
+fired in any of 1,529,247 (ticker, date) rows.
+
+Cascade simplified: 29 labels → 28 labels. No effect on CCQS (the setup
+classifier output doesn't feed back into the composite score).
+Pipeline verified clean (11/11 sanity checks pass, 140/140 TV reference
+fields pass on all 10 canaries).
+
+#### Decisions deferred to Phase 11.D synthesis
+
+The following Phase 11B recommendations are documented but **not
+implemented in 11.B.1** (pending cross-layer synthesis):
+
+1. **Merge or drop `VCP Setup` + `Emerging Leader`** (statistically
+   equivalent, both underperform universe).
+2. **Rename `Extended Exhaustion`** to better describe its empirical
+   character (mode state is TRENDING, not EXHAUSTION).
+3. **Consider merging `Pullback to 21EMA` + `Pullback to 50MA`**
+   (statistically indistinguishable, both outperform universe).
+4. **Review `Premium Pullback` criteria** (underperforms despite heavy
+   "quality" gating — same "premium label, no alpha" pattern).
+
+#### Outputs
+
+- Investigation script: `/tmp/p11b_setup_validation.py`
+- Raw results JSON: `/tmp/p11b_results.json`
+- Full report: `/tmp/PHASE_11B_REPORT.md`
 
 ---
 

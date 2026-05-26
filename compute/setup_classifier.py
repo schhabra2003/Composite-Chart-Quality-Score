@@ -1,9 +1,17 @@
 """
 CCQS V1 — Setup Classification (SPEC Section 10)
 
-24 priority-ordered setup categories. First-match-wins along the priority
-chain. Theme-aware setups (Consolidation Within Strong Theme) require the
-aggregation layer's `theme_class`; if unavailable they never fire.
+23 priority-ordered specific setups + 5 state-aware catch-alls + 1 final
+fallback ("Indeterminate Pattern") = 28 active labels. First-match-wins
+along the priority chain.
+
+Phase 11.B.1 (2026-05-26): removed "Consolidation Within Strong Theme"
+(setup #18 in the prior cascade) which was dead code — it required a
+`theme_strong` flag from the aggregation layer that was never wired
+through, so the rule never fired (n=0 over 1.53M rows in the Phase 11B
+audit). The aggregation layer's `theme_class` remains available for a
+future revival of theme-aware setups, but the empty rule is no longer
+on the cascade.
 
 Run:
     python -m compute.setup_classifier
@@ -52,12 +60,13 @@ SETUP_LABELS: list[str] = [
     "Trend Continuation", "Trending Leadership",
     # Pullback (16-17)
     "Pullback to 21EMA", "Pullback to 50MA",
-    # Consolidating (18-22)
-    "Consolidation Within Strong Theme", "Tight Consolidation Pre-Breakout",
+    # Consolidating (18-21) — Phase 11.B.1: removed dead
+    # "Consolidation Within Strong Theme" (n=0, theme_strong hardcoded False).
+    "Tight Consolidation Pre-Breakout",
     "VCP Setup", "BB Squeeze with RS", "Range Consolidation",
-    # Failure / Transition (23)
+    # Failure / Transition (22)
     "Failed Breakout",
-    # State-aware catch-alls (24-29) — assigned when no specific rule fired.
+    # State-aware catch-alls (23-28) — assigned when no specific rule fired.
     "Trending (Generic)", "Routine Pullback", "Consolidating (Generic)",
     "Exhaustion (Generic)", "Deteriorating (Generic)", "Indeterminate Pattern",
 ]
@@ -118,9 +127,6 @@ def classify_setups(
     tier = leadership["leadership_tier"].astype(str)
     is_elite = tier == "ELITE_LEADER"
     is_basket_leader = _bool(leadership["is_basket_leader"])
-
-    # Theme class is not yet computed (aggregation layer, SPEC §12).
-    theme_strong = pd.Series(False, index=idx)
 
     # Helper: only fill where unassigned.
     def _apply(mask: pd.Series, label: str, conf: float) -> None:
@@ -250,32 +256,30 @@ def classify_setups(
         "Pullback to 50MA", 0.80,
     )
 
-    # ---- 18. Consolidation Within Strong Theme --------------------------
-    # Requires theme_class from aggregation layer; never fires in Phase 3.
-    _apply(bb_sq & theme_strong, "Consolidation Within Strong Theme", 0.85)
-
-    # ---- 19. Tight Consolidation Pre-Breakout ---------------------------
+    # ---- 18. Tight Consolidation Pre-Breakout ---------------------------
+    # (Previous #18 "Consolidation Within Strong Theme" removed in Phase
+    # 11.B.1 — dead code that never fired; see module docstring.)
     _apply(
         bb_sq & (vcp_q >= 70) & (rs_spy >= 85) & (vol_z >= 0.5),
         "Tight Consolidation Pre-Breakout", 0.90,
     )
 
-    # ---- 20. VCP Setup ---------------------------------------------------
+    # ---- 19. VCP Setup ---------------------------------------------------
     _apply(
         (vcp_q >= 60) & (rs_spy >= 75) & (sma_stack >= 75),
         "VCP Setup", 0.80,
     )
 
-    # ---- 21. BB Squeeze with RS ------------------------------------------
+    # ---- 20. BB Squeeze with RS ------------------------------------------
     _apply(
         bb_sq & (bb_w < 20) & (rs_spy >= 70),
         "BB Squeeze with RS", 0.75,
     )
 
-    # ---- 22. Range Consolidation -----------------------------------------
+    # ---- 21. Range Consolidation -----------------------------------------
     _apply(bb_sq | (bb_w < 15), "Range Consolidation", 0.70)
 
-    # ---- 23. Failed Breakout ---------------------------------------------
+    # ---- 22. Failed Breakout ---------------------------------------------
     # Tightened: a true failed breakout requires both a flag AND post-failure
     # weakness (below the 50MA) AND non-leadership. Otherwise a "flag tap"
     # on a strong stock got mis-labeled as failure.
@@ -284,7 +288,7 @@ def classify_setups(
         "Failed Breakout", 0.85,
     )
 
-    # ---- 24-29. State-aware catch-alls -----------------------------------
+    # ---- 23-28. State-aware catch-alls -----------------------------------
     # Anything still unassigned gets a label that reflects its primary state,
     # rather than collapsing into a single "Mixed" bucket. This keeps
     # downstream consumers informed about whether the stock is in a healthy
