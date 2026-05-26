@@ -355,15 +355,16 @@ def get_grade_jumps_today() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 COMPONENT_DISPLAY_NAMES = {
-    "s_rs":              "RS",
-    "s_rs_leadership":   "RS Leadership",
-    "s_rsl":             "RSL",
-    "s_trend_slope":     "Trend Slope",
-    "s_structure":       "Structure",
-    "s_mtf":             "MTF",
-    "s_extension":       "Extension",
-    "s_demand":          "Demand",
-    "s_momentum":        "Momentum",
+    "s_rs":                  "RS",
+    "s_rs_leadership":       "RS Leadership",
+    "s_residual_momentum":   "Residual Momentum",
+    "s_rsl":                 "RSL",
+    "s_trend_slope":         "Trend Slope",
+    "s_structure":           "Structure",
+    "s_mtf":                 "MTF",
+    "s_extension":           "Extension",
+    "s_demand":              "Demand",
+    "s_momentum":            "Momentum",
 }
 
 

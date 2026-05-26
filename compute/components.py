@@ -52,7 +52,8 @@ logger.add(LOG_DIR / "ccqs.log", level="DEBUG", rotation="10 MB", retention="30 
 EPS = 1e-10
 
 COMPONENT_COLS = [
-    "s_rs", "s_rs_leadership", "s_rsl", "s_trend_slope", "s_structure",
+    "s_rs", "s_rs_leadership", "s_residual_momentum",
+    "s_rsl", "s_trend_slope", "s_structure",
     "s_mtf", "s_extension", "s_demand", "s_momentum",
 ]
 
@@ -178,6 +179,39 @@ def _compute_s_rs_leadership(features: pd.DataFrame, z: pd.DataFrame) -> pd.Seri
     s_lead = s_lead.where(vol_conf, capped)
 
     return s_lead
+
+
+def _compute_s_residual_momentum(features: pd.DataFrame) -> pd.Series:
+    """S_RESIDUAL_MOMENTUM — Phase 8a residual / idiosyncratic momentum.
+
+    Per-date cross-sectional robust z of the 126-day residual momentum
+    feature. The feature itself (`residual_momentum_126d` in
+    compute/features.py) is the trailing-126d sum of daily residual
+    log-returns, where each day's residual is
+
+        r_resid[t] = r_i[t] - β_lag1[t] · r_SPY[t]
+
+    and β_lag1 is the trailing 252-day rolling OLS beta vs SPY (shifted
+    one day to eliminate look-ahead).
+
+    Empirical basis: Blitz–Huij–Martens (2011), Robeco production usage.
+    Phase 8a pre-implementation test showed:
+      - Standalone IC at 126d-fwd = +0.0466 (t=14.4)
+      - Orthogonal-to-`s_rs` IC at 126d-fwd: +0.0246, t=+8.63
+        (overwhelmingly significant incremental signal beyond `s_rs`)
+      - Walk-forward paired t-test: 60d t=2.05, 126d t=2.72
+      - 23 of 24 (state × horizon) cells improve
+
+    Weighted at 5% in every state in compute/ccqs.py STATE_WEIGHTS.
+
+    Clipped at ±10 (matches standardization.py's clamp on the z-scored
+    feature frame). Residual momentum has fatter tails than the other
+    components — sums of log-residuals can hit large magnitudes on
+    crash/recovery dates — so the clip is defensive insurance against
+    extreme outliers dominating the per-date Bayesian composite.
+    """
+    z = per_date_robust_z(features["residual_momentum_126d"].astype(float))
+    return z.clip(lower=-10.0, upper=10.0)
 
 
 def _compute_s_rsl(z: pd.DataFrame) -> pd.Series:
@@ -346,6 +380,7 @@ def compute_components(features: pd.DataFrame, z_scores: pd.DataFrame) -> pd.Dat
     out = pd.DataFrame(index=features.index)
     out["s_rs"] = _compute_s_rs(z)
     out["s_rs_leadership"] = _compute_s_rs_leadership(features, z)
+    out["s_residual_momentum"] = _compute_s_residual_momentum(features)
     out["s_rsl"] = _compute_s_rsl(z)
     out["s_trend_slope"] = _compute_s_trend_slope(features, z)
     out["s_structure"] = _compute_s_structure(features, z)

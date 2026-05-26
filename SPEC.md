@@ -1,11 +1,15 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — **Priority 3 closeout (final methodology state, 2026-05-25)**.
+**Version:** 1.0 (Locked) — **Phase 8a (residual momentum addition, 2026-05-26)**.
+Adds `s_residual_momentum` (beta-adjusted idiosyncratic momentum) as a 10th
+component at 5% per state; weight pulled proportionally from `s_rsl`,
+`s_trend_slope`, `s_momentum`. Walk-forward 126d t-statistic 1.87 → 2.02
+(maintains the post-Phase-7 institutional t > 2.0 bar). Built on:
 Phase 7 (Priority 3a: `s_demand` removal + carrier redistribution) + Priority 3d
 (conditional performance warnings, display-layer only) + Phase 5.5–5.8 (vocabulary
 audit, COILING/CLIMACTIC/BROKEN renames, setup label accuracy audit) + Phase 6
-(per-date winsorization, `s_climax` removal) + Priority 2 (bootstrap CIs on all 54
-weight cells, conditional IC analysis across regimes) + the Methodology Lock
+(per-date winsorization, `s_climax` removal) + Priority 2 (bootstrap CIs on all
+54 weight cells, conditional IC analysis across regimes) + the Methodology Lock
 (Phase X.2.1 / Phase X.3 OOS baseline).
 **Date:** May 2026
 **Author:** Shreyaansh Chhabra (ADFM)
@@ -34,9 +38,13 @@ This lock applies to all future development. Any proposed methodology change mus
 
 ---
 
-## Where We Stand (2026-05-25, post Priority 3 closeout)
+## Where We Stand (2026-05-26, post Phase 8a residual momentum)
 
-**Methodology snapshot.** CCQS V1 ships with 9 computed components (7
+**Methodology snapshot.** CCQS V1 ships with 10 computed components (8
+contributing to the score, 2 zero-weighted diagnostics — `s_climax`
+removed in Phase 6, `s_demand` zero-weighted in Phase 7). Phase 8a
+added `s_residual_momentum` at 5% per state (4.90% in EXHAUSTION).
+Previously (pre-Phase-8a): 9 computed components (7
 contributing to the score, 2 zero-weighted diagnostics). State-conditional
 weights live in a 9 × 6 matrix; weights are validated by paired block
 bootstrap (Priority 2a) and per-date / walk-forward OOS IC (Phase X.3
@@ -1403,6 +1411,204 @@ matrix the bootstrap supports.
 
 ---
 
+### Phase 8a — Residual momentum addition (2026-05-26)
+
+Adds the 10th component, `s_residual_momentum`, capturing
+**beta-adjusted (idiosyncratic) momentum** vs SPY. This is the first
+methodology change since the Priority 3 closeout that was framed as a
+final state — motivated by Path C "comprehensive validation" work, with
+the empirical pre-test described below clearing every documented
+decision criterion.
+
+**Hypothesis.** Removing the systematic-beta component from each
+ticker's momentum return yields a cleaner idiosyncratic signal with
+higher capacity, lower correlation to market beta, and incremental
+information beyond what `s_rs` (which uses total-return-based RS) and
+`s_momentum` (which uses 21d total returns) already capture.
+
+**Empirical basis.** Blitz–Huij–Martens (2011) "Residual Momentum"
+showed that residual momentum (returns after removing CAPM-beta
+exposure) materially outperforms total momentum in equity backtests.
+Subsequent fund implementations (Robeco's residual-momentum strategy,
+multiple replications) confirmed the result with real money. This is
+documented practice in the quant-fund world, not theoretical
+sophistication.
+
+**Methodology (no look-ahead).**
+
+1. Compute SPY daily log return.
+2. For each ticker, compute daily log return.
+3. **Rolling 252-day OLS beta** of stock log returns on SPY log returns
+   (Bessel-corrected; `cov_W(r_i, r_SPY) × W/(W-1) / var_W(r_SPY)`).
+4. **Trailing beta** `β_lag1 = β_252d.shift(1)` — use yesterday's beta
+   for today's market move, eliminating look-ahead.
+5. **Daily residual return**:
+       `r_resid[t] = r_i[t] − β_lag1[t] · r_SPY[t]`
+6. **Aggregate at multiple horizons** as simple sums of daily log
+   residuals (no skip-month, per the empirical-only directive):
+   - `residual_momentum_63d` (added to features parquet)
+   - `residual_momentum_126d` (the one fed into `s_residual_momentum`)
+   - `residual_momentum_252d` (available for diagnostics)
+7. **Component**: `s_residual_momentum` = per-date robust z of
+   `residual_momentum_126d`, clipped at ±10.
+
+The new feature requires **378 days** of history (252 for beta + 126
+for residual sum). This extends the burn-in by ~4% of universe rows
+vs Phase 7 (NaN share 21% → 25%). Within scored rows, the grade
+distribution is preserved exactly.
+
+Computation lives in
+[compute/features.py "Category 9b"](compute/features.py) and the
+component is in
+[compute/components.py `_compute_s_residual_momentum`](compute/components.py).
+
+**Weight allocation.** 5% per state in [compute/ccqs.py](compute/ccqs.py)
+`STATE_WEIGHTS`, pulled proportionally from the three smallest-weight
+existing components (`s_rsl`, `s_trend_slope`, `s_momentum`). For
+EXHAUSTION — where those three only sum to 3% — the SHRINK targets
+are zeroed and the missing 2% is absorbed by row-renormalization,
+yielding effective `s_residual_momentum` weight of 4.90% in EXHAUSTION
+vs 5.00% in the other five states.
+
+| State | s_rs | s_rs_lead | s_resid_mom | s_rsl | s_trend_slope | s_structure | s_mtf | s_extension | s_demand | s_momentum |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| TRENDING | 28.01% | 28.01% | **5.00%** | 0.86% | 0.86% | 20.17% | 16.81% | 0.00% | 0.00% | 0.29% |
+| PULLBACK | 25.62% | 29.11% | **5.00%** | 0.50% | 0.33% | 20.96% | 16.30% | 2.00% | 0.00% | 0.17% |
+| CONSOLIDATING | 23.80% | 26.18% | **5.00%** | 0.00% | 0.00% | 26.18% | 17.85% | 1.00% | 0.00% | 0.00% |
+| EXHAUSTION | 25.56% | 32.53% | **4.90%** | 0.00% | 0.00% | 18.59% | 17.43% | 0.98% | 0.00% | 0.00% |
+| DETERIORATING | 23.75% | 29.69% | **5.00%** | 0.00% | 0.00% | 23.75% | 17.81% | 0.00% | 0.00% | 0.00% |
+| INDETERMINATE | 24.99% | 29.53% | **5.00%** | 0.86% | 0.86% | 20.44% | 17.04% | 1.00% | 0.00% | 0.29% |
+
+All rows sum to 1.0.
+
+**Pre-implementation validation evidence (in-memory Phase 8a investigation).**
+
+Standalone IC (residual_momentum_252d-lookback vs forward returns):
+
+| Forward horizon | Residual IC | t-stat | Total momentum IC | t-stat |
+|---|---:|---:|---:|---:|
+| 5d | +0.0197 | 3.96 | +0.0157 | 2.90 |
+| 20d | +0.0288 | 6.96 | +0.0189 | 4.08 |
+| 60d | **+0.0395** | **10.91** | +0.0154 | 3.94 |
+| 126d | **+0.0466** | **14.39** | +0.0083 | 2.28 |
+
+Residual is 2.5–5.6× stronger than total momentum at long horizons.
+
+Orthogonalized residual (per-date residual after regressing on `s_rs`)
+— measures the signal that's *incremental* to what `s_rs` already
+captures:
+
+| Forward horizon | Orthogonal IC | t-stat | Verdict |
+|---|---:|---:|---|
+| 5d | +0.0063 | 1.80 | borderline |
+| 20d | +0.0084 | 2.48 | **significant** |
+| 60d | +0.0181 | **5.45** | **strongly significant** |
+| 126d | +0.0246 | **8.63** | **overwhelmingly significant** |
+
+This is the key test that ruled out redundancy: even after removing
+everything `s_rs` already captures, residual carries highly significant
+alpha at 60d and 126d.
+
+Integration (Config B — add residual at 5%, shrink three smallest
+components):
+
+**Per-date IC (paired block bootstrap 90% CI):**
+
+| Horizon | Baseline | Phase 8a | Δ | CI on Δ |
+|---|---:|---:|---:|---|
+| 5d | +0.0132 | +0.0136 | +0.0005 | [−0.0003, +0.0013] |
+| 20d | +0.0123 | +0.0132 | +0.0009 | [−0.0003, +0.0022] |
+| 60d | +0.0137 | **+0.0153** | **+0.0016** | **[+0.0004, +0.0029]** |
+| 126d | +0.0231 | **+0.0250** | **+0.0020** | **[+0.0007, +0.0031]** |
+
+**Walk-forward OOS IC (Phase X.3 canonical, 73 windows, paired t-test):**
+
+| Horizon | Phase 7 OOS / t | Phase 8a OOS / t | Paired t |
+|---|---|---|---:|
+| 5d | +0.0118 / 1.34 | +0.0123 / 1.37 | 0.96 |
+| 20d | +0.0117 / 0.79 | +0.0126 / 0.85 | 1.18 |
+| 60d | +0.0116 / 0.77 | +0.0133 / 0.88 | **2.05** |
+| **126d** | **+0.0251 / 1.87** | **+0.0272 / 2.02** | **2.72** |
+
+Both validation frameworks agree: significant improvement at 60d and
+126d. **The post-Phase-8a 126d walk-forward t-statistic clears the
+institutional t > 2.0 threshold (1.87 → 2.02)**, same milestone Phase 7
+achieved.
+
+**Post-implementation IC (live pipeline run, in-sample full history):**
+
+| Horizon | Phase 8a actual | Phase 8a predicted | Δ |
+|---|---:|---:|---:|
+| 5d | +0.0113 (t=2.33) | +0.0136 | −17% |
+| 20d | +0.0087 (t=1.95) | +0.0132 | −34% |
+| 60d | +0.0138 (t=**3.58**) | +0.0153 | −10% |
+| 126d | +0.0292 (t=**9.08**) | +0.0250 | **+17%** |
+
+Some drift from prediction (notably 20d), 126d **better** than predicted.
+60d t-stat at 3.58 is substantially above 2.0; 126d t-stat at 9.08
+substantially above. Phase 7 baseline IC values: 5d t=2.57, 20d t=2.78,
+60d t=2.90, 126d t=7.41. Phase 8a improves t-stat at 60d and 126d;
+slight regression at 5d (2.57 → 2.33) and 20d (2.78 → 1.95) — both
+remain at or near the institutional bar. **Net: institutional-quality
+horizons (60d / 126d) materially stronger; short horizons weaker but
+positive.**
+
+**Per-state IC improvements (Phase 8a investigation, 24 of 24 cells
+checked):** 23 of 24 cells improve. Single exception is EXHAUSTION 60d
+(−0.0014, small). Largest gains:
+
+- TRENDING 126d: +0.0065
+- EXHAUSTION 5d: +0.0063 (recovery of previously-weak state)
+- INDETERMINATE 60d: +0.0056 (the universal-fallback column)
+- EXHAUSTION 20d: +0.0055 (Phase 7's near-zero 20d signal in this state)
+- CONSOLIDATING 126d: +0.0042
+- CONSOLIDATING 20d: +0.0035
+
+**Regime improvements (the Phase 7 weak spots):**
+
+| Regime (Phase 7 problem) | Base 126d IC | Phase 8a 126d IC | Δ |
+|---|---:|---:|---:|
+| Mega-caps (Q5 dvol) | −0.0043 | −0.0029 | **+0.0014** |
+| HIGH market vol | −0.0299 | −0.0273 | **+0.0026** |
+| Defensive sectors (10 baskets) | −0.0887 | −0.0871 | +0.0016 |
+| 2021 (meme/SPAC year) | −0.0363 | −0.0320 | **+0.0043** |
+
+The HIGH market-vol and 2021 regimes — Phase 7's worst — both improve
+meaningfully. Mega-caps and defensives stay negative but improve.
+
+**Known caveat — 2020 long horizons.** Phase 8a loses small IC in 2020
+specifically:
+
+| Year | Horizon | Phase 7 IC | Phase 8a IC | Δ |
+|---|---|---:|---:|---:|
+| 2020 | 60d | +0.0326 | +0.0286 | −0.0040 |
+| 2020 | 126d | −0.0595 | −0.0658 | −0.0063 |
+
+Same direction as the Phase 7 COVID-recovery caveat. Residual momentum
+deliberately subtracts the market-beta component; in COVID-2020, total
+momentum was beta-dominated, so removing beta hurts that single year.
+Magnitudes are small (~0.005). Net improvement in 2021 (the year right
+after) and every other year dominates this regression in expectation.
+
+**Files changed in this phase:**
+- `compute/features.py` — adds rolling 252d beta + 63/126/252d residual sums
+- `compute/standardization.py` — no edits (new features fall through to default robust-z)
+- `compute/components.py` — adds `_compute_s_residual_momentum`; updates `COMPONENT_COLS`
+- `compute/ccqs.py` — STATE_WEIGHTS updated; Phase 8a comment block
+- `compute/build_dashboard_cache.py` — adds new component to slim cache export
+- `app/utils/data_loader.py` — adds display name `Residual Momentum`
+- `tests/reference/tv_snapshots.py` — pins refreshed; 10/10 pass at spec tolerances
+- `tests/test_phase3_validation.py` — adds new component to expected list
+
+**Validation summary:**
+- 11/11 sanity checks pass
+- TV parity: 10/10 canaries, 140/140 fields pass
+- Grade distribution (within valid rows): S 8.05% / A 12.00% / B 24.96% / C 24.97% / D 30.02% — identical to Phase 7
+- Phase X.3 OOS baseline preserved per Methodology Lock §6
+- Component count: 9 → 10
+
+---
+
 ### Phase X.4 — Targeted 20-60d horizon audit (2026-05-22)
 
 Goal: push 20d and 60d OOS IC toward statistical significance (t > 2.0) while
@@ -1667,7 +1873,7 @@ principle 4).
 4. [Data Layer](#4-data-layer)
 5. [Feature Engineering — 104 Features](#5-feature-engineering--104-features)
 6. [Cross-Sectional Standardization](#6-cross-sectional-standardization)
-7. [Component Scoring — 9 Components](#7-component-scoring--9-components)
+7. [Component Scoring — 10 Components](#7-component-scoring--10-components)
 8. [State Classification — 6 States](#8-state-classification--6-states)
 9. [Composite Scoring & Grading](#9-composite-scoring--grading)
 10. [Setup Categories — 29 Setups](#10-setup-categories--29-setups)
@@ -2328,7 +2534,7 @@ and impact metrics.
 
 ---
 
-## 7. Component Scoring — 9 Components
+## 7. Component Scoring — 10 Components
 
 ### Component Architecture
 

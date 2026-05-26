@@ -106,7 +106,8 @@ def main() -> None:
         print(f"      RSI(14)        : {f['rsi_14']:.2f}")
         print()
         print(f"      Components (z-space):")
-        for col in ["s_rs", "s_rs_leadership", "s_rsl", "s_trend_slope",
+        for col in ["s_rs", "s_rs_leadership", "s_residual_momentum",
+                    "s_rsl", "s_trend_slope",
                     "s_structure", "s_mtf", "s_extension",
                     "s_demand", "s_momentum"]:
             print(f"        {col:<22} {c[col]: .3f}")

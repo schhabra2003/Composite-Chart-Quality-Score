@@ -45,7 +45,8 @@ LATEST_ONLY_COLS = {
         "within_basket_z_21d", "distribution_days_25",
     ],
     "components.parquet": [
-        "s_rs", "s_rs_leadership", "s_rsl", "s_trend_slope",
+        "s_rs", "s_rs_leadership", "s_residual_momentum",
+        "s_rsl", "s_trend_slope",
         "s_structure", "s_mtf", "s_extension",
         "s_demand", "s_momentum",
     ],

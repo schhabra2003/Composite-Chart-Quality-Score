@@ -521,6 +521,8 @@ FEATURE_ORDER: list[str] = [
     "rs_line_qqq_new_high_60d", "rs_line_qqq_new_high_252d",
     "rs_line_qqq_slope_20d", "rs_line_qqq_slope_60d",
     "rs_rating_slope_60d", "rs_rating_slope_120d",
+    # Cat 9b (3) — Phase 8a residual momentum (beta-adjusted; see comp/feature note).
+    "residual_momentum_63d", "residual_momentum_126d", "residual_momentum_252d",
     # Cat 10 (9)
     "sma_stack_score", "ema_stack_score", "hh_count_60d", "hl_count_60d",
     "trend_integrity", "new_252d_high",
@@ -574,7 +576,7 @@ FEATURE_ORDER: list[str] = [
     "max_drawdown_pct_60d",
     "return_autocorrelation_21d_lag1", "vol_percentile_21d",
 ]
-assert len(FEATURE_ORDER) == 121, f"FEATURE_ORDER has {len(FEATURE_ORDER)} entries, expected 121"
+assert len(FEATURE_ORDER) == 124, f"FEATURE_ORDER has {len(FEATURE_ORDER)} entries, expected 124"
 
 
 def compute_features(long_df: pd.DataFrame) -> pd.DataFrame:
@@ -765,6 +767,61 @@ def compute_features(long_df: pd.DataFrame) -> pd.DataFrame:
 
     feats["rs_rating_slope_60d"] = rs_spy - rs_spy.shift(60)
     feats["rs_rating_slope_120d"] = rs_spy - rs_spy.shift(120)
+
+    # --- Category 9b: Residual (idiosyncratic) momentum vs SPY ----------
+    # Phase 8a (2026-05-26): adds beta-adjusted residual return aggregations
+    # at 63 / 126 / 252-day horizons. The 126d residual feeds the new
+    # `s_residual_momentum` component in compute/components.py at 5% weight
+    # per state in compute/ccqs.py.
+    #
+    # Empirical basis: Blitz–Huij–Martens (2011) "Residual Momentum" and
+    # subsequent fund-implementation replications (Robeco production, plus
+    # multiple quant fund replications) — removing the market-beta exposure
+    # from momentum returns yields cleaner alpha with higher capacity and
+    # lower correlation with passive market beta.
+    #
+    # Phase 8a empirical validation (in-memory pre-implementation test):
+    #   • Standalone 252d-lookback IC at 126d-fwd = +0.0466 (t=14.4)
+    #   • Orthogonal-to-`s_rs` residual at 126d-fwd: IC=+0.0246, t=+8.63
+    #     (overwhelmingly significant incremental signal beyond s_rs)
+    #   • Walk-forward paired t-test: 60d t=2.05, 126d t=2.72
+    #   • 126d walk-forward t-stat: 1.87 (Phase 7) → 2.02 (Config B)
+    #     — clears the institutional t > 2.0 threshold
+    #   • 23 of 24 (state × horizon) cells improve
+    #
+    # Methodology (no look-ahead):
+    #   1. Compute SPY daily log return.
+    #   2. For each ticker, compute daily log return.
+    #   3. Rolling 252-day OLS beta on log returns using
+    #         cov_W(r_i, r_SPY) / var_W(r_SPY)
+    #      (Bessel-corrected: cov uses W/(W-1) factor; pandas .var is
+    #      already sample by default — equivalent estimator).
+    #   4. Trailing beta `β_lag1 = β_252d.shift(1)` (use yesterday's beta
+    #      for today's return — eliminates look-ahead).
+    #   5. Daily residual: `r_resid[t] = r_i[t] - β_lag1[t] · r_SPY[t]`.
+    #   6. Aggregate `r_resid` by simple sum over 63 / 126 / 252-day
+    #      windows (no skip-month; user empirical-only directive).
+    #
+    # Cross-sectional standardization happens in components.py
+    # (`_compute_s_residual_momentum` applies per-date robust z).
+    log_c_local = np.log(c.replace(0, np.nan))
+    log_ret_daily = log_c_local.diff()  # (date × ticker) wide frame of daily log returns
+    spy_log_ret = np.log(spy_c.replace(0, np.nan)).diff()
+    W_beta = 252
+    # Rolling moments — match the Phase 8a investigation script exactly
+    spy_mean_w = spy_log_ret.rolling(W_beta, min_periods=W_beta).mean()
+    spy_var_w  = spy_log_ret.rolling(W_beta, min_periods=W_beta).var()
+    cross_w    = log_ret_daily.mul(spy_log_ret, axis=0)
+    cross_mean_w = cross_w.rolling(W_beta, min_periods=W_beta).mean()
+    lr_mean_w    = log_ret_daily.rolling(W_beta, min_periods=W_beta).mean()
+    # Population covariance × W/(W-1) → sample covariance, then / sample variance.
+    cov_252d = (cross_mean_w - lr_mean_w.mul(spy_mean_w, axis=0)) * (W_beta / (W_beta - 1))
+    beta_252d = cov_252d.div(spy_var_w, axis=0)
+    beta_lag1 = beta_252d.shift(1)
+    resid_daily = log_ret_daily.sub(beta_lag1.mul(spy_log_ret, axis=0))
+    feats["residual_momentum_63d"]  = resid_daily.rolling(63,  min_periods=63).sum()
+    feats["residual_momentum_126d"] = resid_daily.rolling(126, min_periods=126).sum()
+    feats["residual_momentum_252d"] = resid_daily.rolling(252, min_periods=252).sum()
 
     # --- Category 10: Structure & Pivots --------------------------------
     above_sma50 = (c > feats["sma_50"]).astype(float)

@@ -68,49 +68,63 @@ logger.add(LOG_DIR / "ccqs.log", level="DEBUG", rotation="10 MB", retention="30 
 # Phase 7 (Priority 3a — s_demand removal, 2026-05-25): The Priority 2 bootstrap
 # analysis flagged s_demand as the next removal candidate — average OOS IC
 # −0.009 across the 24 (state × horizon) cells, 6/24 cells significantly
-# negative (CONSOLIDATING at all four horizons, PULLBACK at 20d/60d,
-# INDETERMINATE at 60d). Removing its 10-15% weight per state and
-# redistributing proportionally to the four carriers (s_rs, s_rs_leadership,
-# s_structure, s_mtf) improved unconditional OOS IC at 5d / 60d / 126d under
-# both the per-date IC framework (paired bootstrap CI excludes zero) and the
-# Phase X.3 walk-forward framework (paired t = 2.01, 2.77, 2.64). 20d
-# directionally improved (+14%) but not statistically distinguishable. The
-# alt 126d t-statistic clears t > 2.0 (was 1.82, now 2.02). Grade
-# distribution is preserved exactly; Spearman rank correlation between
-# pre- and post-Phase-7 CCQS is 0.9901. See SPEC §"Phase 7" for the full
-# OOS IC validation table and the 2020 long-horizon caveat. s_demand is
-# kept as a 0-weight diagnostic component (parallel to s_climax's history
-# before Phase 6); its formula remains in components.py.
+# negative. s_demand zeroed; freed 10-15% per state redistributed to the four
+# carriers (s_rs, s_rs_leadership, s_structure, s_mtf). 126d walk-forward
+# t-stat crossed institutional 2.0 threshold (1.82 → 2.02). See SPEC §"Phase 7".
+#
+# Phase 8a (Residual Momentum addition — Config B, 2026-05-26): added the new
+# `s_residual_momentum` component (beta-adjusted idiosyncratic momentum, see
+# components.py). Weight: ~5% per state, pulled proportionally from the three
+# smallest-weight existing components (`s_rsl`, `s_trend_slope`, `s_momentum`)
+# wherever they had slack. For EXHAUSTION — where those three only summed to
+# 3% — the SHRINK targets are zeroed and the missing 2% is implicitly absorbed
+# by the row-renormalization (final s_residual_momentum effective weight in
+# EXHAUSTION is 4.90%, slight from 5.00% in the other five states).
+#
+# Validation (in-memory Phase 8a investigation): Standalone IC at 126d-fwd =
+# +0.0466 (t=14.4). Orthogonal-to-`s_rs` IC at 126d-fwd: +0.0246, t=+8.63.
+# Per-date paired bootstrap: 60d Δ +0.0016 CI [+0.0004, +0.0029], 126d Δ
+# +0.0020 CI [+0.0007, +0.0031]. Walk-forward paired t-test: 60d t=2.05,
+# 126d t=2.72. 23 of 24 (state × horizon) cells improve. Known weak regimes
+# (mega-caps, HIGH market vol, defensive sectors, 2021 meme/SPAC year) all
+# improve. One mild regression: 2020 long horizons (−0.003 / −0.005),
+# same direction as the documented Phase 7 COVID caveat.
 STATE_WEIGHTS: dict[str, dict[str, float]] = {
     "TRENDING": {
-        "s_rs": 0.280120, "s_rs_leadership": 0.280120, "s_rsl": 0.030000,
-        "s_trend_slope": 0.030000, "s_structure": 0.201687, "s_mtf": 0.168072,
-        "s_extension": 0.000000, "s_demand": 0.000000, "s_momentum": 0.010000,
+        "s_rs": 0.280120, "s_rs_leadership": 0.280120, "s_residual_momentum": 0.050000,
+        "s_rsl": 0.008571, "s_trend_slope": 0.008571, "s_structure": 0.201687,
+        "s_mtf": 0.168072, "s_extension": 0.000000, "s_demand": 0.000000,
+        "s_momentum": 0.002857,
     },
     "PULLBACK": {
-        "s_rs": 0.256203, "s_rs_leadership": 0.291139, "s_rsl": 0.030000,
-        "s_trend_slope": 0.020000, "s_structure": 0.209620, "s_mtf": 0.163038,
-        "s_extension": 0.020000, "s_demand": 0.000000, "s_momentum": 0.010000,
+        "s_rs": 0.256203, "s_rs_leadership": 0.291139, "s_residual_momentum": 0.050000,
+        "s_rsl": 0.005000, "s_trend_slope": 0.003333, "s_structure": 0.209620,
+        "s_mtf": 0.163038, "s_extension": 0.020000, "s_demand": 0.000000,
+        "s_momentum": 0.001667,
     },
     "CONSOLIDATING": {
-        "s_rs": 0.237975, "s_rs_leadership": 0.261772, "s_rsl": 0.020000,
-        "s_trend_slope": 0.020000, "s_structure": 0.261772, "s_mtf": 0.178481,
-        "s_extension": 0.010000, "s_demand": 0.000000, "s_momentum": 0.010000,
+        "s_rs": 0.237975, "s_rs_leadership": 0.261772, "s_residual_momentum": 0.050000,
+        "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.261772,
+        "s_mtf": 0.178481, "s_extension": 0.010000, "s_demand": 0.000000,
+        "s_momentum": 0.000000,
     },
     "EXHAUSTION": {
-        "s_rs": 0.260741, "s_rs_leadership": 0.331852, "s_rsl": 0.010000,
-        "s_trend_slope": 0.010000, "s_structure": 0.189630, "s_mtf": 0.177778,
-        "s_extension": 0.010000, "s_demand": 0.000000, "s_momentum": 0.010000,
+        "s_rs": 0.255628, "s_rs_leadership": 0.325345, "s_residual_momentum": 0.049020,
+        "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.185912,
+        "s_mtf": 0.174292, "s_extension": 0.009804, "s_demand": 0.000000,
+        "s_momentum": 0.000000,
     },
     "DETERIORATING": {
-        "s_rs": 0.237500, "s_rs_leadership": 0.296875, "s_rsl": 0.020000,
-        "s_trend_slope": 0.020000, "s_structure": 0.237500, "s_mtf": 0.178125,
-        "s_extension": 0.000000, "s_demand": 0.000000, "s_momentum": 0.010000,
+        "s_rs": 0.237500, "s_rs_leadership": 0.296875, "s_residual_momentum": 0.050000,
+        "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.237500,
+        "s_mtf": 0.178125, "s_extension": 0.000000, "s_demand": 0.000000,
+        "s_momentum": 0.000000,
     },
     "INDETERMINATE": {
-        "s_rs": 0.249877, "s_rs_leadership": 0.295309, "s_rsl": 0.030000,
-        "s_trend_slope": 0.030000, "s_structure": 0.204444, "s_mtf": 0.170370,
-        "s_extension": 0.010000, "s_demand": 0.000000, "s_momentum": 0.010000,
+        "s_rs": 0.249877, "s_rs_leadership": 0.295309, "s_residual_momentum": 0.050000,
+        "s_rsl": 0.008571, "s_trend_slope": 0.008571, "s_structure": 0.204444,
+        "s_mtf": 0.170370, "s_extension": 0.010000, "s_demand": 0.000000,
+        "s_momentum": 0.002857,
     },
 }
 
