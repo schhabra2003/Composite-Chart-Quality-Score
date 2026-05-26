@@ -3,6 +3,7 @@
 Five sections, sidebar filters, footer. No decoration; data carries every signal.
 
 Updated 2026-05-25 — Grade band shading added to CCQS Trajectory chart.
+Updated 2026-05-26 — Phase 8a residual momentum added (10th component).
 """
 from __future__ import annotations
 
