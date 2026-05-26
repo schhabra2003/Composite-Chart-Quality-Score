@@ -133,11 +133,12 @@ jobs:
       - name: Install pytest
         run: pip install pytest
 
-      - name: Hard-gate tests (universe / cache / pipeline / TV parity)
+      - name: Hard-gate tests (universe / cache / pipeline / IC baseline / TV parity)
         run: |
           pytest tests/test_universe_coverage.py \
                  tests/test_cache_freshness.py \
                  tests/test_pipeline_integrity.py \
+                 tests/test_ic_baseline.py \
                  tests/reference/test_tv_parity.py \
                  -v --tb=short
 
