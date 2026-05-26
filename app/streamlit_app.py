@@ -84,6 +84,7 @@ regime_ctx = load_regime_context()
 TIER_ORDER = [
     "ELITE_LEADER", "STRONG_LEADER", "EMERGING_LEADER", "ESTABLISHED_LEADER",
     "STRONG_PERFORMER", "NEUTRAL", "WEAK_PERFORMER", "DETERIORATING", "WEAK_LAGGARD",
+    "UNCLASSIFIED",  # Phase 11.C.1 — explicit catch-all for rows not matching any of the 9 main tiers
 ]
 STATE_ORDER = ["TRENDING", "PULLBACK", "CONSOLIDATING", "EXHAUSTION", "DETERIORATING", "INDETERMINATE"]
 

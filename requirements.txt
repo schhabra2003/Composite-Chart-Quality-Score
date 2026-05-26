@@ -1,9 +1,18 @@
-# Phase 10 (2026-05-26): pinned versions unchanged; comment touched to force
-# Streamlit Cloud to rebuild the container from scratch and pick up the new
-# s_volume component (compute/components.py), the new low_rel_vol_10d /
-# volume_buzz_50 features (compute/features.py), the updated 11-component
-# STATE_WEIGHTS in compute/ccqs.py, and the COMPONENT_DISPLAY_NAMES entry
-# for 'Volume Pattern' in app/utils/data_loader.py.
+# Phase 11.C.1 (2026-05-26): pinned versions unchanged; comment touched to
+# force Streamlit Cloud to rebuild the container from scratch and pick up
+# the new UNCLASSIFIED tier in compute/leadership.py + TIER_ORDER in
+# app/streamlit_app.py. Phase 10 / 11.B.1 deployment notes:
+#  • Phase 10: new s_volume component (compute/components.py), new
+#    low_rel_vol_10d / volume_buzz_50 features (compute/features.py),
+#    updated 11-component STATE_WEIGHTS in compute/ccqs.py, and
+#    COMPONENT_DISPLAY_NAMES entry for 'Volume Pattern' in
+#    app/utils/data_loader.py.
+#  • Phase 11.B.1: removed dead "Consolidation Within Strong Theme"
+#    setup label from compute/setup_classifier.py.
+#  • Phase 11.C.1: added UNCLASSIFIED tier; default initialization in
+#    compute/leadership.py changed from "NEUTRAL" to "UNCLASSIFIED" so
+#    ~132K rows that didn't match any of the 9 specific tier masks are
+#    explicitly labeled rather than mis-labeled NEUTRAL.
 pandas==2.2.3
 numpy==2.1.3
 scipy==1.14.1

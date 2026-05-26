@@ -1,8 +1,9 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
 **Version:** 1.0 (Locked) — **Phase 10 (volume-pattern addition) + Phase 11A
-(state classification validated) + Phase 11.B.1 (dead setup removed,
-2026-05-26)**.
+(state classification validated) + Phase 11.B.1 (dead setup removed) +
+Phase 11C (tier classification validated) + Phase 11.C.1 (UNCLASSIFIED
+tier added for fall-through fix, 2026-05-26)**.
 Adds `s_volume` (bundled `low_rel_vol_10d` + `volume_buzz_50`) as an 11th
 component at 3% per state; existing 10 components scaled by 0.97. First
 empirical win since Phase 8a: walk-forward 5d paired t = +2.01 (clears
@@ -16,7 +17,13 @@ not buy/sell signal" insight (TRENDING underperforms universe, EXHAUSTION
 outperforms by +0.07 at 60d). Phase 11B confirms the same "context, not
 direction" pattern at the setup layer (the "premium label, no alpha"
 finding); Phase 11.B.1 removes dead setup "Consolidation Within Strong
-Theme" (n=0). Built on:
+Theme" (n=0). Phase 11C validates the leadership-tier layer
+(only ELITE_LEADER has a distinctive forward edge; non-monotonic
+ordering across the other 8 tiers); Phase 11.C.1 fixes a default-init
+bug that mis-labeled ~132K rows (8.6% of universe) as NEUTRAL — adds
+explicit UNCLASSIFIED 10th tier. Three consecutive validation phases
+now consistently confirm the "context-not-direction" system-wide
+design lesson. Built on:
 Phase 8a (residual momentum addition) + Phase 7 (Priority 3a: `s_demand`
 removal + carrier redistribution) + Priority 3d (conditional performance
 warnings, display-layer only) + Phase 5.5–5.8 (vocabulary audit,
@@ -2299,6 +2306,196 @@ implemented in 11.B.1** (pending cross-layer synthesis):
 - Investigation script: `/tmp/p11b_setup_validation.py`
 - Raw results JSON: `/tmp/p11b_results.json`
 - Full report: `/tmp/PHASE_11B_REPORT.md`
+
+---
+
+### Phase 11C — Leadership Tier Validation (2026-05-26)
+
+**Headline finding: TIER LABELS ARE CURRENT QUALITY, NOT FORWARD
+EXPECTATION.**
+
+Same "context-not-direction" pattern repeats at the leadership-tier
+layer that was documented for the state machine (Phase 11A) and setup
+classifier (Phase 11B). Tiers describe CURRENT RS-quality (where the
+stock sits on the leadership ladder TODAY), not what will happen next.
+
+**Three classification layers now consistently confirm the same
+system-wide design lesson.** Only one tier has a truly distinctive
+forward-return edge.
+
+#### Forward-return ranking (60d, universe baseline +5.20%)
+
+| Rank | Tier | n | Pop % | μ 60d | t vs uni | Hit | IR |
+| ---- | ---- | - | ----- | ----- | -------- | --- | -- |
+| 1 | **ELITE_LEADER** | 2,695 | 0.19% | **+15.24%** | +9.54 | 60.3% | +0.57 |
+| 2 | STRONG_PERFORMER | 355,788 | 24.91% | +7.04% | +42.24 | 60.0% | +0.55 |
+| 3 | WEAK_LAGGARD | 43,062 | 3.02% | +7.02% | +8.47 | 55.9% | +0.32 |
+| 4 | ESTABLISHED_LEADER | 22,055 | 1.54% | +6.61% | +8.60 | 59.2% | +0.56 |
+| 5 | STRONG_LEADER | 16,918 | 1.18% | +6.32% | +4.42 | 55.9% | +0.39 |
+| 6 | NEUTRAL | 311,879 | 21.83% | +5.90% | +16.79 | 60.7% | +0.52 |
+| — | Universe | — | — | **+5.20%** | — | — | — |
+| 7 | DETERIORATING | 257,118 | 18.00% | +4.82% | −7.98 | 57.8% | +0.41 |
+| 8 | **EMERGING_LEADER** | 86,633 | 6.07% | **+4.68%** | **−7.30** | 59.0% | +0.46 |
+| 9 | WEAK_PERFORMER | 117,788 | 8.25% | +4.41% | **−14.04** | 59.8% | +0.47 |
+
+(\* = p < 0.05 vs universe. Sample sizes are reported pre-Phase-11.C.1
+patch; the patch primarily reduces NEUTRAL by ~132K rows redirected to
+UNCLASSIFIED — see §Phase 11.C.1 below.)
+
+**Critical observation: Only ELITE_LEADER has a 10+ percentage point
+edge over universe.** All other 8 tiers cluster within ±2.5pp of
+universe mean. The strict ELITE gating (6 simultaneous conditions:
+s_lead ≥ 90 AND rs_spy ≥ 95 AND mtf_coh = 3 AND vol_conf AND
+basket_leader AND qqq_ok) successfully isolates a tiny but genuinely
+distinctive subset (0.18% of universe, ~2,800 rows). The other 8 tiers
+are CONTEXT labels, not forward-return signals.
+
+#### Non-monotonic ordering — 4 of 8 adjacent comparisons "wrong direction"
+
+Adjacent-tier comparisons (priority-ordered ELITE → WEAK_LAGGARD, 60d
+horizon):
+
+| Adjacent pair | Δ (higher − lower priority) | Direction |
+| ------------- | --------------------------- | --------- |
+| ELITE_LEADER vs STRONG_LEADER | +8.92% | A > B ✓ |
+| STRONG_LEADER vs EMERGING_LEADER | +1.64% | A > B ✓ |
+| **EMERGING_LEADER vs ESTABLISHED_LEADER** | **−1.93%** | **A < B ✗** |
+| **ESTABLISHED_LEADER vs STRONG_PERFORMER** | **−0.43%** | **A < B ✗** |
+| STRONG_PERFORMER vs NEUTRAL | +1.14% | A > B ✓ |
+| NEUTRAL vs WEAK_PERFORMER | +1.49% | A > B ✓ |
+| **WEAK_PERFORMER vs DETERIORATING** | **−0.40%** | **A < B ✗** |
+| **DETERIORATING vs WEAK_LAGGARD** | **−2.21%** | **A < B ✗** |
+
+All comparisons statistically significant (p < 0.05). **The priority
+hierarchy reflects RS-quality CLASSIFICATION, not expected forward
+return.**
+
+#### What the tier layer IS good for
+
+- **Identifying ELITE_LEADER** (the only tier with genuine forward edge)
+- **Current RS-quality assessment** (what kind of leadership profile
+  does this stock have right now)
+- **Pattern matching and filtering** (combined with state + setup, the
+  triple-classification adds value — see Phase 11D synthesis)
+- **Risk awareness** (e.g., a stock in WEAK_LAGGARD tier with strong
+  recent recovery may be a mean-reversion play, but the tier label
+  doesn't predict the future on its own)
+
+#### What the tier layer is NOT good for
+
+- Standalone forward-direction prediction (except ELITE_LEADER)
+- Naive ranking interpretation — the intuition "EMERGING_LEADER is
+  better than ESTABLISHED_LEADER" because the name sounds more
+  aspirational is empirically WRONG
+- Premium-sounding labels (EMERGING_LEADER underperforms universe; same
+  "premium label, no alpha" dynamic as Phase 11B's VCP Setup / Emerging
+  Leader Setup)
+
+#### Tier × State interaction adds value
+
+The joint (tier × state) signal is more informative than either alone.
+Selected 60d return cells:
+
+| Joint cell | μ 60d | Note |
+| ---------- | ----- | ---- |
+| ELITE_LEADER × INDETERMINATE | **+18.10%** | Highest cell in entire matrix |
+| ELITE_LEADER × EXHAUSTION | +16.05% | Extended elites continue |
+| ELITE_LEADER × TRENDING | +10.35% | Lowest ELITE cell |
+| STRONG_PERFORMER × EXHAUSTION | +10.63% | Within-tier high |
+| STRONG_PERFORMER × INDETERMINATE | +9.42% | Within-tier high |
+| WEAK_LAGGARD × INDETERMINATE | **+10.07%** | Bottom-tier outperforms most upper tiers in this state |
+| EMERGING_LEADER × PULLBACK | +3.46% | Worst non-empty cell |
+
+**Pattern: EXHAUSTION and INDETERMINATE states consistently outperform
+TRENDING WITHIN THE SAME TIER.** This further reinforces the state-as-
+context insight from Phase 11A.
+
+#### System-wide pattern confirmed across three layers
+
+| Layer | Phase | "Premium" finding |
+| ----- | ----- | ----------------- |
+| State machine | 11A | TRENDING underperforms universe; EXHAUSTION outperforms |
+| Setup classifier | 11B | VCP Setup, Emerging Leader, Premium Pullback all underperform |
+| Leadership tier | 11C | EMERGING_LEADER underperforms; WEAK_LAGGARD outperforms many higher tiers |
+
+**The forward-direction signals in CCQS V1 come from:**
+- The CCQS score itself (empirically validated at 5d/20d/60d/126d)
+- ELITE_LEADER tier (clear +15.24% forward edge)
+- EXHAUSTION state (counterintuitive momentum continuation)
+- Specific high-edge setups (Volume-Confirmed Exhaustion, Capitulation
+  Selling, Sustained Weakness, Distribution Pattern, etc. — all of
+  which outperform universe by 4-12pp at 60d)
+
+**The forward-direction signals in CCQS V1 do NOT come from:**
+- "TRENDING" state alone
+- "Premium Pullback" / "VCP Setup" / "Emerging Leader" setup labels
+- "EMERGING_LEADER" / "WEAK_PERFORMER" tiers
+- Any classification label's intuitive name interpretation
+
+The actionable signal is CCQS itself, qualified by the multi-layer
+classification context.
+
+#### Phase 11.C.1 patch (shipped 2026-05-26) — NEUTRAL fall-through fix
+
+**Bug:** `tier = pd.Series("NEUTRAL", ...)` default initialization
+caused ~132,050 rows (8.6% of universe = 42.7% of NEUTRAL pre-patch)
+to fall through to the NEUTRAL label even though they didn't match the
+formal NEUTRAL definition (rs_spy ∈ [45, 60)).
+
+**Three distinct fall-through patterns identified:**
+
+| Pattern | Rows | Mechanism |
+| ------- | ---- | --------- |
+| 1. rs_spy < 25 AND rs_slope ≥ 0 | 80,675 | Doesn't match WEAK_LAGGARD (slope ≥ 0), WEAK_PERFORMER (rs < 25), DETERIORATING (slope > −5) |
+| 2. rs_spy ∈ [40, 45) AND rs_slope < −5 | 28,119 | Doesn't match WEAK_PERFORMER (slope < −5), DETERIORATING (rs ≥ 40) |
+| 3. rs_spy < 45 AND rs_slope IS NaN | 23,256 | All slope-based comparisons fail; rs too low for STRONG_PERFORMER |
+
+**Fix:** Added explicit `UNCLASSIFIED` 10th tier. Default initialization
+changed from `"NEUTRAL"` to `"UNCLASSIFIED"`. No change to the 9
+existing tier definitions or their masks. Three fall-through patterns
+now become explicitly UNCLASSIFIED rather than mis-labeled NEUTRAL.
+
+**Population shift (post-patch):**
+
+| Tier | Pre-patch | Post-patch | Δ |
+| ---- | --------- | ---------- | -- |
+| NEUTRAL | 21.83% | 12.59% | −9.24% |
+| UNCLASSIFIED | 0.00% | 8.63% | +8.63% |
+| All other tiers | unchanged | unchanged | — |
+
+(The 0.61% gap between −9.24% and +8.63% is the previously-NaN
+population — `rs_spy.isna()` rows that remain NaN and don't get
+re-classified.)
+
+**No CCQS impact** (leadership tier doesn't feed CCQS). **11/11 sanity
+checks pass; 140/140 TV reference fields pass on all 10 canaries**
+(none of the canaries fell in any of the three fall-through patterns).
+
+`TIER_ORDER` updated in `app/streamlit_app.py` to include UNCLASSIFIED
+so dashboard filters expose the new category.
+
+#### Decisions deferred to Phase 11.D synthesis
+
+The following Phase 11C recommendations are documented but **not
+implemented in 11.C.1** (which is bug-fix-only, pending cross-layer
+synthesis):
+
+1. **Consider merging STRONG_LEADER + ESTABLISHED_LEADER → MATURE_LEADER**
+   (statistically near-identical, both above universe by similar amount).
+2. **Consider collapsing EMERGING_LEADER → STRONG_PERFORMER** (or
+   renaming to "ACCELERATING_PERFORMER" with a tooltip about mean
+   reversion).
+3. **Consider tier-naming clarifications** in dashboard tooltips to
+   surface the "context, not direction" framing.
+
+These are methodology decisions and deferred to Phase 11D synthesis
+where cross-layer analysis can inform the right resolution.
+
+#### Outputs
+
+- Investigation script: `/tmp/p11c_tier_validation.py`
+- Raw results JSON: `/tmp/p11c_results.json`
+- Full report: `/tmp/PHASE_11C_REPORT.md`
 
 ---
 

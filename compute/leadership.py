@@ -1,7 +1,7 @@
 """
 CCQS V1 — Leadership Classification (SPEC Section 11, Path 1.5)
 
-9-tier per-stock leadership classification:
+10-tier per-stock leadership classification:
 
     ELITE_LEADER         — top-shelf, all confirmations on
     STRONG_LEADER        — high RS + MTF confluence
@@ -12,12 +12,27 @@ CCQS V1 — Leadership Classification (SPEC Section 11, Path 1.5)
     WEAK_PERFORMER       — low RS (25-45) but stable / improving slope
     DETERIORATING        — actively declining (rs_spy<40 & slope<-5)
     WEAK_LAGGARD         — chronically weak (rs_spy<25 & slope<0)
+    UNCLASSIFIED         — RS data exists but doesn't fit any of the 9
+                           defined patterns (Phase 11.C.1 explicit catch-all)
 
 Path 1.5: single-benchmark vs SPY, with QQQ RS Line slope as a
 context-confirmation gate for top tiers. `MID_PACK` is folded into
 `NEUTRAL` (the band-level distinction was not load-bearing). The
 9th tier `WEAK_PERFORMER` was added in Phase 3 calibration to absorb
 the low-RS-but-stable cohort that previously bloated NEUTRAL.
+
+Phase 11.C.1 (2026-05-26): added explicit `UNCLASSIFIED` 10th tier
+to fix a default-initialization bug. Previously `tier = pd.Series(
+"NEUTRAL", ...)` caused ~132,050 rows (8.6% of universe, 42.7% of
+NEUTRAL) to fall through to the NEUTRAL label even though they
+didn't match the formal NEUTRAL definition (rs_spy ∈ [45, 60)).
+Three fall-through patterns identified:
+    1. rs_spy < 25 AND rs_slope ≥ 0   (~80K rows, "weak recovering")
+    2. rs_spy ∈ [40,45) AND rs_slope < −5  (~28K rows, "moderate decline")
+    3. rs_spy < 45 AND rs_slope IS NaN  (~23K rows, "no slope history")
+The fix changes the default to `"UNCLASSIFIED"` so these rows are
+explicitly labeled rather than mis-labeled as NEUTRAL. No change to
+the 9 existing tier definitions.
 
 Run:
     python -m compute.leadership
@@ -58,6 +73,7 @@ TIERS: list[str] = [
     "WEAK_PERFORMER",
     "DETERIORATING",
     "WEAK_LAGGARD",
+    "UNCLASSIFIED",  # Phase 11.C.1 — explicit catch-all (see module docstring)
 ]
 
 
@@ -127,7 +143,12 @@ def classify_leadership(features: pd.DataFrame, components: pd.DataFrame) -> pd.
     m_weak = (rs_spy < 25) & (rs_slope < 0)
 
     # First-match-wins via priority chain.
-    tier = pd.Series("NEUTRAL", index=features.index, dtype=object)
+    # Phase 11.C.1: default is "UNCLASSIFIED" (explicit catch-all) rather
+    # than "NEUTRAL". This eliminates the prior bug where ~132K rows
+    # (rs_spy<25 + slope>=0; rs_spy in [40,45) + slope<-5; rs_spy<45 +
+    # slope NaN) fell through to the NEUTRAL default despite not
+    # matching its formal definition.
+    tier = pd.Series("UNCLASSIFIED", index=features.index, dtype=object)
     # Apply in reverse priority so later writes are overwritten by higher tiers.
     tier[m_neutral] = "NEUTRAL"
     tier[m_weak_perf] = "WEAK_PERFORMER"
