@@ -47,7 +47,7 @@ Refresh log:
               (1.95 → 2.04); EXHAUSTION-state IC +0.006 to +0.016 at
               every horizon (resolves fragility documented across Phase
               3c / 8a.1 / 8b).
-  2026-05-26  **PATH C COMPLETE through Phase 12 (closeout doc).**
+  2026-05-26  PATH C COMPLETE through Phase 12 (closeout doc).
               No further numerical changes from Phase 11.B.1 (dead
               setup removal), 11.C.1 (UNCLASSIFIED tier added — fall-
               through fix), 11E.1 (Emerging Leader setup removed), or
@@ -55,9 +55,22 @@ Refresh log:
               patches affect CCQS computation. TV reference pins remain
               identical to the Phase 10 baseline above. Pipeline
               re-verified post-Phase-12 documentation work.
+  2026-05-26  Phase 14.1 universe expansion (884 → 1,790 tickers)
+              attempted. Conditional IC analysis revealed methodology
+              produces near-zero / negative forward signal on the 953
+              new small-cap names (5d t=+0.26, 20d t=-1.77, 60d t=-1.58,
+              126d t=+2.80) while remaining intact for the original
+              universe (5d t=+2.35, 20d t=+1.97, 60d t=+3.46, 126d
+              t=+9.10). Phase 14.1 REVERTED in Phase 14R; AMZN setup
+              restored to "Range Consolidation"/0.70.
+  2026-05-26  **Phase 14R reversion to Path C state.** Universe restored
+              to exact 884-ticker Path C baseline. CCQS bit-identical to
+              Phase 11/12. Decision: build separate Small Cap CCQS
+              (Phase 15) with empirically recalibrated methodology
+              rather than force a single methodology onto two
+              structurally different universes.
 
-Last refreshed: 2026-05-26 (Phase 12 closeout — Path C complete;
-methodology baseline Phase 11E.2; values unchanged from Phase 10).
+Last refreshed: 2026-05-26 (Phase 14R reversion — Path C state restored).
 """
 from __future__ import annotations
 

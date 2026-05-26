@@ -318,6 +318,17 @@ CATEGORIES: Dict[str, Dict[str, List[str]]] = {
         'Credit Data and Underwriting': ['FICO', 'EFX', 'TRU', 'SPGI', 'MCO', 'EXPGY'],
         'Argentina Reform': ['ARGT', 'YPF', 'GGAL', 'BMA', 'BBAR', 'PAM', 'TGS', 'CEPU', 'LOMA'],
     },
+    # NOTE: Phase 14.1 attempted to add a 'Small Mid Cap (Auto-Sectored)'
+    # category with ~953 R1K + S&P 600 tickers. That expansion was REVERTED
+    # in Phase 14R (2026-05-26) after conditional IC analysis showed the
+    # CCQS methodology produces near-zero or NEGATIVE forward signal on
+    # those small-cap names (5d t=+0.26, 20d t=-1.77, 60d t=-1.58, 126d
+    # t=+2.80) — while remaining intact for the original 884-ticker
+    # universe (5d t=+2.35, 20d t=+1.97, 60d t=+3.46, 126d t=+9.10).
+    # Decision: build a separate Small Cap CCQS tool (Phase 15) with
+    # empirically recalibrated methodology rather than force a single
+    # methodology onto two structurally different universes. See SPEC.md
+    # §"Phase 14R" and §"Phase 14.1 (experimental — reverted)".
 }
 
 # ============================================================
@@ -333,6 +344,7 @@ CATEGORY_TYPE: Dict[str, str] = {
     'Thematic Cross-Sector Baskets': 'TAG',
     'Countries and Regions': 'COUNTRY',
     'Macro Dislocation and Special Situations': 'TAG',
+    # Phase 14.1 'Small Mid Cap (Auto-Sectored)' entry reverted in Phase 14R.
 }
 
 # ============================================================

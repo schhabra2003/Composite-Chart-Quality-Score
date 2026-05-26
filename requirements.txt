@@ -1,18 +1,20 @@
-# Phase 11E (2026-05-26): pinned versions unchanged; comment touched to
-# force Streamlit Cloud to rebuild the container from scratch and pick up:
-#  • Phase 11E.1: removed "Emerging Leader" setup from
-#    compute/setup_classifier.py (SETUP_LABELS 28 → 27; statistically
-#    equivalent to VCP Setup at p=0.94, both underperformed universe).
-#  • Phase 11E.2: dashboard CCQS regime chip in app/utils/data_loader.py
-#    (reliability_flags now takes leadership_tier; surfaces green chip
-#    for top tiers, amber for WEAK_LAGGARD/DETERIORATING). New "ok"
-#    severity color (#1F6B3E / #E0F2E6) added to app/streamlit_app.py.
-# Prior deployment notes:
-#  • Phase 11.C.1: added UNCLASSIFIED tier; default in compute/leadership.py
-#    changed from "NEUTRAL" to "UNCLASSIFIED".
-#  • Phase 11.B.1: removed dead "Consolidation Within Strong Theme" setup.
-#  • Phase 10: new s_volume component, low_rel_vol_10d / volume_buzz_50
-#    features, updated 11-component STATE_WEIGHTS.
+# Phase 14R (2026-05-26): pinned versions unchanged; comment touched to
+# force Streamlit Cloud to rebuild after Phase 14.1 → Phase 14R reversion.
+# Phase 14.1 attempted to add ~953 R1K/SP600 small-caps to the universe.
+# Conditional IC analysis exposed methodology specialization need
+# (5d t=+0.26, 20d t=-1.77, 60d t=-1.58, 126d t=+2.80 on the new
+# small-caps vs +2.35/+1.97/+3.46/+9.10 on the original 884 in the
+# same pipeline). Phase 14.1 REVERTED. CCQS restored to bit-identical
+# Path C state (884 tickers, 9 categories, 22 MB dashboard cache, IC
+# 0.0115/0.0137/0.0296 at 5d/60d/126d). Separate Small Cap CCQS
+# (Phase 15) to be built with empirically recalibrated methodology.
+# Prior Path C deployment notes (still active in current methodology):
+#  • Phase 11E.2: dashboard CCQS regime chip
+#  • Phase 11E.1: Emerging Leader setup removed
+#  • Phase 11.C.1: UNCLASSIFIED 10th tier
+#  • Phase 11.B.1: Consolidation Within Strong Theme removed
+#  • Phase 10: s_volume component, low_rel_vol_10d / volume_buzz_50,
+#    11-component STATE_WEIGHTS.
 pandas==2.2.3
 numpy==2.1.3
 scipy==1.14.1

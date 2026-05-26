@@ -250,6 +250,65 @@ See `SPEC.md` §Path C — Comprehensive Overview.
 
 ---
 
+### Phase 13 — Russell 2000 expansion feasibility (2026-05-26) ✓ INVESTIGATION ONLY
+
+User context shift: discretionary L/S manager requested universe
+expansion for idea-flow breadth, especially short candidates.
+Investigation found 95% yfinance coverage on stratified 188-name R2K
+sample, feature distributions within ~10% of S&P 500 medians, and
+**1.37-1.49× richer left tail** (deeper drawdowns at 60-126d). Recommendation:
+proceed with expansion. Approved for Phase 14.1.
+
+See `SPEC.md` §Phase 13. Full report: `/tmp/PHASE_13_REPORT.md`.
+
+### Phase 14.1 — Universe expansion experiment (2026-05-26) ✗ REVERTED in Phase 14R
+
+Implemented full universe expansion (884 → 1,837 tickers; +953
+net-new Russell 1000 + S&P SmallCap 600 names with GICS auto-sector
+basket assignment). Pipeline ran end-to-end with 11/11 sanity checks.
+
+**Conditional IC analysis exposed methodology specialization need:**
+
+| Horizon | Original 884 (within new pipeline) | New 953 R1K/SP600 |
+|---------|----------------------------------|-------------------|
+| 5d | +0.0114 (t=+2.35) ✓ | +0.0011 (t=+0.26) |
+| 20d | +0.0087 (t=+1.97) ✓ | **−0.0068 (t=−1.77)** |
+| 60d | +0.0133 (t=+3.46) ✓ | **−0.0054 (t=−1.58)** |
+| 126d | +0.0292 (t=+9.10) ✓ | +0.0082 (t=+2.80) |
+
+Methodology produces near-zero or NEGATIVE signal on the new small-cap
+names while remaining intact for the original universe. Forcing a
+single methodology onto two structurally different universes compromises
+both.
+
+**Decision (Approach C):** REVERT Phase 14.1. Build separate Small Cap
+CCQS tool (Phase 15) with empirically recalibrated methodology.
+
+See `SPEC.md` §Phase 14.1.
+
+### Phase 14R — Reversion to Path C state (2026-05-26) ✓ SHIPPED
+
+Immediate reversion. CCQS restored to bit-identical Phase 12 / Path C
+validated state. Universe back to 884 / 851 quality-gated; 9 categories;
+22 MB dashboard cache; 140/140 TV parity; 11/11 sanity checks; IC
+matches Phase 11 baseline exactly (5d 0.0115; 60d 0.0137; 126d 0.0296).
+
+Files reverted:
+- `data/universe.py` — removed Small Mid Cap (Auto-Sectored) category
+- `tests/reference/tv_snapshots.py` — restored AMZN pin to Phase 11 baseline
+
+See `SPEC.md` §Phase 14R.
+
+### Phase 15 — Small Cap CCQS (CCQS-SC) development [PLANNED]
+
+Separate Small Cap CCQS tool with independent empirical methodology.
+12 sub-phases (15.1-15.12) covering universe definition, data
+infrastructure, feature engineering, state classifier, setup classifier,
+tier classifier, component weights, comprehensive validation, dashboard
+integration, documentation, deployment. Path C rigor throughout.
+
+Begins after Phase 14R is user-confirmed clean.
+
 ## Forward expectations (post-Path C)
 
 Per `SPEC.md` Methodology Lock §3, future methodology changes require:

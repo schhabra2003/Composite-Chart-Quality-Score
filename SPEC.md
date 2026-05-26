@@ -1,6 +1,15 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — **PATH C COMPLETE (Phase 12, 2026-05-26)**.
+**Version:** 1.0 (Locked) — **PATH C COMPLETE (Phase 12, 2026-05-26)**
+**+ Phase 14R reversion (2026-05-26)** restoring CCQS to bit-identical
+Path C state after Phase 14.1 (universe expansion experiment, see
+"Phase 14.1 — Experimental / Reverted" below) failed conditional IC
+validation on the small-cap subset (5d t=+0.26, 20d t=-1.77, 60d
+t=-1.58, 126d t=+2.80 vs +2.35/+1.97/+3.46/+9.10 for the original 884
+tickers in the same combined pipeline). Decision: build a separate
+**Small Cap CCQS (CCQS-SC)** tool in **Phase 15** with empirically
+recalibrated methodology, rather than force a single methodology onto
+two structurally different universes.
 Path C overview: Phase 10 (volume-pattern addition) + Phase 11A
 (state classification validated) + Phase 11.B.1 (dead setup removed) +
 Phase 11C (tier classification validated) + Phase 11.C.1 (UNCLASSIFIED
@@ -2934,6 +2943,130 @@ implemented in Phase 11E** (defer to post-Path-C work):
 - Investigation script: `/tmp/p11d_cross_layer.py`
 - Raw results JSON: `/tmp/p11d_results.json`
 - Full report: `/tmp/PHASE_11D_REPORT.md`
+
+---
+
+### Phase 13 — Russell 2000 expansion feasibility (investigation, 2026-05-26)
+
+User context shift: discretionary L/S manager (small AUM, no liquidity
+constraints) requested universe expansion to add Russell 2000 small caps
+for idea-flow breadth, especially short candidates.
+
+Investigation methodology: stratified 188-name R2K sample, yfinance data
+quality validation, feature-distribution comparison vs S&P 500 baseline,
+forward-return distribution comparison (tail asymmetry for L/S),
+simplified classification distribution estimate.
+
+Key findings (full report: `/tmp/PHASE_13_REPORT.md`):
+
+1. **Data feasibility:** 95.2% yfinance coverage on stratified sample.
+2. **Feature distributions** match S&P 500 medians within ~10% (no
+   threshold recalibration needed at the feature level).
+3. **L/S asymmetry favors small caps**: R2K stocks have 37-49% more
+   deep-drawdown events (60-126d horizon, <-20% / <-30% returns)
+   relative to S&P 500 — empirically richer SHORT-side opportunity.
+4. **Methodology classification estimate produced sensible groupings**
+   on the R2K sample.
+
+Recommendation at Phase 13 close: **PROCEED** with universe expansion;
+estimated ~10 min pipeline runtime; ~65-90 MB cache size; 4-5x idea
+flow expansion. Approved for Phase 14.1 implementation.
+
+---
+
+### Phase 14.1 — Universe expansion experiment (EXPERIMENTAL — REVERTED in Phase 14R, 2026-05-26)
+
+Implemented full universe expansion: added 953 net-new tickers
+(Russell 1000 + S&P SmallCap 600, Wikipedia GICS-sector auto-assigned)
+to `data/universe.py` as a new `'Small Mid Cap (Auto-Sectored)'`
+category with 11 GICS sector baskets. Universe grew 884 → 1,837 declared
+/ 1,790 quality-gated.
+
+Pipeline rebuild succeeded end-to-end (loader, data_quality, features,
+standardization, components, state, leadership, setups, CCQS,
+aggregation, dashboard cache). 11/11 sanity checks passed. Headline IC
+on the combined 1,790-ticker universe dropped substantially (5d 0.0115
+→ 0.0059; 60d 0.0137 → 0.0036; 126d 0.0295 → 0.0181).
+
+**Conditional IC analysis revealed the root cause** — methodology was
+empirically intact for the original universe, but produced near-zero
+or negative signal on the new small-cap names:
+
+| Horizon | Phase 11 baseline | Original 884 in new pipeline | New 953 R1K/SP600 |
+| ------- | ----------------- | ----------------------------- | ------------------ |
+| 5d | +0.0115 | **+0.0114 (t=+2.35)** ✓ | +0.0011 (t=+0.26) |
+| 20d | +0.0089 | **+0.0087 (t=+1.97)** ✓ | **−0.0068 (t=−1.77)** |
+| 60d | +0.0137 | **+0.0133 (t=+3.46)** ✓ | **−0.0054 (t=−1.58)** |
+| 126d | +0.0295 | **+0.0292 (t=+9.10)** ✓ | +0.0082 (t=+2.80) |
+
+**Diagnosis:** Methodology was empirically calibrated on S&P 500-quality
+stocks (RS thresholds 60/75/80/95, ELITE_LEADER 6-gate filter, Gaussian
+state-machine parameters, momentum-favoring feature blends). Small caps
+have structurally different dynamics — stronger mean reversion, weaker
+momentum continuation, different forward-return distributions. Forcing
+a single methodology onto two structurally different universes
+**compromises both**.
+
+The Phase 11D regime-dependence finding generalizes: just as CCQS
+inverts within WEAK_LAGGARD tier of the S&P 500 universe (Q10−Q1
+spread −9.24%), the methodology weakens when extended cross-universe
+to small caps. The signal architecture is genuinely population-specific.
+
+**Decision (Approach C):** REVERT Phase 14.1 universe expansion in
+**Phase 14R** (immediate). Build a separate **Small Cap CCQS (CCQS-SC)**
+tool in **Phase 15** with empirically recalibrated methodology
+(separate state machine parameters, setup library, tier boundaries,
+component weights — full Path C rigor on the small-cap universe).
+
+No code from Phase 14.1 retained except this documentation note. The
+universe expansion artifacts (universe.py category, TV pin update) were
+reverted; pipeline outputs are bit-identical to Phase 12 (Path C).
+
+---
+
+### Phase 14R — Reversion to Path C state (SHIPPED, 2026-05-26)
+
+Immediate reversion of Phase 14.1 universe expansion. CCQS restored to
+the exact Phase 12 / Path C validated state.
+
+**Reversion mechanics:**
+1. `data/universe.py`: removed `'Small Mid Cap (Auto-Sectored)'` category
+   and its `CATEGORY_TYPE` entry. Universe back to 884 declared tickers
+   across 9 curated categories.
+2. `tests/reference/tv_snapshots.py`: restored AMZN pin to Phase 11
+   baseline (`Range Consolidation` / 0.70 — the Phase 14.1 cross-sectional
+   shift to `Pullback to 21EMA` / 0.85 was a Phase 14.1 artifact).
+3. Pipeline rebuild (data_quality, features, standardization, components,
+   state, leadership, setups, CCQS, aggregation).
+4. Dashboard cache rebuild.
+5. Documentation update (this section, CHANGELOG, version stamp).
+
+**Validation confirms bit-identical restoration:**
+
+| Metric | Phase 11 / 12 baseline | Phase 14R restored | Match? |
+| ------ | ---------------------- | ------------------- | ------ |
+| Universe size | 884 declared / 851 scored | 884 / 851 | ✓ |
+| Categories | 9 | 9 | ✓ |
+| 5d IC | 0.0115 | **0.0115** | ✓ EXACT |
+| 60d IC | 0.0137 | **0.0137** | ✓ EXACT |
+| 126d IC | 0.0295 | **0.0296** | ✓ (within rounding) |
+| Dashboard cache size | 22 MB | **22.0 MB** | ✓ EXACT |
+| Sanity checks | 11/11 | **11/11** | ✓ |
+| TV parity | 140/140 fields | **140/140** | ✓ |
+| Canaries passing | 10/10 | **10/10** | ✓ |
+| Grade distribution | matches Phase 12 | matches | ✓ |
+
+The methodology baseline remains **Phase 11E.2** as per Methodology
+Lock §3. Path C state preserved. Phase 14.1 documented as an
+experimental learning, not a methodology change.
+
+**Phase 15 commitment:** Separate Small Cap CCQS (CCQS-SC) tool with
+independent empirical methodology. 12 sub-phases planned (15.1-15.12)
+covering universe definition, data infrastructure, feature engineering,
+state classifier, setup classifier, tier classifier, component weights,
+comprehensive validation, dashboard integration, documentation,
+deployment. Path C rigor required throughout. Begins after user
+confirms Phase 14R clean.
 
 ---
 
