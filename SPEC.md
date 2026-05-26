@@ -3597,7 +3597,10 @@ Test locally with `streamlit run output/app.py`. Verify all views render correct
 ### Phase 6: Deployment
 
 Create:
-- `.github/workflows/refresh.yml` (daily refresh at 4:15pm ET)
+- [`.github/workflows/pipeline.yml`](.github/workflows/pipeline.yml) —
+  scheduled daily refresh at 21:30 UTC weekdays (= 4:30 PM EST /
+  5:30 PM EDT, always at least 30 minutes after the 4:00 PM ET
+  cash-equity close).
 - README deployment instructions
 - Streamlit Cloud configuration
 
