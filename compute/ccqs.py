@@ -89,42 +89,68 @@ logger.add(LOG_DIR / "ccqs.log", level="DEBUG", rotation="10 MB", retention="30 
 # (mega-caps, HIGH market vol, defensive sectors, 2021 meme/SPAC year) all
 # improve. One mild regression: 2020 long horizons (−0.003 / −0.005),
 # same direction as the documented Phase 7 COVID caveat.
+#
+# Phase 10 (Volume Pattern addition — Config W1, 2026-05-26): added the new
+# `s_volume` component (bundled low_rel_vol_10d + volume_buzz_50, see
+# components.py and features.py). Weight: 3% per state, applied as a
+# uniform 0.97 scale on the existing 10-component Phase 8a weights with
+# the freed 3% slot assigned to s_volume. This is the cleanest blast-radius
+# integration possible: no individual existing-component re-targeting, no
+# state-by-state special-casing — every component's relative contribution
+# stays at the Phase 8a ratio, just scaled down 3%.
+#
+# Validation (in-memory Phase 10 W1 investigation): Per-date IC at 5d
+# +0.000350 (CI strict > 0 at [+0.000012, +0.000686]) — first config in
+# three post-Phase-8a investigations (8a.1, 8b, 10) to clear strict CI > 0.
+# Walk-forward paired t at 5d = +2.01 (clears the +1.96 threshold; also
+# a first in three investigations). 5d t-stat 2.33 → 2.41; 20d t-stat
+# 1.95 → 2.04 (crosses back above institutional 2.0); 60d t-stat 3.58 →
+# 3.55 (preserved, slight NS attenuation); 126d t-stat 9.08 → 9.14
+# (preserved). Per-state IC for EXHAUSTION improves +0.006 to +0.016 at
+# every horizon — resolving the architectural EXHAUSTION fragility that
+# blocked Priority 3c / Phase 8a.1 / Phase 8b candidates. Conditional
+# regime analysis confirms improvement is regime-stable (HIGH/MED/LOW
+# all positive at 5d/20d). Architectural insight: the EXHAUSTION
+# fragility documented across three investigations was a constraint on
+# RS-family weight redistribution, NOT on the architecture itself —
+# adding a NEW orthogonal-information component (vs redistributing
+# existing weight) sidesteps the confidence-blending fragility.
 STATE_WEIGHTS: dict[str, dict[str, float]] = {
     "TRENDING": {
-        "s_rs": 0.280120, "s_rs_leadership": 0.280120, "s_residual_momentum": 0.050000,
-        "s_rsl": 0.008571, "s_trend_slope": 0.008571, "s_structure": 0.201687,
-        "s_mtf": 0.168072, "s_extension": 0.000000, "s_demand": 0.000000,
-        "s_momentum": 0.002857,
+        "s_rs": 0.271716, "s_rs_leadership": 0.271716, "s_residual_momentum": 0.048500,
+        "s_rsl": 0.008314, "s_trend_slope": 0.008314, "s_structure": 0.195636,
+        "s_mtf": 0.163030, "s_extension": 0.000000, "s_demand": 0.000000,
+        "s_momentum": 0.002771, "s_volume": 0.030000,
     },
     "PULLBACK": {
-        "s_rs": 0.256203, "s_rs_leadership": 0.291139, "s_residual_momentum": 0.050000,
-        "s_rsl": 0.005000, "s_trend_slope": 0.003333, "s_structure": 0.209620,
-        "s_mtf": 0.163038, "s_extension": 0.020000, "s_demand": 0.000000,
-        "s_momentum": 0.001667,
+        "s_rs": 0.248517, "s_rs_leadership": 0.282405, "s_residual_momentum": 0.048500,
+        "s_rsl": 0.004850, "s_trend_slope": 0.003233, "s_structure": 0.203331,
+        "s_mtf": 0.158147, "s_extension": 0.019400, "s_demand": 0.000000,
+        "s_momentum": 0.001617, "s_volume": 0.030000,
     },
     "CONSOLIDATING": {
-        "s_rs": 0.237975, "s_rs_leadership": 0.261772, "s_residual_momentum": 0.050000,
-        "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.261772,
-        "s_mtf": 0.178481, "s_extension": 0.010000, "s_demand": 0.000000,
-        "s_momentum": 0.000000,
+        "s_rs": 0.230836, "s_rs_leadership": 0.253919, "s_residual_momentum": 0.048500,
+        "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.253919,
+        "s_mtf": 0.173127, "s_extension": 0.009700, "s_demand": 0.000000,
+        "s_momentum": 0.000000, "s_volume": 0.030000,
     },
     "EXHAUSTION": {
-        "s_rs": 0.255628, "s_rs_leadership": 0.325345, "s_residual_momentum": 0.049020,
-        "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.185912,
-        "s_mtf": 0.174292, "s_extension": 0.009804, "s_demand": 0.000000,
-        "s_momentum": 0.000000,
+        "s_rs": 0.247959, "s_rs_leadership": 0.315585, "s_residual_momentum": 0.047549,
+        "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.180335,
+        "s_mtf": 0.169063, "s_extension": 0.009510, "s_demand": 0.000000,
+        "s_momentum": 0.000000, "s_volume": 0.030000,
     },
     "DETERIORATING": {
-        "s_rs": 0.237500, "s_rs_leadership": 0.296875, "s_residual_momentum": 0.050000,
-        "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.237500,
-        "s_mtf": 0.178125, "s_extension": 0.000000, "s_demand": 0.000000,
-        "s_momentum": 0.000000,
+        "s_rs": 0.230375, "s_rs_leadership": 0.287969, "s_residual_momentum": 0.048500,
+        "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.230375,
+        "s_mtf": 0.172781, "s_extension": 0.000000, "s_demand": 0.000000,
+        "s_momentum": 0.000000, "s_volume": 0.030000,
     },
     "INDETERMINATE": {
-        "s_rs": 0.249877, "s_rs_leadership": 0.295309, "s_residual_momentum": 0.050000,
-        "s_rsl": 0.008571, "s_trend_slope": 0.008571, "s_structure": 0.204444,
-        "s_mtf": 0.170370, "s_extension": 0.010000, "s_demand": 0.000000,
-        "s_momentum": 0.002857,
+        "s_rs": 0.242381, "s_rs_leadership": 0.286450, "s_residual_momentum": 0.048500,
+        "s_rsl": 0.008314, "s_trend_slope": 0.008314, "s_structure": 0.198311,
+        "s_mtf": 0.165259, "s_extension": 0.009700, "s_demand": 0.000000,
+        "s_momentum": 0.002771, "s_volume": 0.030000,
     },
 }
 

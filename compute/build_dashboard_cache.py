@@ -48,7 +48,7 @@ LATEST_ONLY_COLS = {
         "s_rs", "s_rs_leadership", "s_residual_momentum",
         "s_rsl", "s_trend_slope",
         "s_structure", "s_mtf", "s_extension",
-        "s_demand", "s_momentum",
+        "s_demand", "s_momentum", "s_volume",
     ],
 }
 

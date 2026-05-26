@@ -23,7 +23,7 @@ Refresh log:
               (NVDA / META / JPM / UNH setup fields only — partial refresh).
   2026-05-25  Full refresh to Phase 7 (post Priority 3a `s_demand` removal
               + carrier redistribution).
-  2026-05-26  **Full refresh to Phase 8a (residual-momentum addition).**
+  2026-05-26  Full refresh to Phase 8a (residual-momentum addition).
               Phase 8a adds `s_residual_momentum` as a 10th component at
               5% per state in STATE_WEIGHTS. CCQS values drift modestly
               vs Phase 7 (NVDA 77.40 → 74.85, GOOGL 91.17 → 89.51,
@@ -33,8 +33,22 @@ Refresh log:
               Phase 5.7 + 5.8 vocabulary. Empirical validation (Phase 8a
               investigation) showed walk-forward 126d t-statistic
               improves 1.87 → 2.02 with the addition.
+  2026-05-26  **CCQS refresh to Phase 10 (volume-pattern addition).**
+              Phase 10 adds `s_volume` as an 11th component at 3% per
+              state, with the existing 10 components scaled by 0.97.
+              CCQS drift vs Phase 8a is small (max |Δ| = 1.93 for TSLA;
+              NVDA unchanged at 74.85). State labels, setup labels,
+              state confidence, leadership tier, and all technical-
+              indicator pins are unchanged (none of those depend on
+              the composite weights). Empirical validation (Phase 10
+              W1 investigation): per-date IC delta CI strict > 0 at 5d
+              [+0.000012, +0.000686]; walk-forward 5d paired t = +2.01;
+              20d t-stat crosses back above institutional 2.0 threshold
+              (1.95 → 2.04); EXHAUSTION-state IC +0.006 to +0.016 at
+              every horizon (resolves fragility documented across Phase
+              3c / 8a.1 / 8b).
 
-Last refreshed: 2026-05-26 (Phase 8a build — residual momentum addition).
+Last refreshed: 2026-05-26 (Phase 10 build — volume-pattern addition).
 """
 from __future__ import annotations
 
@@ -85,7 +99,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "adx_14": 17.09,
         "rsi_14": 54.42,
         "atr_x_50": 1.65,
-        "ccqs": 24.83,
+        "ccqs": 25.65,
         "grade": "C",
         "state": "PULLBACK",
         "state_confidence": 0.428,
@@ -102,7 +116,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "adx_14": 20.56,
         "rsi_14": 45.34,
         "atr_x_50": -0.49,
-        "ccqs": 16.98,
+        "ccqs": 15.51,
         "grade": "D",
         "state": "DETERIORATING",
         "state_confidence": 0.811,
@@ -119,7 +133,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "adx_14": 44.55,
         "rsi_14": 57.49,
         "atr_x_50": 4.23,
-        "ccqs": 89.51,
+        "ccqs": 88.54,
         "grade": "A",
         "state": "TRENDING",
         "state_confidence": 0.768,
@@ -136,7 +150,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "adx_14": 21.05,
         "rsi_14": 58.30,
         "atr_x_50": 2.29,
-        "ccqs": 65.81,
+        "ccqs": 63.88,
         "grade": "B",
         "state": "INDETERMINATE",
         "state_confidence": 0.549,
@@ -153,7 +167,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "adx_14": 31.12,
         "rsi_14": 57.98,
         "atr_x_50": 3.66,
-        "ccqs": 83.97,
+        "ccqs": 84.49,
         "grade": "A",
         "state": "TRENDING",
         "state_confidence": 0.830,
@@ -170,7 +184,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "adx_14": 20.08,
         "rsi_14": 52.69,
         "atr_x_50": 0.79,
-        "ccqs": 44.42,
+        "ccqs": 45.50,
         "grade": "C",
         "state": "DETERIORATING",
         "state_confidence": 0.347,
@@ -187,7 +201,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "adx_14": 19.94,
         "rsi_14": 55.46,
         "atr_x_50": 2.22,
-        "ccqs": 86.68,
+        "ccqs": 86.79,
         "grade": "A",
         "state": "TRENDING",
         "state_confidence": 0.523,
@@ -204,7 +218,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "adx_14": 20.34,
         "rsi_14": 68.31,
         "atr_x_50": 4.03,
-        "ccqs": 71.42,
+        "ccqs": 71.73,
         "grade": "B",
         "state": "INDETERMINATE",
         "state_confidence": 0.916,
@@ -221,8 +235,8 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "adx_14": 48.41,
         "rsi_14": 67.84,
         "atr_x_50": 6.26,
-        "ccqs": 84.05,
-        "grade": "A",
+        "ccqs": 82.47,
+        "grade": "B",
         "state": "TRENDING",
         "state_confidence": 0.588,
         "leadership_tier": "STRONG_PERFORMER",

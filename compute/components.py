@@ -1,17 +1,19 @@
 """
 CCQS V1 — Component Scoring Layer (SPEC Section 7)
 
-Computes 9 component z-scores per (ticker, date):
+Computes 11 component z-scores per (ticker, date):
 
     S_RS                Classical cross-sectional momentum
     S_RS_LEADERSHIP     Multi-dim leadership composite (PRIMARY)
+    S_RESIDUAL_MOMENTUM Beta-adjusted idiosyncratic momentum (Phase 8a)
     S_RSL               RS Line dynamics
     S_TREND_SLOPE       Trend cleanness (ADX + R² + t-stat)
     S_STRUCTURE         MA stacks + HH/HL + Supertrend
     S_MTF               Multi-timeframe confluence
     S_EXTENSION         Vol-normalized extension (inverted)
-    S_DEMAND            Volume quality
+    S_DEMAND            Volume quality (zero-weighted since Phase 7)
     S_MOMENTUM          MACD + RSI + divergences
+    S_VOLUME            Bundled volume-pattern composite (Phase 10)
 
 (S_CLIMAX removed in Phase 6, 2026-05-25 — carried zero weight since
 Phase X.2.1, math was inverted vs label. Underlying features remain
@@ -55,6 +57,7 @@ COMPONENT_COLS = [
     "s_rs", "s_rs_leadership", "s_residual_momentum",
     "s_rsl", "s_trend_slope", "s_structure",
     "s_mtf", "s_extension", "s_demand", "s_momentum",
+    "s_volume",
 ]
 
 # Volume-gate cap on S_RS_LEADERSHIP: 70th percentile of standard normal.
@@ -368,12 +371,71 @@ def _compute_s_momentum(features: pd.DataFrame, z: pd.DataFrame) -> pd.Series:
     )
 
 
+def _compute_s_volume(features: pd.DataFrame) -> pd.Series:
+    """S_VOLUME — Phase 10 volume-pattern composite (2026-05-26).
+
+    Equal-weight blend of TWO orthogonal volume features:
+
+      • low_rel_vol_10d  — flag: today's volume ≤ rolling-10d min.
+                            Captures consolidation / "dry-up" days.
+      • volume_buzz_50   — (volume / 50d avg − 1) × 100. Captures
+                            single-day surge intensity.
+
+    Each input is independently per-date robust-z scored (median/MAD,
+    1.4826 multiplier); the equal-weight sum is then per-date robust-z'd
+    again so the output sits on the same scale as the other 10 components,
+    and clipped at ±10 to defend against extreme outliers.
+
+    EMPIRICAL BASIS (Phase 10 investigation, 2026-05-26):
+      • volume_buzz_50: standalone IC +0.0058 (5d, CI > 0), +0.0063 (20d,
+        CI > 0). Orthogonal IC matches: +0.0059 (5d), +0.0058 (20d) — both
+        with strict CI > 0 — meaning the short-horizon signal is NOT
+        captured by the existing 10 components.
+      • low_rel_vol_10d: orthogonal IC +0.0049 (60d, CI > 0), +0.0055
+        (126d, CI > 0). Standalone IC is slightly negative at short
+        horizons (−0.0022 5d/20d) but the orthogonal direction (after
+        controlling for state/RS/structure) is positive at long horizons.
+
+    INTEGRATION RESULTS (Config W1, 3% per state, n_dates=1414):
+      • 5d  per-date IC: 0.01133 → 0.01168 (+3.1%, t=2.33 → 2.41)
+      • 20d per-date IC: 0.00867 → 0.00903 (+4.1%, t=1.95 → 2.04)
+      • 60d per-date IC: 0.01376 → 0.01362 (−1.0%, NS)
+      • 126d per-date IC: 0.02916 → 0.02946 (+1.0%, NS)
+      • Walk-forward paired t at 5d: +2.01 (first config in three
+        investigations to clear +1.96)
+      • Per-date IC delta CI at 5d: [+0.000012, +0.000686] strict > 0
+      • EXHAUSTION-state IC: +0.006 to +0.016 across every horizon
+        (resolves the EXHAUSTION fragility documented in Phase 3c /
+        Priority 8a.1 / Phase 8b).
+
+    BUNDLED FEATURE REQUIREMENT (W6 LESSON):
+      The two features MUST be used together. Investigation Config W6
+      (low_rel_vol_10d alone at 5%) actively HURT CCQS at every horizon
+      (walk-forward paired t between −1.20 and −1.95). The orthogonal-IC
+      positive direction emerges only when the feature is blended with
+      volume_buzz_50; alone, the standalone-IC negative direction
+      dominates. Do not unbundle.
+
+    NaN HANDLING:
+      ~18% of (ticker, date) rows are NaN until the cache-wide 252d
+      warmup is met. Standalone feature NaN% is 4–6%. Compute_ccqs()
+      gracefully handles NaN by zeroing the contribution from those rows.
+
+    Weighted at 3% in every state in compute/ccqs.py STATE_WEIGHTS
+    (renormalized by ×0.97 across the existing 10 components).
+    """
+    z_lo = per_date_robust_z(features["low_rel_vol_10d"].astype(float))
+    z_bz = per_date_robust_z(features["volume_buzz_50"].astype(float))
+    raw = 0.5 * z_lo + 0.5 * z_bz
+    return per_date_robust_z(raw).clip(lower=-10.0, upper=10.0)
+
+
 # ---------------------------------------------------------------------------
 # Top-level
 # ---------------------------------------------------------------------------
 
 def compute_components(features: pd.DataFrame, z_scores: pd.DataFrame) -> pd.DataFrame:
-    """Return DataFrame of 10 component z-scores aligned to features index."""
+    """Return DataFrame of 11 component z-scores aligned to features index."""
     # Align z_scores to features (both should already share the MultiIndex).
     z = z_scores.reindex(features.index)
 
@@ -388,6 +450,7 @@ def compute_components(features: pd.DataFrame, z_scores: pd.DataFrame) -> pd.Dat
     out["s_extension"] = _compute_s_extension(features, z)
     out["s_demand"] = _compute_s_demand(features, z)
     out["s_momentum"] = _compute_s_momentum(features, z)
+    out["s_volume"] = _compute_s_volume(features)
     return out
 
 

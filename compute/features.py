@@ -510,6 +510,8 @@ FEATURE_ORDER: list[str] = [
     # Cat 7 (7)
     "volume", "volume_z_20_252", "up_down_vol_ratio_50",
     "distribution_days_25", "ad_line_slope_20", "cmf_21", "capitulation_volume_flag",
+    # Cat 7b (2) — Phase 10 volume pattern: bundled pair feeding s_volume.
+    "low_rel_vol_10d", "volume_buzz_50",
     # Cat 8 (4) — single-benchmark RS (Path 1.5)
     "rs_rating_spy",
     "sharpe_momentum_rank_126d", "sortino_rank_126d",
@@ -576,7 +578,7 @@ FEATURE_ORDER: list[str] = [
     "max_drawdown_pct_60d",
     "return_autocorrelation_21d_lag1", "vol_percentile_21d",
 ]
-assert len(FEATURE_ORDER) == 124, f"FEATURE_ORDER has {len(FEATURE_ORDER)} entries, expected 124"
+assert len(FEATURE_ORDER) == 126, f"FEATURE_ORDER has {len(FEATURE_ORDER)} entries, expected 126"
 
 
 def compute_features(long_df: pd.DataFrame) -> pd.DataFrame:
@@ -693,6 +695,41 @@ def compute_features(long_df: pd.DataFrame) -> pd.DataFrame:
     rng_50 = (high_50 - low_50).replace(0, np.nan)
     in_bottom_20 = (c - low_50) / rng_50 < 0.20
     feats["capitulation_volume_flag"] = ((v > 3.0 * vol_avg_50) & (daily_ret < -0.02) & in_bottom_20).astype(float)
+
+    # --- Category 7b: Volume pattern (Phase 10, 2026-05-26) --------------
+    # Two NEW orthogonal volume features identified by the Phase 10
+    # investigation. They are scored together by the new `s_volume`
+    # component (compute/components.py); the two MUST ship as a bundled
+    # pair — investigation Config W6 (low_rel_vol alone) actively hurt
+    # CCQS IC at every horizon, while combined with volume_buzz_50
+    # they produce the only post-Phase-8a config to clear walk-forward
+    # paired t > +1.96 (at 5d) and CI > 0 on per-date IC delta.
+    #
+    # Empirical basis: MarketSmith-style volume patterns.
+    # • low_rel_vol_10d (dry-up flag) — orthogonal IC +0.005 at 60d/126d
+    #   (CI strictly > 0). Identifies consolidation/dry-up days that
+    #   carry forward-return signal AFTER controlling for the other
+    #   10 components.
+    # • volume_buzz_50 (single-day surge vs 50d mean) — standalone AND
+    #   orthogonal IC +0.006 at 5d/20d (CI > 0). Carries the short-
+    #   horizon edge that the existing volume features (volume_z_20_252)
+    #   miss because they smooth over 20 days.
+    #
+    # NaN%: ~18% of (ticker, date) rows are NaN until the 252d warmup
+    # period (driven by other long-window features in the cache) is met;
+    # this is expected and gracefully handled by compute_ccqs() which
+    # treats NaN as 0 weight for those rows. Standalone NaN% is closer
+    # to 6% (volume_buzz_50 needs 50d) / 4% (low_rel_vol_10d needs 10d).
+    #
+    # NO LOOK-AHEAD: both features use only data available at time t.
+    # low_rel_vol_10d compares v[t] to min(v[t-9:t+1]); volume_buzz_50
+    # compares v[t] to mean(v[t-49:t+1]). Both are causal.
+    rolling_min_10 = v.rolling(10, min_periods=10).min()
+    feats["low_rel_vol_10d"] = (v.le(rolling_min_10)).astype(float)
+    feats["low_rel_vol_10d"] = feats["low_rel_vol_10d"].where(rolling_min_10.notna())
+
+    vma_50 = v.rolling(50, min_periods=50).mean()
+    feats["volume_buzz_50"] = ((v / vma_50.replace(0, np.nan)) - 1.0) * 100.0
 
     # --- Category 8 & 9: Single-benchmark RS (vs SPY) + QQQ context ------
     # Path 1.5: cross-sectional RS rating is computed only vs SPY. QQQ RS Line

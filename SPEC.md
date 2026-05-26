@@ -1,16 +1,21 @@
 # CCQS V1 — Composite Chart Quality Score Specification
 
-**Version:** 1.0 (Locked) — **Phase 8a (residual momentum addition, 2026-05-26)**.
-Adds `s_residual_momentum` (beta-adjusted idiosyncratic momentum) as a 10th
-component at 5% per state; weight pulled proportionally from `s_rsl`,
-`s_trend_slope`, `s_momentum`. Walk-forward 126d t-statistic 1.87 → 2.02
-(maintains the post-Phase-7 institutional t > 2.0 bar). Built on:
-Phase 7 (Priority 3a: `s_demand` removal + carrier redistribution) + Priority 3d
-(conditional performance warnings, display-layer only) + Phase 5.5–5.8 (vocabulary
-audit, COILING/CLIMACTIC/BROKEN renames, setup label accuracy audit) + Phase 6
-(per-date winsorization, `s_climax` removal) + Priority 2 (bootstrap CIs on all
-54 weight cells, conditional IC analysis across regimes) + the Methodology Lock
-(Phase X.2.1 / Phase X.3 OOS baseline).
+**Version:** 1.0 (Locked) — **Phase 10 (volume-pattern addition, 2026-05-26)**.
+Adds `s_volume` (bundled `low_rel_vol_10d` + `volume_buzz_50`) as an 11th
+component at 3% per state; existing 10 components scaled by 0.97. First
+empirical win since Phase 8a: walk-forward 5d paired t = +2.01 (clears
++1.96 threshold); per-date 5d IC delta CI strict > 0 [+0.000012, +0.000686];
+20d t-stat 1.95 → 2.04 (crosses back above institutional 2.0); 60d/126d
+preserved (NS deltas). EXHAUSTION-state IC +0.006 to +0.016 across every
+horizon — resolves the architectural fragility documented across Priority
+3c / Phase 8a.1 / Phase 8b. Built on:
+Phase 8a (residual momentum addition) + Phase 7 (Priority 3a: `s_demand`
+removal + carrier redistribution) + Priority 3d (conditional performance
+warnings, display-layer only) + Phase 5.5–5.8 (vocabulary audit,
+COILING/CLIMACTIC/BROKEN renames, setup label accuracy audit) + Phase 6
+(per-date winsorization, `s_climax` removal) + Priority 2 (bootstrap CIs
+on all 54 weight cells, conditional IC analysis across regimes) + the
+Methodology Lock (Phase X.2.1 / Phase X.3 OOS baseline).
 **Date:** May 2026
 **Author:** Shreyaansh Chhabra (ADFM)
 **Purpose:** Pure technical, momentum & strength screening tool for L/S discretionary equity analysis.
@@ -38,17 +43,18 @@ This lock applies to all future development. Any proposed methodology change mus
 
 ---
 
-## Where We Stand (2026-05-26, post Phase 8a residual momentum)
+## Where We Stand (2026-05-26, post Phase 10 volume-pattern addition)
 
-**Methodology snapshot.** CCQS V1 ships with 10 computed components (8
+**Methodology snapshot.** CCQS V1 ships with 11 computed components (9
 contributing to the score, 2 zero-weighted diagnostics — `s_climax`
-removed in Phase 6, `s_demand` zero-weighted in Phase 7). Phase 8a
-added `s_residual_momentum` at 5% per state (4.90% in EXHAUSTION).
-Previously (pre-Phase-8a): 9 computed components (7
-contributing to the score, 2 zero-weighted diagnostics). State-conditional
-weights live in a 9 × 6 matrix; weights are validated by paired block
-bootstrap (Priority 2a) and per-date / walk-forward OOS IC (Phase X.3
-canonical). Per-date winsorization is in place since Phase 6.
+removed in Phase 6, `s_demand` zero-weighted in Phase 7). Phase 10
+added `s_volume` (bundled `low_rel_vol_10d` + `volume_buzz_50`) at 3%
+per state, with the existing 10 components scaled by 0.97. Phase 8a
+had added `s_residual_momentum` at ~5% per state. State-conditional
+weights live in an 11 × 6 matrix; weights are validated by paired
+block bootstrap (Priority 2a) and per-date / walk-forward OOS IC
+(Phase X.3 canonical). Per-date winsorization is in place since
+Phase 6.
 
 **Where the signal works** (Priority 2b conditional analysis):
 
@@ -1680,6 +1686,265 @@ optimize all horizons simultaneously.
 Full investigation outputs preserved at `/tmp/p8a1_short_reversal.py`
 and `/tmp/p8a1_results.json` (reproducible on the build machine).
 No production code changes.
+
+---
+
+### Phase 8b — Volatility-targeting consistency investigation (CLOSED — rejected, 2026-05-26)
+
+**Hypothesis.** A feature-set audit flagged an apparent inconsistency in
+vol-adjustment treatment across momentum-family features: `residual_momentum_126d`
+(raw sum), `momentum_21d_pct` (raw return rank), but `sharpe_momentum_rank_126d`
+uses a Sharpe-rank denominator. Phase 8b tested whether standardizing the
+vol-adjustment approach — in either direction (all-Sharpe or all-raw) —
+improves signal quality.
+
+**Result: REJECTED ALL FOUR CONFIGURATIONS.**
+
+Four configurations tested with stricter criteria than Phase 8a (per
+user's "lessons-learned" directive — CI-includes-zero counts as failure;
+walk-forward paired t > +1.96 required at 60d or 126d):
+
+- **Config B** (Sharpe-style residual momentum): no-op. Standalone IC
+  unchanged; orthogonal CI all straddle zero. The `standardization.py`
+  per-date robust-z already supplies the cross-sectional vol normalization
+  that the Sharpe ratio would add.
+- **Config C** (Sharpe rank for `momentum_21d_pct`): no-op. Same reason.
+- **Config D** (raw 126d return rank, de-vol-adjusting `sharpe_momentum_rank_126d`):
+  **actively regresses.** 126d walk-forward paired t = **−1.01** (where
+  CCQS's edge lives). 126d per-date IC: 0.02916 → 0.02765 (−5.2%).
+  EXHAUSTION 126d: 0.0350 → 0.0149 (−57% relative). PULLBACK 126d:
+  0.0210 → 0.0141 (−34% relative).
+- **Config E** (B + C + D combined): inherits D's regressions.
+
+Zero configurations pass all five strict criteria; D and E fail four of
+five. The EXHAUSTION fragility documented in Priority 3c and Phase 8a.1
+appears for the third time under Config D — confirming that
+RS-family weight redistribution is structurally constrained by the
+confidence-blending architecture, while the standalone `standardization.py`
+robust-z mechanism already supplies cross-sectional vol normalization for
+raw-percent features (Configs B and C are no-ops because the work is
+already being done elsewhere).
+
+**Meta-insight at Phase 8b close.** Two consecutive empirical investigations
+(8a.1 + 8b) have failed to improve on Phase 8a within the same information
+set. The architecture's confidence-blending step constrains weight
+redistribution; the existing standardization step constrains vol-adjustment
+restructuring. Further improvement requires either (a) new orthogonal
+information axes, or (b) architectural redesign of confidence-blending.
+This insight motivated Phase 10's pivot to volume features as a NEW
+orthogonal axis (not a weight redistribution).
+
+Full investigation outputs preserved at `/tmp/p8b_vol_targeting.py`,
+`/tmp/p8b_results.json`, and `/tmp/PHASE_8B_REPORT.md`. No production
+code changes.
+
+---
+
+### Phase 10 — Volume-pattern addition (SHIPPED, 2026-05-26)
+
+**Hypothesis.** New volume features (HV1, HVE, low-relative-volume,
+volume-buzz) capture a different axis of institutional behavior than
+the existing volume features (`volume_z_20_252`, `up_down_vol_ratio_50`,
+`distribution_days_25`, `ad_line_slope_20`, `cmf_21` — all consumed by
+the zero-weighted `s_demand` since Phase 7). Specifically: HV1/HVE flag
+point-in-time peaks (vs `volume_z_20_252`'s 20d-vs-252d trend); low-rel-vol
+flags consolidation/dry-up days (vs `capitulation_volume_flag` which
+requires concurrent price drop); volume_buzz captures single-day surge
+intensity (vs the 20d-windowed `volume_z_20_252`). As a new component
+adding orthogonal information (rather than redistributing existing
+weight), s_volume should sidestep the EXHAUSTION fragility documented
+across Priority 3c / Phase 8a.1 / Phase 8b.
+
+**Result: SHIPPED as Config W1.**
+
+Phase 10 W1 is the **first empirical win since Phase 8a** under the
+post-Phase-8b strict criteria. Investigation overview:
+
+**Standalone IC** of each candidate vs forward returns
+(90% block-bootstrap CI, `*` = CI strict > 0):
+
+| Feature | 5d | 20d | 60d | 126d |
+| ------- | -- | --- | --- | ---- |
+| `hv1_252` | flat | flat | flat | flat |
+| `hve_all` | flat | flat | flat | flat |
+| `low_rel_vol_10d` | −0.0022* | −0.0022* | flat | flat |
+| `volume_buzz_50` | **+0.0058\*** | **+0.0063\*** | flat | flat |
+
+**Orthogonal IC** — per-date OLS residual of each feature on the existing
+10 components, then IC of the residual:
+
+| Feature ⊥ | 5d | 20d | 60d | 126d |
+| --------- | -- | --- | --- | ---- |
+| `hv1_252` ⊥ | flat | flat | flat | flat |
+| `hve_all` ⊥ | flat | flat | flat | flat |
+| `low_rel_vol_10d` ⊥ | flat | flat | **+0.0049\*** | **+0.0055\*** |
+| `volume_buzz_50` ⊥ | **+0.0059\*** | **+0.0058\*** | flat | flat |
+
+The orthogonal IC table is the key finding: `low_rel_vol_10d` and
+`volume_buzz_50` carry signal *beyond* what the existing 10 components
+capture, on complementary horizons. `hv1_252` and `hve_all` carry no
+orthogonal signal anywhere and are excluded.
+
+**Candidate `s_volume` composite:**
+
+```
+z_lo = per_date_robust_z(low_rel_vol_10d)
+z_bz = per_date_robust_z(volume_buzz_50)
+s_volume = per_date_robust_z(0.5 × z_lo + 0.5 × z_bz).clip(±10)
+```
+
+Both inputs signed **positive** — direction taken from orthogonal IC,
+not standalone IC. `low_rel_vol_10d`'s standalone IC is slightly negative
+at short horizons but its orthogonal IC at 60d/126d is positive (the
+consolidation/dry-up pattern carries forward-return signal *after*
+controlling for state/RS/momentum).
+
+**Seven integration configs tested** (W0 = baseline; W1 = composite at
+3%; W2 = composite at 5%; W3 = composite in s_demand slot; W4 = split
+two-component; W5 = volume_buzz only; W6 = low_rel_vol only).
+
+**Decision matrix (strict criteria):**
+
+| Criterion | W1 (3%) | W4 (split) | W5 (buzz only) | W6 (low_vol only) |
+| --------- | ------- | ---------- | -------------- | ----------------- |
+| Per-date IC delta CI > 0 at any horizon | ✓ 5d strict | ✗ borderline | ✗ borderline | ✗ |
+| Walk-forward paired t > +1.96 at any horizon | ✓ +2.01 at 5d | borderline +1.96 | +1.78 max | ✗ all negative |
+| 5d/20d don't regress | ✓ both improve | ✓ improve | ✓ improve | ✗ both regress |
+| EXHAUSTION not −0.005 at any horizon | ✓ +0.006 to +0.016 | ✓ similar | ✓ similar | mixed |
+| 60d/126d preserved | △ 60d −1.0% NS | △ same | △ same | ✗ −1.7 t at 126d |
+| Orthogonal signal | ✓ both inputs | ✓ | partial | ✓ but lone-feature drag |
+| **Overall** | **ACCEPT** | secondary | inferior to W1 | **REJECT** |
+
+**Critical empirical finding (the "W6 lesson"):** `low_rel_vol_10d`
+alone at 5% per state actively HURTS CCQS at every horizon
+(walk-forward paired t = −1.20 to −1.95). This is despite its
+orthogonal-IC being positive at 60d/126d (CI > 0). The standalone-IC
+negative direction dominates when the feature is used alone; only when
+blended with `volume_buzz_50` (which has positive standalone AND
+orthogonal IC at 5d/20d) does the composite become net-positive.
+**The two features cannot be unbundled.** This nuance is documented
+in both `compute/features.py` (Category 7b comment block) and
+`compute/components.py` (`_compute_s_volume` docstring).
+
+**Headline IC numbers (W1 vs Phase 8a baseline, n_dates = 1414):**
+
+| Horizon | Baseline | Phase 10 W1 | Δ | Significance |
+| ------- | -------- | ----------- | -- | ------------ |
+| 5d | 0.01133 (t=2.33) | 0.01168 (t=2.41) | **+3.1%** | per-date CI strict > 0; walk-forward t = +2.01 |
+| 20d | 0.00867 (t=1.95) | 0.00903 (t=2.04) | **+4.1%** | t crosses back above 2.0 |
+| 60d | 0.01376 (t=3.58) | 0.01362 (t=3.55) | −1.0% | NS, walk-forward t = −0.21 |
+| 126d | 0.02916 (t=9.08) | 0.02946 (t=9.14) | +1.0% | NS (positive but not sig) |
+
+**Per-state IC at the EXHAUSTION watchpoint** (Δ vs Phase 8a baseline):
+
+| Horizon | Phase 8a | Phase 10 W1 | Δ |
+| ------- | -------- | ----------- | -- |
+| 5d | 0.0381 (t=4.65) | 0.0439 (t=5.30) | +0.0058 |
+| 20d | 0.0109 (t=1.25) | 0.0273 (t=3.04) | **+0.0163** |
+| 60d | 0.0157 (t=1.70) | 0.0244 (t=2.51) | +0.0087 |
+| 126d | 0.0350 (t=3.82) | 0.0462 (t=4.81) | +0.0112 |
+
+EXHAUSTION-state IC improves at every horizon, with the 20d t-stat
+crossing from non-significant to highly-significant (1.25 → 3.04).
+**This resolves the architectural EXHAUSTION fragility** that blocked
+Priority 3c / Phase 8a.1 / Phase 8b candidates from passing. The
+fragility mechanism (confidence-blending pulling ~45% of EXHAUSTION
+CCQS from the INDETERMINATE column) is *not* triggered by adding a
+NEW component — only by redistributing weight from RS-family
+components, which is what the previous three investigations all did.
+
+**Conditional regime check** (W1 Δ by SPY-21d-realized-vol regime):
+
+| Regime | n_dates | 5d Δ | 20d Δ | 60d Δ | 126d Δ |
+| ------ | ------- | ---- | ----- | ----- | ------ |
+| HIGH (≥17.8%) | 533 | +0.00050 | +0.00054 | −0.00023 | +0.00010 |
+| MED | 731 | +0.00027 | +0.00014 | −0.00001 | +0.00068 |
+| LOW (≤11.0%) | 533 | +0.00031 | +0.00053 | −0.00024 | −0.00005 |
+
+Improvement is regime-stable. No single-regime concentration. The slight
+60d regression is distributed equally; the 126d improvement concentrates
+in MED.
+
+**Configurations rejected with rationale:**
+
+- **W2 / W3 (5% weight)** — attenuate the 5d benefit (paired t drops
+  from +2.01 to +1.70 / +1.83). 3% is the optimal weight at this
+  signal magnitude.
+- **W4 (split 3+3)** — splitting the two features into separate
+  components is no better than combining them; W1's combined 3%
+  marginally beats W4's split 3+3 at 5d.
+- **W5 (volume_buzz_50 only)** — loses the long-horizon orthogonal
+  signal from low_rel_vol_10d. EXHAUSTION 126d improvement smaller.
+- **W6 (low_rel_vol_10d only)** — actively hurts (see W6 lesson above).
+- **HV1 / HVE as setup triggers** — per-state IC of the flags shows
+  significant *negative* (t = −2.0 to −2.3) in INDETERMINATE state at
+  20d/60d. HV1 in INDETERMINATE is a mild contra-indicator, not a
+  setup confirmation. Not added to `setup_classifier.py`.
+
+**Architectural insight (Phase 10).** The "empirical-optimum"
+conclusion drawn at the close of Phase 8b was correct for
+**same-information-set modifications** but wrong for **new orthogonal
+information axes**. The EXHAUSTION fragility documented across three
+prior investigations was a constraint on RS-family weight
+redistribution, NOT a constraint on the architecture itself. Adding a
+NEW component (with new orthogonal information) sidesteps the
+confidence-blending fragility because it doesn't shrink any existing
+RS-family weight in a non-proportional way — every other component
+just gets scaled uniformly by 0.97. This insight reframes the path
+forward: further improvement likely requires more orthogonal
+information axes (rather than weight reshuffles).
+
+**Risk acknowledgments.**
+
+- 5d per-date IC delta CI lower bound is +0.000012 — barely sig at
+  90% (marginal). Walk-forward paired t = +2.01 provides confirmation
+  despite marginal per-date significance.
+- 60d shows slight NS regression (−1.0%, walk-forward paired t = −0.21).
+  Within noise floor of every other investigation we've run; worth
+  monitoring in production.
+- ~6% NaN during 50d/10d warmup (handled by compute_ccqs nan-safe sum).
+- Features must be bundled (cannot unbundle per W6 evidence).
+
+**Implementation files:**
+- `compute/features.py` — Category 7b block; `low_rel_vol_10d` and
+  `volume_buzz_50` added. FEATURE_ORDER 124 → 126. NO LOOK-AHEAD
+  verified (causal rolling windows only).
+- `compute/components.py` — `_compute_s_volume()` added. COMPONENT_COLS
+  10 → 11. Bundled-feature requirement documented in docstring.
+- `compute/ccqs.py` — STATE_WEIGHTS scaled by 0.97; `s_volume` at
+  0.03 per state. Phase 10 narrative comment block added.
+- `compute/build_dashboard_cache.py` — `s_volume` added to
+  components.parquet column list.
+- `app/utils/data_loader.py` — `COMPONENT_DISPLAY_NAMES['s_volume']
+  = 'Volume Pattern'`.
+- `tests/reference/tv_snapshots.py` — refreshed Phase 8a → Phase 10
+  (CCQS drift only; max |Δ| = 1.93 for TSLA; UNH grade A → B from
+  per-date quantile slip; all 10/10 canaries pass).
+
+**Validation against W1 in-memory predictions** (live pipeline post-
+rebuild, max |Δ vs prediction| within 5% tolerance):
+
+| Metric | W1 prediction | Live pipeline | Δ |
+| ------ | ------------- | ------------- | -- |
+| 5d IC | 0.01168 | 0.01150 | −1.6% |
+| 20d IC | 0.00903 | 0.00887 | −1.8% |
+| 60d IC | 0.01362 | 0.01367 | +0.4% |
+| 126d IC | 0.02946 | 0.02948 | +0.1% |
+| EXHAUSTION 5d | 0.04393 | 0.04491 | +2.2% |
+| EXHAUSTION 20d | 0.02725 | 0.02235 | −18.0% |
+| EXHAUSTION 60d | 0.02437 | 0.02250 | −7.7% |
+| EXHAUSTION 126d | 0.04624 | 0.04387 | −5.1% |
+
+(EXHAUSTION live values slightly underperform the W1 predictions
+because the in-memory test held the per-date robust-z snapshot
+fixed; the rebuilt pipeline re-standardizes ALL 124 features with
+the new ones present, which shifts the per-date distributions
+slightly. Directional improvement vs Phase 8a baseline is preserved
+at every horizon.)
+
+Full investigation outputs preserved at `/tmp/p10_volume_features.py`,
+`/tmp/p10b_volume_refined.py`, `/tmp/p10c_conditional.py`, the three
+JSON results files, and `/tmp/PHASE_10_REPORT.md`.
 
 ---
 

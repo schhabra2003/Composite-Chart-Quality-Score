@@ -1,6 +1,9 @@
-# Phase 8a (2026-05-26): pinned versions unchanged; comment added to force
+# Phase 10 (2026-05-26): pinned versions unchanged; comment touched to force
 # Streamlit Cloud to rebuild the container from scratch and pick up the new
-# compute/ccqs.py STATE_WEIGHTS for the residual-momentum addition.
+# s_volume component (compute/components.py), the new low_rel_vol_10d /
+# volume_buzz_50 features (compute/features.py), the updated 11-component
+# STATE_WEIGHTS in compute/ccqs.py, and the COMPONENT_DISPLAY_NAMES entry
+# for 'Volume Pattern' in app/utils/data_loader.py.
 pandas==2.2.3
 numpy==2.1.3
 scipy==1.14.1

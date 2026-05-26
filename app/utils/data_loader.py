@@ -365,6 +365,7 @@ COMPONENT_DISPLAY_NAMES = {
     "s_extension":           "Extension",
     "s_demand":              "Demand",
     "s_momentum":            "Momentum",
+    "s_volume":              "Volume Pattern",
 }
 
 
