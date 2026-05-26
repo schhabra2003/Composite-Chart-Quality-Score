@@ -423,6 +423,53 @@ PERIOD_DAYS = {
 
 
 @st.cache_data(ttl=TTL, show_spinner=False)
+def load_grade_thresholds_history(period: str = "1Y") -> pd.DataFrame:
+    """Per-date cross-sectional CCQS quantile thresholds for grade bands.
+
+    Returns DataFrame indexed by date with columns:
+        q30 — D/C boundary  (top 70% threshold)
+        q55 — C/B boundary
+        q80 — B/A boundary
+        q92 — A/S boundary  (top 8% threshold)
+
+    These are the exact thresholds used by compute/ccqs.py to assign
+    per-date letter grades, recomputed here from the live ccqs cache.
+    Sliced by the same `period` rules as load_ticker_history so the
+    bands cover the same horizontal range as the displayed line.
+    """
+    if period not in PERIOD_DAYS:
+        raise ValueError(f"Invalid period: {period!r}")
+
+    ccqs = _read_parquet("ccqs.parquet")
+    if ccqs.empty:
+        return pd.DataFrame(columns=["q30", "q55", "q80", "q92"])
+
+    if period != "INCEPTION":
+        today = pd.Timestamp.today().normalize()
+        cutoff = today - pd.Timedelta(days=PERIOD_DAYS[period])
+        mask = ccqs.index.get_level_values("date") >= cutoff
+        sub = ccqs[mask]
+    else:
+        sub = ccqs
+
+    if sub.empty:
+        return pd.DataFrame(columns=["q30", "q55", "q80", "q92"])
+
+    series = sub["ccqs"].astype(float).dropna()
+    if series.empty:
+        return pd.DataFrame(columns=["q30", "q55", "q80", "q92"])
+
+    g = series.groupby(level="date", sort=True)
+    out = pd.DataFrame({
+        "q30": g.quantile(0.30),
+        "q55": g.quantile(0.55),
+        "q80": g.quantile(0.80),
+        "q92": g.quantile(0.92),
+    })
+    return out
+
+
+@st.cache_data(ttl=TTL, show_spinner=False)
 def load_ticker_history(ticker: str, period: str = "1Y") -> pd.DataFrame:
     """Per-ticker CCQS history sliced by named period.
 

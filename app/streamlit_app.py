@@ -22,6 +22,7 @@ from app.utils.data_loader import (
     get_newly_broken_today,
     load_components_for_ticker,
     load_dashboard_data,
+    load_grade_thresholds_history,
     load_key_metrics_for_ticker,
     load_oos_metrics,
     load_regime_context,
@@ -293,7 +294,10 @@ with tab_production:
             key=f"period_{sel}",
         )
         st.plotly_chart(
-            ccqs_trajectory_chart(load_ticker_history(sel, period=period_sel)),
+            ccqs_trajectory_chart(
+                load_ticker_history(sel, period=period_sel),
+                grade_thresholds=load_grade_thresholds_history(period=period_sel),
+            ),
             use_container_width=True,
             config={"displayModeBar": False},
         )
