@@ -430,3 +430,98 @@ See `SPEC.md` §Path C deferred backlog section for the full list. Highlights:
 - Premium Pullback criteria review
 - Dashboard preset filters (high-quality, mean-reversion)
 - NaN-tier filter / warning chip
+
+---
+
+## Phase 16-17 — CCQS-LC empirical re-validation + regime-aware deployment
+
+**Status (2026-05-27):** Phase 17 deployed.
+
+After Phase 15.1.D revealed 90% walk-forward failure on small caps, Phase 16
+applied the same Sub-Investigation D rigor to LC under the user direction:
+
+> "Apply Sub-Investigation D-level rigor to CCQS-LC validation. Empirically
+> verify what CCQS-LC actually does well and what might be illusion. No
+> assumptions preserved."
+
+### Phase 16 — Comprehensive CCQS-LC re-validation (16.A-16.I)
+
+Nine sub-investigations on 874-ticker LC universe (4.77 GB feature matrix,
+463 features × 2360 dates including all 11 production CCQS components):
+
+- **16.A**: Forward return characterization. LC has stronger mean/hit/skew
+  than SC. Universal patterns: HIGH market vol → 4× returns; low-vol anomaly.
+- **16.B**: Same 343 base + 84 XS + 25 sector-relative + 11 CCQS components
+  feature matrix as Phase 15.1.C, extended history (2017-01+).
+- **16.C**: Per-date Spearman IC ranking. **Best CCQS component
+  (`s_residual_momentum`) ranks 71/463; `s_momentum` ranks 426/463.** Raw
+  `mom_ret_126d` (rank 15) more predictive than ALL CCQS components.
+- **16.D**: Axis-stratified regressions on pre-screened 155 features.
+  CCQS axis adds +1.4% incremental per-date R² — not redundant.
+- **16.E**: Conditional IC across 4 regime axes × 4 horizons. Top 9
+  sign-flippers are ALL CCQS components (62% average flip rate).
+- **16.F (CRITICAL TEST)**: Walk-forward OOS validation, 88 windows.
+  **0/11 CCQS components survived. Only 1/61 features total survived.**
+- **16.G**: Time-varying analysis. CCQS components have IC +0.03 in
+  STRONG_BULL but −0.08 in STRONG_BEAR — **CCQS is a bull-market signal,
+  not all-weather.** 5 useful Tier-1 components, 6 weak/noise Tier-2.
+- **16.H**: Production STATE_WEIGHTS vs empirical optimal. Production
+  TRENDING weights only 27.5% off empirical optimum. **Production already
+  drops worst components to near-zero** (`s_extension` 0%, `s_demand` 0%,
+  `s_momentum` 0.3%).
+- **16.I**: Honest synthesis — three path-forward options.
+
+### Phase 17 — Regime-aware deployment (17.0-17.9)
+
+User selected the most empirically-grounded improvement:
+
+- **17.0**: Tested 42 candidate regime indicators (trend/vol/drawdown/breadth/
+  composite). **`dd_lt_15pct` selected** — SPY drawdown from 252-day high <15%.
+  - t-statistic 8.74, p < 0.0001
+  - IC differential at 63d: +0.093 (in-regime +0.027 vs off-regime −0.066)
+  - On 90% of trading days; real-time computable from SPY price only
+- **17.1-17.2**: Built v2 candidates (5 Tier-1 components, renormalized
+  weights, empirical bull weights). v2 vs v1 score correlation 0.989;
+  top-50 daily overlap 86%.
+- **17.4**: Walk-forward validation. **Critical finding**: v2 vs v1 IC
+  difference is ~0.001 (immaterial). **Regime filter (`dd_lt_15pct=1`)
+  is the actual empirical innovation** — turns 0/12 walk-forward survivors
+  → 3/12 (1/12 strictly robust at 126d in-regime).
+- **17.5**: Decision gate. Selected Option 2: deploy regime indicator only;
+  keep v1 STATE_WEIGHTS (already empirically near-optimal).
+
+### Phase 17.6-17.9 — Regime indicator deployment
+
+`compute/build_dashboard_cache.py::_design_space_regime()` writes new
+`ccqs_design_space` key into `data/cache/dashboard/regime_context.json`:
+
+```json
+"ccqs_design_space": {
+  "indicator": "dd_lt_15pct",
+  "spy_dd_from_high": -0.0002,
+  "spy_above_200ma": true,
+  "in_regime": true,
+  "regime_state": "GREEN",
+  "regime_label": "Design space — high confidence",
+  "empirical_basis": {
+    "ic_differential_63d": 0.093,
+    "t_statistic": 8.74,
+    "p_value_lt": 0.0001
+  }
+}
+```
+
+Three-state classification:
+- **GREEN**: `dd_lt_15pct=TRUE AND SPY > 200d MA` — design space, high confidence
+- **YELLOW**: `dd_lt_15pct=TRUE AND SPY ≤ 200d MA` — in regime, trend uncertain
+- **RED**: `dd_lt_15pct=FALSE` — out of design space; apply discretion
+
+`app/streamlit_app.py` renders prominent regime chip immediately below the
+title; RED state also adds explicit `st.error` banner with empirical citation.
+
+**No changes to STATE_WEIGHTS, components.parquet, ccqs.parquet, or TV
+references — methodology preserved; regime awareness added as display layer.**
+
+**Net effect**: production CCQS-LC now ships with empirically-validated
+design-space awareness. Users see at a glance whether the day's
+environment is within the validated working regime.

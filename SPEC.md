@@ -3070,6 +3070,138 @@ confirms Phase 14R clean.
 
 ---
 
+### Phase 16 — CCQS-LC empirical re-validation (investigation, 2026-05-27)
+
+Phase 15.1.D (SC walk-forward) revealed 90% failure rate of small-cap
+features under Sub-Investigation D rigor. User directed: "Apply
+Sub-Investigation D-level rigor to CCQS-LC validation. Empirically
+verify what CCQS-LC actually does well and what might be illusion."
+
+Nine sub-investigations on 874-ticker LC universe (4.77 GB feature matrix,
+463 features × 2360 dates, includes all 11 production CCQS components):
+
+**16.A — Universe characterization.** LC vs SC forward returns: LC mean
++5.7% at 63d vs SC +3.5%, hit rate 0.585 vs 0.559. Universal patterns
+preserved: HIGH market vol → 4× returns (LC) / 14× (SC); low-vol anomaly
+in both. LC has 13.9 skew at 126d (mega-cap winners) vs SC 3.4.
+
+**16.B — Comprehensive feature universe.** Built same 343 base + 84 XS +
+25 sector-relative + 11 CCQS components matrix as Phase 15.1.C. Extended
+OHLCV to 2017-01 (87% pre-2018 coverage). 4.77 GB final parquet.
+
+**16.C — Per-date Spearman IC ranking.** **Best CCQS component
+(`s_residual_momentum`) ranks 71/463; `s_momentum` ranks 426/463.** Raw
+`mom_ret_126d` (rank 15) more predictive than ALL 11 CCQS components.
+Tier 1 (top 30%): `s_residual_momentum`, `s_structure`, `s_rs`,
+`s_rs_leadership`, `s_mtf`. Tier 2 (weak): `s_trend_slope`, `s_volume`,
+`s_extension`, `s_demand`, `s_rsl`, `s_momentum`.
+
+**16.D — Axis-stratified regressions.** Pre-screened 155 features (matching
+SC's 154). CCQS axis adds +1.4% incremental per-date R² — non-redundant.
+Sector-Relative is biggest non-TS contributor (+2.1%). LC structurally
+more predictable than SC (~44% per-date R² vs ~36%).
+
+**16.E — Conditional IC sign-flip analysis.** **Top 9 sign-flippers across
+4 conditions × 4 horizons are ALL CCQS components.** Average CCQS flip
+rate 62% vs top technical 50%. CCQS components are MORE regime-unstable
+than alternatives.
+
+**16.F (CRITICAL TEST) — Walk-forward OOS validation.** 88 windows, top-50
+features + 11 CCQS. **0/11 CCQS components survive; 1/61 features total**
+(`sc_days_at_52w_low_pct_63d`). LC failure rate 98% (vs SC 90%).
+**Path C validation does not hold under Sub-Investigation D rigor.**
+
+**16.G — Time-varying analysis.** CCQS components have IC +0.03 in
+STRONG_BULL but −0.08 in STRONG_BEAR — **CCQS is a bull-market signal,
+not all-weather**. Range 0.10-0.14 between bull/bear regimes for top
+components. Explains 16.F failure: walk-forward windows span both
+regimes, signs flip.
+
+**16.H — Empirical vs production weight comparison.** Production STATE_WEIGHTS
+already correctly drop `s_extension`, `s_demand` to 0%, `s_momentum` to
+0.3%. TRENDING state weights only 27.5% off empirical bull-optimal
+(L1 = 0.55). Biggest discrepancies: `s_mtf` over-weighted 5× (prod 16%
+vs empirical 3%), `s_residual_momentum` under-weighted 3.5× (prod 5% vs
+empirical 17%).
+
+**16.I — Honest synthesis.** Three path options identified:
+- A: Major v2 restructure (drop Tier 2 + empirical weights + regime gating)
+- B: Document + status quo
+- C: Fundamental reconsideration (regression on screened features)
+
+Critical empirical finding: CCQS-LC's component-based composite signal
+is regime-conditional. Static weights cannot adapt. The improvement
+opportunity is regime-aware deployment, not weight recalibration.
+
+---
+
+### Phase 17 — Regime-aware deployment (SHIPPED, 2026-05-27)
+
+User-selected Option 2 from Phase 16.I: deploy empirical regime indicator
+only; preserve production STATE_WEIGHTS (already roughly empirically
+optimal in TRENDING state).
+
+**17.0 — Regime quantification.** Tested 42 candidate regime indicators
+(trend, vol, drawdown, breadth, composite). Selected
+**`dd_lt_15pct`** — SPY drawdown from 252-day high < 15%.
+
+Empirical justification:
+- t-statistic 8.74, p < 0.0001 (best of all candidates)
+- IC differential at 63d: +0.093 (in-regime +0.027 vs off-regime −0.066)
+- On 90% of trading days (well-balanced; not pathologically rare)
+- Real-time computable from SPY closing price + 252-day rolling max
+
+**17.4 — v2 walk-forward validation.** Tested three candidate methodologies
+(v1 production, v2a renormalized 5 components, v2b empirical bull weights)
+across 4 horizons × 3 regime filters. **Key finding**: v2 vs v1 score
+correlation 0.989, top-50 daily overlap 86%, IC difference ~0.001 —
+**v2 weight changes are immaterial**. The regime filter (`dd_lt_15pct=1`)
+is the actual empirical innovation:
+- 0/12 walk-forward survivors without regime filter
+- 3/12 survivors WITH regime filter (specifically 126d in-regime, 1 strict)
+
+**17.5 — Decision gate.** v1 production STATE_WEIGHTS already roughly
+empirically optimal (the original Phase 16.H "misallocation" was based on
+unconditional comparison; in TRENDING state production weights match
+empirical bull-regime values within reason). Deploy regime indicator
+only; preserve v1 methodology.
+
+**17.6-17.9 — Deployment (this section).**
+
+`compute/build_dashboard_cache.py::_design_space_regime()` computes the
+regime daily from SPY benchmark data and writes a new
+`ccqs_design_space` key into `data/cache/dashboard/regime_context.json`
+(schema_version bumped 1 → 2).
+
+Three-state classification:
+- **GREEN**: `dd_lt_15pct=TRUE AND SPY > 200d MA` — design space, high confidence
+- **YELLOW**: `dd_lt_15pct=TRUE AND SPY ≤ 200d MA` — in regime, trend uncertain
+- **RED**: `dd_lt_15pct=FALSE` — out of design space; apply discretion
+
+`app/streamlit_app.py` renders a prominent regime chip immediately below
+the title showing the current state, drawdown depth, and empirical
+basis (t-statistic citation). RED state triggers an additional
+`st.error` banner with explicit empirical context.
+
+**No methodology changes:**
+- `compute/ccqs.py` STATE_WEIGHTS unchanged
+- `compute/components.py` unchanged (11 components computed)
+- `data/cache/components.parquet` semantics unchanged
+- `data/cache/ccqs.parquet` semantics unchanged
+- `tests/reference/tv_snapshots.py` unchanged (140/140 TV reference parity preserved)
+- All sanity checks pass; pipeline outputs bit-identical to Phase 14R
+
+**Net effect:** Production CCQS-LC now ships with empirically-validated
+design-space awareness. Methodology Lock §3 preserved (no methodology
+change — display-layer addition citing empirical evidence).
+
+**Empirical readings cited in production:**
+- Phase 16-17 reports archived in `/tmp/phase16/` and `/tmp/phase17/`
+- Walk-forward data: `/tmp/phase17/p17_4_v2_validation.json`
+- Regime indicator data: `/tmp/phase17/p17_0_regime_indicators.parquet`
+
+---
+
 ### Phase X.4 — Targeted 20-60d horizon audit (2026-05-22)
 
 Goal: push 20d and 60d OOS IC toward statistical significance (t > 2.0) while

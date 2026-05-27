@@ -133,11 +133,82 @@ def _dollar_volume_quintiles(ohlcv_path: Path) -> dict[str, int]:
     return {row['ticker']: int(qv) for (_, row), qv in zip(snap.iterrows(), q) if not pd.isna(qv)}
 
 
+def _design_space_regime(benchmarks_path: Path) -> dict:
+    """Phase 17 — empirically-derived CCQS-LC design-space regime.
+
+    Phase 16-17 empirical evidence established that CCQS-LC's component-based
+    composite signal is regime-conditional: it works in "trending market"
+    conditions and fails in deep drawdowns. The deployment gate is
+    empirically defined as `dd_lt_15pct` — SPY drawdown from its 252-day
+    high is shallower than 15%.
+
+    Phase 17.0 empirical justification:
+      • t-statistic 8.74, p < 0.0001 vs other candidate regime indicators
+      • IC differential at 63d: +0.093 (in-regime +0.027 vs off-regime −0.066)
+      • Walk-forward validation: regime-on periods at 126d horizon are the
+        only configuration where CCQS-LC survives OOS robustness criteria
+        (Phase 17.4)
+      • Real-time computable from SPY closing price + 252-day rolling max
+
+    Three-state classification:
+      GREEN  — dd_lt_15pct=TRUE AND SPY > 200d MA  (design space, high confidence)
+      YELLOW — dd_lt_15pct=TRUE AND SPY ≤ 200d MA  (in-regime but trend uncertain)
+      RED    — dd_lt_15pct=FALSE                   (out of design space; apply discretion)
+    """
+    bench = pd.read_parquet(benchmarks_path)
+    spy = bench[bench['ticker'] == 'SPY'].sort_values('date').copy()
+    if spy.empty:
+        return {}
+    spy['adj_close'] = spy['adj_close'].astype(float)
+    # 252-day rolling max and SPY 200d MA
+    spy['rolling_max_252d'] = spy['adj_close'].rolling(252, min_periods=63).max()
+    spy['dd_from_high'] = (spy['adj_close'] - spy['rolling_max_252d']) / spy['rolling_max_252d']
+    spy['ma_200d'] = spy['adj_close'].rolling(200, min_periods=50).mean()
+    spy['above_200ma'] = spy['adj_close'] > spy['ma_200d']
+    spy = spy.dropna(subset=['dd_from_high', 'above_200ma'])
+    if spy.empty:
+        return {}
+    latest = spy.iloc[-1]
+    dd = float(latest['dd_from_high'])
+    above_200 = bool(latest['above_200ma'])
+    in_regime = dd > -0.15
+    if not in_regime:
+        state, label = "RED", "Out of design space — apply discretion"
+    elif above_200:
+        state, label = "GREEN", "Design space — high confidence"
+    else:
+        state, label = "YELLOW", "In-regime but below 200d MA — moderate confidence"
+    return {
+        "indicator": "dd_lt_15pct",
+        "indicator_description": (
+            "SPY drawdown from 252-day high is shallower than 15%. "
+            "Empirically derived gate for CCQS-LC predictive validity."
+        ),
+        "latest_date": latest['date'].strftime("%Y-%m-%d"),
+        "spy_close": round(float(latest['adj_close']), 2),
+        "spy_252d_max": round(float(latest['rolling_max_252d']), 2),
+        "spy_dd_from_high": round(dd, 4),
+        "spy_above_200ma": above_200,
+        "in_regime": in_regime,
+        "regime_state": state,
+        "regime_label": label,
+        "empirical_basis": {
+            "ic_differential_63d": 0.093,
+            "t_statistic": 8.74,
+            "p_value_lt": 0.0001,
+            "on_fraction_full_sample": 0.90,
+            "walk_forward_robust_at_126d": True,
+            "phase": "17.0",
+        },
+    }
+
+
 def _build_regime_context() -> dict:
     """Top-level: market vol regime + per-ticker dvol quintile + defensive list."""
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "market_vol": _market_vol_thresholds(SRC / "benchmarks.parquet"),
+        "ccqs_design_space": _design_space_regime(SRC / "benchmarks.parquet"),
         "dvol_quintile_by_ticker": _dollar_volume_quintiles(SRC / "ohlcv_daily.parquet"),
         "defensive_baskets": list(DEFENSIVE_BASKETS),
     }

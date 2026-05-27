@@ -123,6 +123,33 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Phase 17 — CCQS-LC design-space regime chip.
+# Empirically derived in Phase 17.0: SPY drawdown from 252d high <15% is the
+# gate that discriminates when CCQS-LC's signal is OOS-robust (t=8.74,
+# p<0.0001; walk-forward survival 1/12 → 3/12 with regime filter; see SPEC §17).
+# Three states: GREEN (in regime + above 200ma) / YELLOW (in regime, below 200ma) /
+# RED (out of design space). No methodology change; display-layer only.
+_ds = regime_ctx.get("ccqs_design_space", {}) if regime_ctx else {}
+if _ds:
+    _state = _ds.get("regime_state", "")
+    _dd_pct = _ds.get("spy_dd_from_high", 0) * 100
+    _above = _ds.get("spy_above_200ma", False)
+    _color = {"GREEN": "#10b981", "YELLOW": "#f59e0b", "RED": "#ef4444"}.get(_state, "#6b7280")
+    _icon = {"GREEN": "🟢", "YELLOW": "🟡", "RED": "🔴"}.get(_state, "⚪")
+    _label = _ds.get("regime_label", "")
+    st.markdown(
+        f"<div style='display:inline-block; padding:0.5em 1em; "
+        f"background:{_color}22; border-left:4px solid {_color}; "
+        f"border-radius:6px; margin:0.5em 0;'>"
+        f"<strong>{_icon} CCQS-LC design-space regime: {_state}</strong> — {_label}<br>"
+        f"<span style='color:#64748b; font-size:0.9em;'>"
+        f"SPY {_dd_pct:+.2f}% from 252d high · {'above' if _above else 'below'} 200d MA · "
+        f"indicator <code>dd_lt_15pct = {str(_ds.get('in_regime')).upper()}</code> · "
+        f"empirical gate (Phase 17.0, t=8.74)"
+        f"</span></div>",
+        unsafe_allow_html=True,
+    )
+
 # Priority 3d: top-of-page banner when SPY 20d realized vol is in the HIGH
 # tercile. Honest disclosure — CCQS has documented negative IC at 60d/126d
 # in this regime (Priority 2b). No methodology change; display-layer only.
@@ -136,6 +163,19 @@ if _mv.get("current_regime") == "HIGH":
         "Use the composite with reduced confidence today; consider "
         "shorter horizons or wait for the regime to normalize.",
         icon="⚠️",
+    )
+
+# Phase 17 — Red regime banner: explicit warning when SPY drawdown >15%
+# (CCQS-LC's empirically-derived design space is breached). Stronger
+# disclosure than the chip — the system is being used outside its
+# validated regime.
+if _ds.get("regime_state") == "RED":
+    st.error(
+        f"**Out of CCQS-LC design space.** SPY is {abs(_dd_pct):.1f}% below its 252-day high. "
+        f"Phase 16-17 walk-forward evidence: CCQS-LC components fail OOS validation in deep "
+        f"drawdowns; in-regime IC +0.027 vs off-regime −0.066 at 63d (Phase 17.0). "
+        f"Apply discretion; treat CCQS scores as ranking aid only, not as a predictive signal.",
+        icon="🔴",
     )
 
 

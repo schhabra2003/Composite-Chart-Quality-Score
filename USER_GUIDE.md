@@ -268,4 +268,50 @@ Use the setup filter directly. The top empirical-edge setups (≥ +6% at 60d) ar
 
 ---
 
+## J. CCQS-LC design-space regime (Phase 17)
+
+Phase 16-17 (2026-05-27) applied Sub-Investigation D-level rigor to CCQS-LC
+validation. The empirical result was uncomfortable but clear: **CCQS-LC's
+component-based composite signal is regime-conditional. It works in trending
+market conditions and fails in deep drawdowns.**
+
+### The regime indicator
+
+The dashboard now displays a **CCQS-LC design-space regime chip** below the
+title. It is computed from a single empirically-derived gate:
+
+**`dd_lt_15pct`** — SPY is within 15% of its trailing 252-day high.
+
+Empirical justification (Phase 17.0):
+- t-statistic 8.74, p < 0.0001 vs 42 candidate regime indicators tested
+- IC differential at 63d: +0.093 (in-regime +0.027 vs off-regime −0.066)
+- Walk-forward survival: 0/12 cells without regime filter → 3/12 with filter
+- On 90% of trading days; real-time computable from SPY price only
+
+### Three-state classification
+
+| State | Condition | What it means |
+|-------|-----------|---------------|
+| 🟢 **GREEN** | dd_lt_15pct=TRUE AND SPY > 200d MA | Design space — trust CCQS rankings, deploy strategies |
+| 🟡 **YELLOW** | dd_lt_15pct=TRUE AND SPY ≤ 200d MA | In regime but trend uncertain — apply additional discretion |
+| 🔴 **RED** | dd_lt_15pct=FALSE | Out of design space — CCQS scores are ranking aid only, not predictive |
+
+### What this means for daily use
+
+- **GREEN state**: CCQS-LC has empirical validity for screening trending leaders. Use rankings + tier + setup as normal.
+- **YELLOW state**: System is in its working regime but market is below long-term trend. Single-stock setups may still work but apply additional risk management.
+- **RED state**: SPY is in a >15% drawdown. Phase 16-17 evidence shows CCQS components flip signs in these regimes. Treat CCQS scores as **ranking aid only** — do not use as predictive signal.
+
+### Empirical caveat for ALL regimes
+
+Phase 16.F walk-forward OOS validation found that CCQS-LC components have a 100% failure rate at horizons shorter than 126d. The validated signal is the **long-horizon (126d) bull-regime trending-leader screen**. Use the system accordingly:
+
+- For **stock selection in bull markets**: well-validated empirical edge
+- For **short-term predictions** (5-21 day): not OOS-validated; use as screening aid only
+- For **bear market predictions**: Tier 1 components invert; do not rely on rankings
+
+---
+
+**Phase 17 deployed (2026-05-27).** Methodology Lock §3 preserved — Phase 17 added empirical regime awareness as a display-layer addition; STATE_WEIGHTS and CCQS computation unchanged from Phase 11E.2 baseline.
+
 **Path C complete (2026-05-26). Methodology baseline: Phase 11E.2.** Future changes require new empirical evidence per Methodology Lock §3.

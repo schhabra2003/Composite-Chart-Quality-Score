@@ -1,11 +1,31 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "market_vol": {
     "latest_date": "2026-05-27",
     "spy_vol_20d_latest": 0.101,
     "tercile_lo": 0.1136,
     "tercile_hi": 0.1673,
     "current_regime": "LOW"
+  },
+  "ccqs_design_space": {
+    "indicator": "dd_lt_15pct",
+    "indicator_description": "SPY drawdown from 252-day high is shallower than 15%. Empirically derived gate for CCQS-LC predictive validity.",
+    "latest_date": "2026-05-27",
+    "spy_close": 750.45,
+    "spy_252d_max": 750.59,
+    "spy_dd_from_high": -0.0002,
+    "spy_above_200ma": true,
+    "in_regime": true,
+    "regime_state": "GREEN",
+    "regime_label": "Design space \u2014 high confidence",
+    "empirical_basis": {
+      "ic_differential_63d": 0.093,
+      "t_statistic": 8.74,
+      "p_value_lt": 0.0001,
+      "on_fraction_full_sample": 0.9,
+      "walk_forward_robust_at_126d": true,
+      "phase": "17.0"
+    }
   },
   "dvol_quintile_by_ticker": {
     "A": 3,
