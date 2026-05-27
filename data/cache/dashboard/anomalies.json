@@ -9,8 +9,8 @@
   },
   "anomalies": [
     {
-      "ticker": "URNM",
-      "date": "2026-05-26",
+      "ticker": "BBAR",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 70.71,
       "ccqs_prev": 37.98,
@@ -80,7 +80,7 @@
     },
     {
       "ticker": "AJG",
-      "date": "2026-05-26",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 10.98,
       "ccqs_prev": 11.86,
@@ -139,8 +139,8 @@
       "severity": "medium"
     },
     {
-      "ticker": "AVAV",
-      "date": "2026-05-26",
+      "ticker": "AZN",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 9.65,
       "ccqs_prev": 7.39,
@@ -170,7 +170,7 @@
     },
     {
       "ticker": "AZO",
-      "date": "2026-05-26",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 9.67,
       "ccqs_prev": 17.65,
@@ -179,8 +179,8 @@
       "severity": "medium"
     },
     {
-      "ticker": "BEP",
-      "date": "2026-05-26",
+      "ticker": "BA",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 88.56,
       "ccqs_prev": 81.84,
@@ -190,7 +190,7 @@
     },
     {
       "ticker": "BKR",
-      "date": "2026-05-26",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 80.94,
       "ccqs_prev": 83.8,
@@ -210,7 +210,7 @@
     },
     {
       "ticker": "BR",
-      "date": "2026-05-26",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 4.59,
       "ccqs_prev": 6.16,
@@ -220,7 +220,7 @@
     },
     {
       "ticker": "BTI",
-      "date": "2026-05-26",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 76.16,
       "ccqs_prev": 80.25,
@@ -879,8 +879,8 @@
       "severity": "medium"
     },
     {
-      "ticker": "MU",
-      "date": "2026-05-26",
+      "ticker": "BWLP",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 96.6,
       "ccqs_prev": 95.76,
@@ -919,8 +919,8 @@
       "severity": "medium"
     },
     {
-      "ticker": "NIO",
-      "date": "2026-05-26",
+      "ticker": "FAN",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 29.76,
       "ccqs_prev": 40.73,
@@ -1379,8 +1379,8 @@
       "severity": "medium"
     },
     {
-      "ticker": "VST",
-      "date": "2026-05-26",
+      "ticker": "FAST",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 28.14,
       "ccqs_prev": 23.01,
@@ -1400,7 +1400,7 @@
     },
     {
       "ticker": "WMB",
-      "date": "2026-05-26",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 81.32,
       "ccqs_prev": 85.9,
@@ -1419,8 +1419,8 @@
       "severity": "medium"
     },
     {
-      "ticker": "XPEV",
-      "date": "2026-05-26",
+      "ticker": "YPF",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 14.59,
       "ccqs_prev": 10.49,
@@ -1429,8 +1429,8 @@
       "severity": "medium"
     },
     {
-      "ticker": "ZS",
-      "date": "2026-05-26",
+      "ticker": "YUM",
+      "date": "2026-05-27",
       "type": "ccqs_jump",
       "ccqs": 30.48,
       "ccqs_prev": 24.09,
@@ -1439,35 +1439,13 @@
       "severity": "medium"
     },
     {
-      "ticker": "CME",
-      "date": "2026-05-26",
+      "ticker": "EWY",
+      "date": "2026-05-27",
       "type": "state_flip",
       "states": [
-        "DETERIORATING",
         "TRENDING",
-        "DETERIORATING"
-      ],
-      "severity": "medium"
-    },
-    {
-      "ticker": "EIX",
-      "date": "2026-05-26",
-      "type": "state_flip",
-      "states": [
-        "DETERIORATING",
-        "TRENDING",
-        "PULLBACK"
-      ],
-      "severity": "medium"
-    },
-    {
-      "ticker": "ETN",
-      "date": "2026-05-26",
-      "type": "state_flip",
-      "states": [
-        "DETERIORATING",
-        "TRENDING",
-        "PULLBACK"
+        "EXHAUSTION",
+        "TRENDING"
       ],
       "severity": "medium"
     }

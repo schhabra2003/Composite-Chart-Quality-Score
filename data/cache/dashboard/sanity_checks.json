@@ -57,11 +57,11 @@
       "name": "index_alignment",
       "passed": true,
       "observed": {
-        "ccqs": 1530098,
-        "components": 1530098,
-        "state": 1530098,
-        "leadership": 1530098,
-        "setups": 1530098
+        "ccqs": 1530949,
+        "components": 1530949,
+        "state": 1530949,
+        "leadership": 1530949,
+        "setups": 1530949
       },
       "expected": "all (ticker,date) indexes equal length and named",
       "detail": ""
@@ -69,14 +69,14 @@
     {
       "name": "theme_ccqs_coverage",
       "passed": true,
-      "observed": "77.89% valid",
+      "observed": "77.91% valid",
       "expected": "\u226550% of theme rows have a valid theme_ccqs",
       "detail": ""
     },
     {
       "name": "features_fresh_within_5d",
       "passed": true,
-      "observed": "max date 2026-05-26 (0d old)",
+      "observed": "max date 2026-05-27 (0d old)",
       "expected": "latest features date within 5 calendar days",
       "detail": ""
     },

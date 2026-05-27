@@ -4,7 +4,7 @@
     "latest_date": "2026-05-26",
     "spy_vol_20d_latest": 0.1041,
     "tercile_lo": 0.1136,
-    "tercile_hi": 0.1674,
+    "tercile_hi": 0.1673,
     "current_regime": "LOW"
   },
   "dvol_quintile_by_ticker": {
@@ -295,7 +295,7 @@
     "EWA": 2,
     "EWC": 2,
     "EWD": 1,
-    "EWG": 2,
+    "EWG": 1,
     "EWI": 1,
     "EWJ": 4,
     "EWL": 1,
