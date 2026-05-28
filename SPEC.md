@@ -3202,6 +3202,90 @@ change — display-layer addition citing empirical evidence).
 
 ---
 
+### Phase 25 — Setup label redesign (SHIPPED, 2026-05-28)
+
+Display-layer redesign of the setup classifier. The 27-label
+state-conditioned cascade in `compute/setup_classifier.py` is replaced
+by a 12-label **chart-evocative cascade** in
+`compute/setup_classifier_v2.py`. Pure descriptive labels — no
+predictive language, no gestalt-pattern naming (no cup-and-handle /
+wedge / H&S). The legacy classifier is preserved untouched for
+reference; the pipeline now calls v2.
+
+**No methodology changes.**
+- `compute/ccqs.py` STATE_WEIGHTS unchanged
+- `compute/components.py` unchanged (11 components)
+- `compute/state.py` unchanged (6 states)
+- `compute/leadership.py` unchanged
+- All numeric / categorical non-setup fields bit-identical
+  (140/140 TV reference parity preserved; only `setup` and
+  `setup_confidence` change)
+
+**The 12 labels (cascade order, first match wins):**
+
+| # | Label | Definition |
+|---|---|---|
+| 1 | New High | Today's close = 252d max AND `pct_ma_50 ≤ own 80th-percentile of own 252d history` |
+| 2 | Breakout | `close > prior 40d max` AND `true-range × ATR14 > 1.3` |
+| 3 | Failed Breakout | Within last 5d a Breakout (#2) fired AND today's close < that breakout's cleared level (`failed_breakout_flag_5d_v2`) |
+| 4 | Tight Base | Bullish stack AND `adr_pct_20` in bottom 25th cross-sectional percentile AND within 5% of 252d high |
+| 5 | Coiling | Bullish stack AND `range_20d_to_60d_ratio < 0.6` AND `bb_width_pct_252d ≤ 20` (bottom 20% of own 252d BB-width history) |
+| 6 | Shallow Pullback | Bullish stack AND 3% ≤ off-20d-high ≤ 10% AND close ≥ 21EMA |
+| 7 | Deep Pullback | Bullish stack AND 10% < off-20d-high ≤ 20% AND close ≥ 50d MA |
+| 8 | Extended | Bullish stack AND `pct_ma_50 > own 80th-percentile of own 252d history` |
+| 9 | At Highs | Bullish stack AND within 5% of 252d high (residual) |
+| 10 | Basing Low | Within 10% of 252d low AND `adr_pct_20` in bottom 40th cross-sectional percentile |
+| 11 | Breakdown | `close < prior 40d min` AND close < 50d MA |
+| 12 | Sideways | `range_60d_pct_of_price < 20` AND 25% ≤ `position_in_60d_range` ≤ 75% |
+
+If no condition matches → empty string (`""`).
+`setup_confidence = 1.0` for any assigned label, `0.0` for blank.
+
+**Design principles (verbatim from spec):**
+
+1. Labels are chart-hooks, not indicator-language.
+2. Describe present state, never predict future outcome.
+3. Decompose patterns into measurable constituents; do not name
+   gestalts.
+4. Uptrend/Downtrend deliberately omitted — too prevalent to be
+   informative.
+5. Thresholds are calibrated starting points and may be tuned after
+   coverage analysis on the live universe.
+6. 1–2 word labels (hard constraint).
+
+**All thresholds are universe-relative or scale-invariant.** Either
+(a) cross-sectional percentiles within the universe-of-the-day,
+(b) self-relative ratios against the name's own trailing history, or
+(c) scale-invariant % values. No absolute price levels, no per-name
+hand-tuned values.
+
+**New features (Cat 24 in `compute/features.py`).** Eleven primitives
+added to power the cascade: `close_max_40d`, `close_min_40d`,
+`high_max_20d`, `pct_from_20d_high`, `range_20d_pct_of_price`,
+`range_60d_pct_of_price`, `range_20d_to_60d_ratio`,
+`position_in_60d_range`, `pct_ma_50_p80_252d`, `true_range_x_atr14`,
+`failed_breakout_flag_5d_v2`. `FEATURE_ORDER` length 126 → 137.
+
+**Coverage on 2026-05-28 (universe = 860).**
+Blank 50.6 / Sideways 10.3 / Shallow Pullback 8.3 / Basing Low 6.9 /
+Extended 5.6 / Tight Base 5.5 / Breakdown 4.3 / Failed Breakout 2.3 /
+Breakout 2.2 / Coiling 2.0 / Deep Pullback 1.4 / At Highs 0.6 /
+New High 0.1 (percent). Max single-label share 10.3% — well below
+the 40% spec ceiling.
+
+**Validation:**
+- 140/140 TradingView reference fields PASS (numeric fields
+  bit-identical; setup column refreshed for all 10 canaries).
+- 11/11 pipeline sanity checks PASS.
+- Spot-checks for 5 names per label confirm correct assignment.
+
+**Net effect:** Production setup column now uses descriptive,
+chart-evocative vocabulary that decomposes patterns into measurable
+constituents and avoids predictive framing. Methodology Lock §3
+preserved (no methodology change — display-layer redesign).
+
+---
+
 ### Phase X.4 — Targeted 20-60d horizon audit (2026-05-22)
 
 Goal: push 20d and 60d OOS IC toward statistical significance (t > 2.0) while
@@ -4623,7 +4707,15 @@ Target tier sizes (by construction of the quantile cuts):
 
 ---
 
-## 10. Setup Categories — 29 Setups
+## 10. Setup Categories — 29 Setups (LEGACY — superseded by Phase 25)
+
+> ⚠️ **Phase 25 (2026-05-28) supersedes this section.** Production
+> now uses the 12-label chart-evocative cascade in
+> `compute/setup_classifier_v2.py` — see the Phase 25 entry above in the
+> phase-by-phase section. The 27-label vocabulary documented below is
+> preserved here for historical reference; the legacy classifier in
+> `compute/setup_classifier.py` is no longer called by the pipeline but
+> is kept untouched in the repo.
 
 Direct multi-feature detection with priority ordering. Higher-priority setups checked first.
 

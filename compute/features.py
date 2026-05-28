@@ -577,8 +577,15 @@ FEATURE_ORDER: list[str] = [
     "sharpe_ratio_60d", "information_ratio_60d", "sortino_ratio_60d",
     "max_drawdown_pct_60d",
     "return_autocorrelation_21d_lag1", "vol_percentile_21d",
+    # Cat 24 (11) — Setup-cascade primitives (Phase 25)
+    "close_max_40d", "close_min_40d",
+    "high_max_20d", "pct_from_20d_high",
+    "range_20d_pct_of_price", "range_60d_pct_of_price",
+    "range_20d_to_60d_ratio", "position_in_60d_range",
+    "pct_ma_50_p80_252d", "true_range_x_atr14",
+    "failed_breakout_flag_5d_v2",
 ]
-assert len(FEATURE_ORDER) == 126, f"FEATURE_ORDER has {len(FEATURE_ORDER)} entries, expected 126"
+assert len(FEATURE_ORDER) == 137, f"FEATURE_ORDER has {len(FEATURE_ORDER)} entries, expected 137"
 
 
 def compute_features(long_df: pd.DataFrame) -> pd.DataFrame:
@@ -628,6 +635,50 @@ def compute_features(long_df: pd.DataFrame) -> pd.DataFrame:
     feats["atr_x_200"] = (c - feats["sma_200"]) / atr14.replace(0, np.nan)
     adr_floor = feats["adr_pct_20"].clip(lower=1.0)
     feats["vol_normalized_extension"] = feats["atr_x_50"] / adr_floor
+
+    # --- Category 3b: Setup-cascade primitives (Phase 25) -----------------
+    # Pure OHLCV-derived rolling features added for compute/setup_classifier_v2.py.
+    # Each is a deterministic boolean / ratio gating term for one of the 12
+    # cascade labels. No methodology impact — these only feed the display-layer
+    # setup classifier.
+    high_20 = h.rolling(20, min_periods=20).max()
+    low_20 = l.rolling(20, min_periods=20).min()
+    high_60 = h.rolling(60, min_periods=60).max()
+    low_60 = l.rolling(60, min_periods=60).min()
+    feats["close_max_40d"] = c.rolling(40, min_periods=40).max()         # Breakout / Breakdown anchor
+    feats["close_min_40d"] = c.rolling(40, min_periods=40).min()
+    feats["high_max_20d"] = high_20
+    feats["pct_from_20d_high"] = ((c - high_20) / high_20 * 100.0)        # Pullback labels
+    range_20 = (high_20 - low_20)
+    range_60 = (high_60 - low_60)
+    feats["range_20d_pct_of_price"] = range_20 / c * 100.0
+    feats["range_60d_pct_of_price"] = range_60 / c * 100.0
+    feats["range_20d_to_60d_ratio"] = range_20 / range_60.replace(0, np.nan)  # Coiling
+    feats["position_in_60d_range"] = (c - low_60) / range_60.replace(0, np.nan)  # Sideways
+    # Rolling 80th percentile of pct_ma_50 over own 252d history — gates Extended
+    # and excludes extended new-highs from "New High" label.
+    feats["pct_ma_50_p80_252d"] = (
+        feats["pct_ma_50"].rolling(252, min_periods=252).quantile(0.80)
+    )
+    # Today's true range / ATR_14 — gates Breakout intensity (>1.3x = range expansion).
+    feats["true_range_x_atr14"] = tr / atr14.replace(0, np.nan)
+    # Proper 5d Failed Breakout per Phase 25 spec:
+    #   "Within last 5 trading days, condition #2 was true on some prior day,
+    #    AND today's close is BELOW that day's breakout level"
+    # Condition #2: close > prior 40d max AND TR/ATR > 1.3 (range expansion).
+    # breakout_level_today = the prior 40d max that today's breakout cleared;
+    # rolling 5d max across (level | breakout_flag) gives the highest level
+    # cleared in the last N days; .shift(1) excludes today's own breakout.
+    breakout_today_flag = (c > feats["close_max_40d"].shift(1)) & (feats["true_range_x_atr14"] > 1.3)
+    breakout_level_today = feats["close_max_40d"].shift(1)
+    recent_breakout_level_5d = (
+        breakout_level_today.where(breakout_today_flag)
+                            .rolling(5, min_periods=1).max()
+                            .shift(1)
+    )
+    feats["failed_breakout_flag_5d_v2"] = (
+        (recent_breakout_level_5d.notna()) & (c < recent_breakout_level_5d)
+    ).astype(float)
 
     # --- Category 4: Trend Slope & Regression ---------------------------
     log_c = np.log(c.replace(0, np.nan))

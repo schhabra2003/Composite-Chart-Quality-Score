@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-28T14:51:52.257309+00:00",
+  "generated_at": "2026-05-28T18:39:10.670001+00:00",
   "passed": true,
   "n_checks": 11,
   "n_failed": 0,
@@ -35,7 +35,7 @@
     {
       "name": "grade_s_pct_in_2_15",
       "passed": true,
-      "observed": "6.34%",
+      "observed": "6.61%",
       "expected": "S grade % between 2 and 15",
       "detail": ""
     },
@@ -83,7 +83,7 @@
     {
       "name": "universe_coverage",
       "passed": true,
-      "observed": "858 tickers",
+      "observed": "859 tickers",
       "expected": "\u2265750 unique tickers with a CCQS in the last 30 trading days",
       "detail": ""
     }

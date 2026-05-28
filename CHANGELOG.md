@@ -831,3 +831,122 @@ Above these gates, the renormalized composite is treated as a
 legitimate estimate with a disclaimer. Below them, the composite is
 emitted as NaN.
 
+## Phase 25 — Setup label redesign (2026-05-28)
+
+Replaces the 27-label setup vocabulary with a 12-label chart-evocative
+cascade. **Display-layer only** — no CCQS, state, leadership, or
+methodology changes. The legacy classifier in
+`compute/setup_classifier.py` is preserved untouched for reference; the
+pipeline now calls the new `compute/setup_classifier_v2.py`.
+
+### Design principles
+
+1. Labels are chart-hooks, not indicator-language.
+2. Describe present state, never predict future outcome.
+3. Decompose patterns into measurable constituents; do not name gestalts
+   (no cup-and-handle / wedge / H&S / etc.).
+4. Uptrend/Downtrend deliberately omitted — too prevalent to be
+   informative.
+5. Thresholds are calibrated starting points and may be tuned after
+   coverage analysis on the live universe.
+6. 1–2 word labels (hard constraint).
+
+### The 12 labels (cascade order, first match wins)
+
+| # | Label | One-line intent |
+|---|---|---|
+| 1 | New High | Today's close = 252d max, not extended |
+| 2 | Breakout | Closed above prior 40d high with range expansion |
+| 3 | Failed Breakout | A breakout within last 5 days that has since closed below the cleared level |
+| 4 | Tight Base | Bullish stack + bottom-25% cross-sectional ADR + within 5% of 252d high |
+| 5 | Coiling | Bullish stack + 20d range < 60% of 60d range + BB-width in bottom-20% of own 252d history |
+| 6 | Shallow Pullback | Bullish stack + 3–10% off 20d high + holding 21EMA |
+| 7 | Deep Pullback | Bullish stack + 10–20% off 20d high + holding 50d MA |
+| 8 | Extended | Bullish stack + %-from-50d-MA above own 80th-percentile |
+| 9 | At Highs | Bullish stack + within 5% of 252d high (residual) |
+| 10 | Basing Low | Within 10% of 252d low + bottom-40% cross-sectional ADR |
+| 11 | Breakdown | Closed below prior 40d low AND below 50d MA |
+| 12 | Sideways | 60d range < 20% of price + position within middle 50% of 60d range |
+
+If no condition matches → empty string (`""`). Silence beats noise.
+`setup_confidence = 1.0` for any assigned label, `0.0` for blank.
+
+### Thresholds — universe-relative or scale-invariant
+
+All thresholds are either:
+- **Cross-sectional percentiles** within the universe-of-the-day (e.g.
+  ADR bottom 25 / 40th percentile), OR
+- **Self-relative ratios** against the name's own trailing history
+  (e.g. BB-width ≤ 20th percentile of its own 252d history), OR
+- **Scale-invariant % values** (e.g. 3–10% off 20d high).
+
+No absolute price levels, no per-name hand-tuned values.
+
+### Coverage on 2026-05-28 (universe = 860)
+
+| Label | Count | % |
+|---|---:|---:|
+| (blank) | 435 | 50.6% |
+| Sideways | 89 | 10.3% |
+| Shallow Pullback | 71 | 8.3% |
+| Basing Low | 59 | 6.9% |
+| Extended | 48 | 5.6% |
+| Tight Base | 47 | 5.5% |
+| Breakdown | 37 | 4.3% |
+| Failed Breakout | 20 | 2.3% |
+| Breakout | 19 | 2.2% |
+| Coiling | 17 | 2.0% |
+| Deep Pullback | 12 | 1.4% |
+| At Highs | 5 | 0.6% |
+| New High | 1 | 0.1% |
+
+Max single-label share 10.3% — well below the 40% spec ceiling.
+
+### Validation-cycle fixes
+
+Two fixes were applied after first-pass coverage review:
+
+- **Fix 1 — Failed Breakout primitive**. First pass used the legacy
+  `failed_breakout_flag_10d` (too broad — coverage 22.7%). Replaced
+  with spec-correct **5-day** primitive (`failed_breakout_flag_5d_v2`
+  in `compute/features.py` Cat 24): within last 5 trading days a
+  Breakout (cond #2) fired, AND today's close is below the level that
+  breakout cleared. Coverage post-fix: 2.3%.
+- **Fix 2 — Sideways widening**. First pass used 60d range < 15%
+  AND 30 ≤ position ≤ 70 (coverage 4.8%). User-approved widening to
+  60d range < 20% AND 25 ≤ position ≤ 75 (coverage post-fix: 10.3%).
+  Preserves Sideways' "deliberately boring, suppress chart-pull" role.
+
+### New features (Cat 24 in `compute/features.py`)
+
+`close_max_40d`, `close_min_40d`, `high_max_20d`,
+`pct_from_20d_high`, `range_20d_pct_of_price`,
+`range_60d_pct_of_price`, `range_20d_to_60d_ratio`,
+`position_in_60d_range`, `pct_ma_50_p80_252d`, `true_range_x_atr14`,
+`failed_breakout_flag_5d_v2`. Total `FEATURE_ORDER` length is now 137
+(was 126).
+
+### Validation
+
+- 140/140 TradingView reference fields PASS (only `setup` /
+  `setup_confidence` changed; all 12 numeric fields × 10 canaries
+  bit-identical).
+- 11/11 pipeline sanity checks PASS.
+- Spot-checks (5 names per label) confirm correct assignment for all
+  12 labels.
+
+### Canary setup transitions (REFERENCE_DATE = 2026-05-22)
+
+| Ticker | Old (27-label) | New (12-cascade) |
+|---|---|---|
+| NVDA | Trending (Generic) | Shallow Pullback |
+| MSFT | Range Consolidation | "" (blank) |
+| META | Deteriorating (Generic) | "" (blank) |
+| GOOGL | Exhaustion w/ Bearish Divergence | Shallow Pullback |
+| TSLA | Theme Leader Pullback | "" (blank) |
+| AMZN | Range Consolidation | Coiling |
+| JPM | Deteriorating (Generic) | Sideways |
+| TSM | Pullback to 21EMA | Coiling |
+| LLY | Indeterminate Pattern | Extended |
+| UNH | Trending (Generic) | Tight Base |
+

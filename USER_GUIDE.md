@@ -42,7 +42,7 @@ The CCQS score is the within-category ranking key; the classifications are the s
    - Mean reversion → tier in {WEAK_LAGGARD, DETERIORATING}
    - Pattern-driven → no tier filter, use setup filter
 3. **Filter by state** if relevant (e.g., TRENDING for continuation, EXHAUSTION for parabolic-bounce, CONSOLIDATING for breakout-watch).
-4. **Filter by setup** for a specific pattern (e.g., "Volume-Confirmed Exhaustion" for parabolic-with-volume-climax).
+4. **Filter by setup** for a specific chart geometry (e.g., "Tight Base" for narrow consolidation near highs, "Breakout" for range-expansion above the 40d high). Phase 25 vocabulary (12 labels) is descriptive — see §D.2.
 5. **Within the filtered set, rank by CCQS** to surface the top-of-cohort candidates — but only if the dashboard shows the **green "High-quality regime — CCQS reliable" chip**. If it shows the **amber "Low-quality regime — CCQS may invert" chip**, consider ranking ascending instead (lowest CCQS first) or use CCQS only for screening, not ranking.
 
 ---
@@ -107,38 +107,54 @@ States describe the stock's CURRENT CYCLE POSITION. They do NOT predict forward 
 
 State persistence is reasonable (72.3% local stability — same state as both yesterday and tomorrow). DETERIORATING is the stickiest state (mean 12.9-day run); PULLBACK is the noisiest active state (mean 3.6-day run).
 
-### D.2 Setup classifier (27 values, Phase 11B validated)
+### D.2 Setup classifier (12 values, Phase 25 redesign)
 
-Setups describe a SPECIFIC TECHNICAL PATTERN. First-match-wins along a priority cascade.
+Setups describe **the present chart state** in 1–2 descriptive words.
+First-match-wins along a cascade. Pure descriptive labels — no
+predictive language, no gestalt pattern naming (no cup-and-handle /
+wedge / H&S). If no condition matches → empty string (silence beats
+noise).
 
-**Top-edge setups** (significantly above universe at 60d):
+| # | Label | What you're seeing on the chart |
+| - | ----- | ------------------------------- |
+| 1 | New High | Closed at a 252-day high and not extended above the 50-day MA |
+| 2 | Breakout | Closed above the prior 40-day high with a range-expansion bar |
+| 3 | Failed Breakout | A breakout fired in the last 5 days and price has since closed back below the cleared level |
+| 4 | Tight Base | Bullish MA stack, low cross-sectional ADR, sitting within 5% of the 252-day high — quiet, near the highs |
+| 5 | Coiling | Bullish stack, 20-day range compressing within the 60-day range, BB-width in bottom 20% of own history — tightening |
+| 6 | Shallow Pullback | Bullish stack, 3–10% off the 20-day high, holding the 21EMA |
+| 7 | Deep Pullback | Bullish stack, 10–20% off the 20-day high, holding the 50-day MA |
+| 8 | Extended | Bullish stack and pct-from-50d-MA above the name's own 80th-percentile of history |
+| 9 | At Highs | Bullish stack, within 5% of the 252-day high — residual catch-all when no tighter label fits |
+| 10 | Basing Low | Within 10% of the 252-day low and low ADR — quiet near a multi-month base |
+| 11 | Breakdown | Closed below the prior 40-day low and below the 50-day MA |
+| 12 | Sideways | 60-day range under 20% of price and position within the middle 50% of the 60-day range |
+| – | (blank) | None of the above; suppressed by design |
 
-| Setup | n | μ 60d | Δ vs uni |
-| ----- | - | ----- | -------- |
-| Volume-Confirmed Exhaustion | 478 | +16.70% | +11.50% |
-| Exhaustion (Generic) | (n>1000) | +12.74% | +7.54% |
-| Capitulation Selling | 2,870+ | +11.26% | +6.06% |
-| Elite Leader Continuation | (rare) | +11.20% | +6.00% |
-| Sustained Weakness | 87,960 | +10.19% | +4.99% |
-| Distribution Pattern | 95,536 | +9.62% | +4.42% |
-| Deteriorating w/ Bullish Divergence | 57,534 | +9.20% | +4.00% |
-| Trending Leadership | 40,491 | +7.89% | +2.69% |
-| Trend Continuation | 44,005 | +7.46% | +2.26% |
-| BB Squeeze with RS | 7,750 | +7.19% | +1.99% |
-| Pullback to 21EMA | 25,002 | +6.08% | +0.88% |
-| Pullback to 50MA | 14,010 | +5.97% | +0.77% |
+**How to use the cascade.** Earlier labels trump later ones, so labels
+on the same row are mutually exclusive. A name with both "Breakout" and
+"At Highs" eligibility is labelled "Breakout" — the more specific
+event. "Sideways" is intentionally the residual at the bottom of the
+cascade for slow, in-the-middle names.
 
-**Underperforming setups** (the "premium label, no alpha" pattern):
+**What's deliberately NOT a label.**
+- *Uptrend / Downtrend.* Too prevalent to be useful — you're already
+  using state + CCQS for that signal.
+- *Cup-and-Handle / Wedge / H&S / VCP.* These are gestalt patterns;
+  Phase 25 decomposes them into measurable constituents instead.
+- *Predictive language* ("Failed Setup", "Reversal Pending"). Labels
+  describe present state only.
 
-| Setup | n | μ 60d | t vs uni |
-| ----- | - | ----- | -------- |
-| Extended Exhaustion | 18,141 | +4.81% | −2.91 |
-| Premium Pullback | 10,245 | +4.62% | −2.72 |
-| Failed Breakout | 25,973 | +4.54% | −5.02 |
-| Theme Leader Pullback | 58,974 | +4.47% | −7.29 |
-| VCP Setup | 4,270 | +3.91% | −4.60 |
+**Coverage snapshot (2026-05-28, universe = 860).** Blank 50.6% /
+Sideways 10.3% / Shallow Pullback 8.3% / Basing Low 6.9% / Extended
+5.6% / Tight Base 5.5% / Breakdown 4.3% / Failed Breakout 2.3% /
+Breakout 2.2% / Coiling 2.0% / Deep Pullback 1.4% / At Highs 0.6% /
+New High 0.1%. Blank is the attention-saving residual by design — most
+names on most days don't sit at a label-worthy chart event.
 
-**Lesson:** Setups branded as "Premium / Quality / Leader / VCP" UNDERPERFORM universe. The market has already priced in the obvious-quality signal. Setups branded as "Weakness / Distribution / Exhaustion" OUTPERFORM because that's where mean reversion lives.
+**Confidence column.** `setup_confidence = 1.0` for any assigned label,
+`0.0` for blank. Preserved as a column for downstream compatibility;
+boolean classifier under the hood.
 
 ### D.3 Leadership tier (10 values, Phase 11C validated, Phase 11.C.1 patched)
 
@@ -177,21 +193,23 @@ Watch out for: ELITE_LEADER in EXHAUSTION state has the HIGHEST joint forward re
 Filter:
 - `leadership_tier ∈ {WEAK_LAGGARD, DETERIORATING}`
 - `primary_state ∈ {INDETERMINATE, DETERIORATING}` (state-level mean reversion is strongest in these)
-- Look at setups like `Distribution Pattern`, `Sustained Weakness`, `Deteriorating w/ Bullish Divergence`
+- Look at Phase 25 setups: `Basing Low`, `Breakdown`, `Failed Breakout`
+  (geometry of the present chart — pair with the state/tier filters
+  above for the empirical mean-reversion edge documented in Phase 11D)
 - Rank by CCQS **ASCENDING** (lowest first — that's where the strongest mean reversion lives in WEAK_LAGGARD)
 - Heed the amber chip — CCQS ranking inverts here
 
-Top-of-the-list 3D cells from Phase 11D (highest empirical 60d mean returns):
-- INDETERMINATE × Deteriorating w/ Bullish Divergence × UNCLASSIFIED: +43.5%
-- INDETERMINATE × Distribution Pattern × UNCLASSIFIED: +37.5%
-- INDETERMINATE × Sustained Weakness × UNCLASSIFIED: +36.7%
-
-These are real and statistically significant (t > 20 in most).
+Top-of-the-list 3D cells from Phase 11D (highest empirical 60d mean
+returns) were measured against the legacy 27-label setups. Under
+Phase 25 vocabulary use the state/tier filter as the primary regime
+gate — the descriptive setup label is geometry, not a return-edge
+predictor.
 
 ### E.3 Momentum continuation
 
 Filter:
-- `setup ∈ {Trend Continuation, Trending Leadership, Pullback to 21EMA, Pullback to 50MA}`
+- `setup ∈ {Shallow Pullback, Deep Pullback, Tight Base, Coiling}`
+  (continuation-friendly geometries under bullish MA stack)
 - `leadership_tier ∈ {STRONG_LEADER, ESTABLISHED_LEADER, STRONG_PERFORMER}`
 - Rank by CCQS descending
 
@@ -199,25 +217,31 @@ Filter:
 
 Filter:
 - `primary_state == EXHAUSTION`
-- `setup ∈ {Volume-Confirmed Exhaustion, Exhaustion w/ Bearish Divergence}`
+- `setup ∈ {Extended, New High}` — the closest Phase 25 substitutes for
+  parabolic / volume-confirmed exhaustion. Phase 25 setup labels are
+  descriptive (no longer state-conditioned), so use `primary_state` as
+  the regime gate and let `setup` decompose the chart geometry.
 - CCQS ranking works here (+5.87% Q10−Q1 spread); top-decile EXHAUSTION stocks continue their parabolic move on average
 
 ### E.5 Pattern screening (specific setups)
 
-Use the setup filter directly. The top empirical-edge setups (≥ +6% at 60d) are:
-- Volume-Confirmed Exhaustion
-- Exhaustion (Generic)
-- Capitulation Selling
-- Elite Leader Continuation
-- Sustained Weakness
-- Distribution Pattern
-- Deteriorating w/ Bullish Divergence
-- Trending Leadership
-- Exhaustion w/ Bearish Divergence
-- Trend Continuation
-- BB Squeeze with RS
-- Pullback to 21EMA
-- Pullback to 50MA
+Phase 25 setup labels describe present chart state — use them as
+geometry filters, not return-edge predictors. Combine with
+`primary_state` / `leadership_tier` / CCQS for return-edge.
+
+- *Tight Base / Coiling* — narrow consolidation near highs;
+  pre-breakout geometry. Pair with `primary_state == TRENDING` and
+  `leadership_tier ∈ {STRONG_PERFORMER, ESTABLISHED_LEADER}`.
+- *Breakout / New High* — fresh range expansion or 252d high. Pair with
+  rising CCQS deltas (Δ 5d > 0).
+- *Shallow Pullback / Deep Pullback* — bullish-stack pullbacks. Pair
+  with high CCQS for "pullback in a leader" entries.
+- *Basing Low* — quiet near multi-month low; potential reversal zone.
+  Pair with leadership-tier reversal signals or rising Δ 5d.
+- *Failed Breakout / Breakdown* — outright avoid for longs; pair with
+  Top Movers (down) for short candidates.
+- *Sideways* — deliberately boring residual; suppresses chart-pull on
+  range-bound, middle-of-the-pack names.
 
 ---
 

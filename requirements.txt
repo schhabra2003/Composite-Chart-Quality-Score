@@ -1,3 +1,7 @@
+# Phase 25 (2026-05-28): pinned versions unchanged; comment touched to
+# force Streamlit Cloud to rebuild and pick up the Phase 25 setup-label
+# redesign (display-layer only — 12-label chart-evocative cascade
+# replaces the 27-label vocabulary; no methodology change).
 # Phase 24 (2026-05-28): pinned versions unchanged; comment touched to
 # force Streamlit Cloud to rebuild and pick up Phase 24 partial-CCQS support.
 # Phase 23 (2026-05-28): pinned versions unchanged; comment touched to

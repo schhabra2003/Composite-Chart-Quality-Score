@@ -69,8 +69,27 @@ Refresh log:
               (Phase 15) with empirically recalibrated methodology
               rather than force a single methodology onto two
               structurally different universes.
+  2026-05-28  **Phase 25 setup-label redesign.** Setup column refreshed
+              to the new 12-label chart-evocative cascade (display-layer
+              only — no methodology change). Labels are descriptive,
+              first-match-wins, 1-2 words. All numeric / categorical
+              non-setup fields (close, RSI, ADX, ATR, %MA, CCQS, grade,
+              state, state_confidence, leadership_tier) are bit-identical
+              to the Phase 14R baseline — only `setup` and `setup_confidence`
+              changed. Confidence is 1.0 for any assigned label, 0.0 for
+              blank ("" — silence beats noise). Canary changes:
+                NVDA  Trending (Generic)                → Shallow Pullback
+                MSFT  Range Consolidation               → "" (blank)
+                META  Deteriorating (Generic)           → "" (blank)
+                GOOGL Exhaustion w/ Bearish Divergence  → Shallow Pullback
+                TSLA  Theme Leader Pullback             → "" (blank)
+                AMZN  Range Consolidation               → Coiling
+                JPM   Deteriorating (Generic)           → Sideways
+                TSM   Pullback to 21EMA                 → Coiling
+                LLY   Indeterminate Pattern             → Extended
+                UNH   Trending (Generic)                → Tight Base
 
-Last refreshed: 2026-05-26 (Phase 14R reversion — Path C state restored).
+Last refreshed: 2026-05-28 (Phase 25 setup-label redesign — display-layer only).
 """
 from __future__ import annotations
 
@@ -109,8 +128,8 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "TRENDING",
         "state_confidence": 0.671,
         "leadership_tier": "STRONG_PERFORMER",
-        "setup": "Trending (Generic)",
-        "setup_confidence": 0.65,
+        "setup": "Shallow Pullback",
+        "setup_confidence": 1.0,
     },
     "MSFT": {
         "date": REFERENCE_DATE,
@@ -126,8 +145,8 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "PULLBACK",
         "state_confidence": 0.428,
         "leadership_tier": "WEAK_PERFORMER",
-        "setup": "Range Consolidation",
-        "setup_confidence": 0.70,
+        "setup": "",
+        "setup_confidence": 0.0,
     },
     "META": {
         "date": REFERENCE_DATE,
@@ -143,8 +162,8 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "DETERIORATING",
         "state_confidence": 0.811,
         "leadership_tier": "WEAK_PERFORMER",
-        "setup": "Deteriorating (Generic)",
-        "setup_confidence": 0.65,
+        "setup": "",
+        "setup_confidence": 0.0,
     },
     "GOOGL": {
         "date": REFERENCE_DATE,
@@ -160,8 +179,8 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "TRENDING",
         "state_confidence": 0.768,
         "leadership_tier": "STRONG_PERFORMER",
-        "setup": "Exhaustion w/ Bearish Divergence",
-        "setup_confidence": 0.90,
+        "setup": "Shallow Pullback",
+        "setup_confidence": 1.0,
     },
     "TSLA": {
         "date": REFERENCE_DATE,
@@ -177,8 +196,8 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "INDETERMINATE",
         "state_confidence": 0.549,
         "leadership_tier": "STRONG_PERFORMER",
-        "setup": "Theme Leader Pullback",
-        "setup_confidence": 0.80,
+        "setup": "",
+        "setup_confidence": 0.0,
     },
     "AMZN": {
         "date": REFERENCE_DATE,
@@ -194,8 +213,8 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "TRENDING",
         "state_confidence": 0.830,
         "leadership_tier": "STRONG_PERFORMER",
-        "setup": "Range Consolidation",
-        "setup_confidence": 0.70,
+        "setup": "Coiling",
+        "setup_confidence": 1.0,
     },
     "JPM": {
         "date": REFERENCE_DATE,
@@ -211,8 +230,8 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "DETERIORATING",
         "state_confidence": 0.347,
         "leadership_tier": "NEUTRAL",
-        "setup": "Deteriorating (Generic)",
-        "setup_confidence": 0.65,
+        "setup": "Sideways",
+        "setup_confidence": 1.0,
     },
     "TSM": {
         "date": REFERENCE_DATE,
@@ -228,8 +247,8 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "TRENDING",
         "state_confidence": 0.523,
         "leadership_tier": "STRONG_PERFORMER",
-        "setup": "Pullback to 21EMA",
-        "setup_confidence": 0.85,
+        "setup": "Coiling",
+        "setup_confidence": 1.0,
     },
     "LLY": {
         "date": REFERENCE_DATE,
@@ -245,8 +264,8 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "INDETERMINATE",
         "state_confidence": 0.916,
         "leadership_tier": "STRONG_PERFORMER",
-        "setup": "Indeterminate Pattern",
-        "setup_confidence": 0.55,
+        "setup": "Extended",
+        "setup_confidence": 1.0,
     },
     "UNH": {
         "date": REFERENCE_DATE,
@@ -262,7 +281,7 @@ TV_SNAPSHOTS: dict[str, dict] = {
         "state": "TRENDING",
         "state_confidence": 0.588,
         "leadership_tier": "STRONG_PERFORMER",
-        "setup": "Trending (Generic)",
-        "setup_confidence": 0.65,
+        "setup": "Tight Base",
+        "setup_confidence": 1.0,
     },
 }

@@ -131,8 +131,14 @@ def run_pipeline() -> dict:
     _stage("ccqs", t)
 
     # ---- Setups -----------------------------------------------------------
+    # Phase 25 — replaced the legacy 27-label classify_setups() with the
+    # 12-label chart-evocative cascade classify_setup_v2(). Pure display-layer
+    # change; CCQS / state / tier / regime / TV reference values unchanged.
+    # The legacy classifier remains in compute/setup_classifier.py for
+    # reference; this is the only call site that flipped over.
     t = time.time()
-    setups = classify_setups(features, state, leadership)
+    from compute.setup_classifier_v2 import classify_setup_v2
+    setups = classify_setup_v2(features)
     setups.to_parquet(SETUP_PATH, compression="snappy")
     stage_times["setups"] = time.time() - t
     _stage("setups", t)
