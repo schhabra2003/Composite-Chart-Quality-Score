@@ -3286,6 +3286,94 @@ preserved (no methodology change — display-layer redesign).
 
 ---
 
+### Phase 26 — State + Leadership Tier display rename + cron move (SHIPPED, 2026-05-28)
+
+Display-layer rename of 5 state/tier labels plus NaN/UNCLASSIFIED
+consolidation. Analogous to Phase 25 (Setup labels). **No methodology
+change** — classifier outputs, STATE_WEIGHTS keys, regime gates, tier
+composition logic, and every downstream consumer continue to use the
+internal ALL_CAPS labels exactly as before. Only user-facing display
+strings on the dashboard are translated.
+
+**Architecture (Pattern A — translation at render layer).** Single
+source of truth is `compute/display_labels.py`. Parquet columns
+(`state.parquet`, `leadership.parquet`) keep storing internal ALL_CAPS
+values; dashboard render points translate at read time.
+
+```python
+STATE_DISPLAY_LABELS = {
+    "TRENDING":      "Trending",
+    "PULLBACK":      "Pullback",
+    "CONSOLIDATING": "Consolidating",
+    "EXHAUSTION":    "Parabolic",
+    "DETERIORATING": "Breaking Down",
+    "INDETERMINATE": "No Edge",
+}
+TIER_DISPLAY_LABELS = {
+    "ELITE_LEADER":       "Elite Leader",
+    "STRONG_LEADER":      "Strong Leader",
+    "ESTABLISHED_LEADER": "Established Leader",
+    "EMERGING_LEADER":    "Emerging Leader",
+    "STRONG_PERFORMER":   "Steady",
+    "NEUTRAL":            "Neutral",
+    "WEAK_PERFORMER":     "Weak Performer",
+    "DETERIORATING":      "Fading Leader",
+    "WEAK_LAGGARD":       "Weak Laggard",
+    "UNCLASSIFIED":       "No RS Signal",
+}
+# NaN tier consolidates to "No RS Signal" — operationally identical
+# to UNCLASSIFIED for display purposes.
+```
+
+**The 5 renames + 1 consolidation:**
+
+- State EXHAUSTION → "Parabolic" (descriptive, not predictive — Phase 25 principle)
+- State DETERIORATING → "Breaking Down" (resolves state/tier collision)
+- State INDETERMINATE → "No Edge" (honest residual, mirrors Phase 25 blank)
+- Tier STRONG_PERFORMER → "Steady" (33% of universe; "Strong Performer" overpromised)
+- Tier DETERIORATING → "Fading Leader" (resolves state/tier collision)
+- Tier UNCLASSIFIED + NaN → "No RS Signal" (consolidation — same display string)
+
+**Render points translated.**
+
+- `app/utils/tables.py` — 4 renderers (top_stocks_table,
+  emerging_leaders_table, newly_broken_table, peers_table): translate
+  tiers/states lists at the boundary after color lookup.
+- `app/streamlit_app.py` — sidebar multiselects show display strings,
+  filter the dataframe by reverse-mapping to internal labels. Stock-detail
+  chips use `display_tier()` / `display_state()`.
+
+**Render points NOT translated (methodology layer — intentional).**
+
+- `compute/state.py`, `compute/leadership.py` — classifier outputs
+  unchanged
+- `compute/ccqs.py` `STATE_WEIGHTS` — keys remain ALL_CAPS internal
+- `app/utils/data_loader.py` STATE_WEIGHTS lookup — receives internal
+  labels
+- `app/utils/colors.py` `color_tier()` / `color_state()` — palette keys
+  remain ALL_CAPS (colors computed BEFORE translation)
+- `tests/reference/tv_snapshots.py` — stores ALL_CAPS internal labels;
+  test compares internal-to-internal and was unaffected (140/140 PASS
+  with no snapshot edits)
+
+**Validation:**
+- 13/13 new `tests/test_phase26_display_labels.py` PASS
+- 38/38 existing pipeline + metric integrity tests PASS
+- 140/140 TradingView reference fields PASS (bit-identical)
+- Coverage distributions match Phase 25 exactly (no detection change)
+
+**Daily cron moved 4:30 PM ET → 4:05 PM ET.** `.github/workflows/pipeline.yml`
+cron entries changed from `30 20 / 30 21 * * 1-5` to `5 20 / 5 21 * * 1-5`
+(EDT / EST respectively). DST-aware guard unchanged (still gates on
+ET hour == 16). Pipeline now publishes ~25 minutes earlier; yfinance
+end-of-day data is reliable within 5 minutes of cash-equity close.
+
+**Net effect:** Dashboard vocabulary is sharper and less ambiguous;
+no methodology drift; cron lands closer to market close. Methodology
+Lock §3 preserved.
+
+---
+
 ### Phase X.4 — Targeted 20-60d horizon audit (2026-05-22)
 
 Goal: push 20d and 60d OOS IC toward statistical significance (t > 2.0) while
@@ -4482,6 +4570,13 @@ S_MOMENTUM = 0.70 * macd_score + 0.30 * rsi_score + div_adj
 
 ## 8. State Classification — 6 States
 
+> ℹ️ **Internal labels** (TRENDING, PULLBACK, CONSOLIDATING, EXHAUSTION,
+> DETERIORATING, INDETERMINATE) below are the contract between the
+> classifier and STATE_WEIGHTS / regime gates. Display strings shown
+> on the dashboard differ per Phase 26 (e.g. EXHAUSTION → "Parabolic",
+> DETERIORATING → "Breaking Down", INDETERMINATE → "No Edge"). See
+> the Phase 26 entry for the full map.
+
 Per-stock state describes the chart's current behavior. State classification is **probabilistic** using softmax over log-likelihoods.
 
 ### The 6 States
@@ -4935,6 +5030,13 @@ def classify_setup(features, state_probs, ccqs):
 ---
 
 ## 11. Leadership & Theme Classification
+
+> ℹ️ **Internal labels** (ELITE_LEADER, STRONG_LEADER, ...,
+> STRONG_PERFORMER, DETERIORATING, UNCLASSIFIED) below are the contract
+> between the classifier and tier composition logic. Display strings on
+> the dashboard differ per Phase 26 (e.g. STRONG_PERFORMER → "Steady",
+> DETERIORATING → "Fading Leader", UNCLASSIFIED + NaN → "No RS Signal").
+> See the Phase 26 entry for the full map.
 
 ### Leadership Tier (9 Levels Per Stock — Path 1.5)
 

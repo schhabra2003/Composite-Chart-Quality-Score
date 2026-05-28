@@ -52,6 +52,14 @@ from app.utils.tables import (
     themes_table,
     top_stocks_table,
 )
+from compute.display_labels import (  # Phase 26 display-layer translation
+    STATE_DISPLAY_LABELS,
+    STATE_INTERNAL_FROM_DISPLAY,
+    TIER_DISPLAY_LABELS,
+    TIER_INTERNAL_FROM_DISPLAY,
+    display_state,
+    display_tier,
+)
 
 # ---------------------------------------------------------------------------
 # Page config — once per session
@@ -80,6 +88,9 @@ regime_ctx = load_regime_context()
 # ---------------------------------------------------------------------------
 # Sidebar filters (Leadership Tier + State only)
 # ---------------------------------------------------------------------------
+# Internal ordering preserved (classifier output uses these labels and
+# STATE_WEIGHTS keys on them). Display strings are translated through
+# compute.display_labels.{display_tier,display_state} (Phase 26).
 TIER_ORDER = [
     "ELITE_LEADER", "STRONG_LEADER", "EMERGING_LEADER", "ESTABLISHED_LEADER",
     "STRONG_PERFORMER", "NEUTRAL", "WEAK_PERFORMER", "DETERIORATING", "WEAK_LAGGARD",
@@ -87,23 +98,33 @@ TIER_ORDER = [
 ]
 STATE_ORDER = ["TRENDING", "PULLBACK", "CONSOLIDATING", "EXHAUSTION", "DETERIORATING", "INDETERMINATE"]
 
-tiers_present = [t for t in TIER_ORDER if t in df["leadership_tier"].astype(str).unique()]
-states_present = [s for s in STATE_ORDER if s in df["primary_state"].astype(str).unique()]
+tiers_present_internal = [t for t in TIER_ORDER if t in df["leadership_tier"].astype(str).unique()]
+states_present_internal = [s for s in STATE_ORDER if s in df["primary_state"].astype(str).unique()]
+
+# Phase 26 — present display strings in the multiselect, but filter the
+# dataframe on internal labels. The reverse map (display → internal)
+# disambiguates the user's selections back to the classifier vocabulary.
+tiers_present_display = [TIER_DISPLAY_LABELS[t] for t in tiers_present_internal]
+states_present_display = [STATE_DISPLAY_LABELS[s] for s in states_present_internal]
 
 with st.sidebar:
     st.markdown("## Filters")
-    selected_tiers = st.multiselect(
+    selected_tiers_display = st.multiselect(
         "Leadership Tier",
-        options=tiers_present,
+        options=tiers_present_display,
         default=[],
         help="Restrict universe by leadership tier.",
     )
-    selected_states = st.multiselect(
+    selected_states_display = st.multiselect(
         "State",
-        options=states_present,
+        options=states_present_display,
         default=[],
         help="Restrict universe by primary state.",
     )
+
+# Map back to internal labels for filtering against the parquet columns.
+selected_tiers = [TIER_INTERNAL_FROM_DISPLAY[t] for t in selected_tiers_display]
+selected_states = [STATE_INTERNAL_FROM_DISPLAY[s] for s in selected_states_display]
 
 filtered = df.copy()
 if selected_tiers:
@@ -261,11 +282,14 @@ with tab_production:
             f"margin:0.25em 0 0.1em 0;'>{sel}</div>",
             unsafe_allow_html=True,
         )
+        # Phase 26 — display-string translation at render boundary.
+        # Internal label values remain unchanged in row['leadership_tier']
+        # and row['primary_state']; only the chip text is translated.
         st.markdown(
             "<div style='margin-bottom:0.4em;'>"
             + _chip("Score", f"{row['ccqs']:.1f} ({row['grade']})")
-            + _chip("Leadership Tier", str(row['leadership_tier']))
-            + _chip("State", str(row['primary_state']))
+            + _chip("Leadership Tier", display_tier(row['leadership_tier']))
+            + _chip("State", display_state(row['primary_state']))
             + _chip("Theme", str(row['basket']))
             + "</div>",
             unsafe_allow_html=True,

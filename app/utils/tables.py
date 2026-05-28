@@ -20,6 +20,7 @@ from app.utils.colors import (
     color_tier,
     color_z_score,
 )
+from compute.display_labels import display_state, display_tier  # Phase 26
 from app.utils.design_system import (
     CHART_BACKGROUND,
     TABLE_CELL_BORDER,
@@ -175,9 +176,13 @@ def top_stocks_table(df: pd.DataFrame, n: int = 50) -> go.Figure:
     tickers = [str(t) for t in d.index]
     themes = d["basket"].astype(str).tolist()
     ccqs_vals = d["ccqs"].astype(float).tolist()
-    tiers = d["leadership_tier"].astype(str).tolist()
-    states = d["primary_state"].astype(str).tolist()
+    tiers = d["leadership_tier"].astype(str).tolist()           # internal — colors key on these
+    states = d["primary_state"].astype(str).tolist()            # internal — colors key on these
     setups = d["setup_label"].astype(str).tolist()
+    # Phase 26 — translate to display strings at the render boundary only.
+    # Colors above are computed from the internal labels (color_tier / color_state).
+    tiers_disp = [display_tier(t) for t in tiers]
+    states_disp = [display_state(s) for s in states]
     # Δ CCQS at three trading-day horizons. ccqs_change_5d / 21d are added
     # in load_dashboard_data (Phase 18); ccqs_change kept for back-compat
     # with peers / sandbox paths.
@@ -190,8 +195,8 @@ def top_stocks_table(df: pd.DataFrame, n: int = 50) -> go.Figure:
         _whites(n_rows),                            # Ticker
         _whites(n_rows),                            # Theme
         [color_ccqs(v) for v in ccqs_vals],         # CCQS
-        [color_tier(t) for t in tiers],             # Leadership Tier
-        [color_state(s) for s in states],           # State
+        [color_tier(t) for t in tiers],             # Leadership Tier (color from internal)
+        [color_state(s) for s in states],           # State (color from internal)
         _whites(n_rows),                            # Setup
         [color_ret(v) for v in chg_1d],             # Δ 1d
         [color_ret(v) for v in chg_5d],             # Δ 5d
@@ -203,8 +208,8 @@ def top_stocks_table(df: pd.DataFrame, n: int = 50) -> go.Figure:
             tickers,
             themes,
             [_fmt_num(v, 1) for v in ccqs_vals],
-            tiers,
-            states,
+            tiers_disp,                              # Phase 26 display string
+            states_disp,                             # Phase 26 display string
             setups,
             [_fmt_signed(v, 2) for v in chg_1d],
             [_fmt_signed(v, 2) for v in chg_5d],
@@ -300,7 +305,8 @@ def emerging_leaders_table(df: pd.DataFrame) -> go.Figure:
         )
     d = df.copy()
     tickers = [str(t) for t in d.index]
-    tiers = d["leadership_tier"].astype(str).tolist()
+    tiers = d["leadership_tier"].astype(str).tolist()             # internal
+    tiers_disp = [display_tier(t) for t in tiers]                  # Phase 26 display
     ccqs_vals = d["ccqs"].astype(float).tolist()
     n_rows = len(d)
     fill_cols = [
@@ -310,7 +316,7 @@ def emerging_leaders_table(df: pd.DataFrame) -> go.Figure:
     ]
     return render_table(
         headers=["Ticker", "New Tier", "CCQS"],
-        values=[tickers, tiers, [_fmt_num(v, 1) for v in ccqs_vals]],
+        values=[tickers, tiers_disp, [_fmt_num(v, 1) for v in ccqs_vals]],
         fill_colors=fill_cols,
         col_widths=[70, 150, 70],
         aligns=["left", "left", "right"],
@@ -328,7 +334,8 @@ def newly_broken_table(df: pd.DataFrame) -> go.Figure:
         )
     d = df.copy()
     tickers = [str(t) for t in d.index]
-    prev_states = d["prev_state"].astype(str).tolist()
+    prev_states = d["prev_state"].astype(str).tolist()             # internal
+    prev_states_disp = [display_state(s) for s in prev_states]      # Phase 26 display
     changes = d["ccqs_change"].astype(float).tolist()
     n_rows = len(d)
     fill_cols = [
@@ -338,7 +345,7 @@ def newly_broken_table(df: pd.DataFrame) -> go.Figure:
     ]
     return render_table(
         headers=["Ticker", "From State", "Δ CCQS"],
-        values=[tickers, prev_states, [_fmt_signed(v, 2) for v in changes]],
+        values=[tickers, prev_states_disp, [_fmt_signed(v, 2) for v in changes]],
         fill_colors=fill_cols,
         col_widths=[70, 110, 80],
         aligns=["left", "left", "right"],
@@ -449,9 +456,12 @@ def peers_table(df: pd.DataFrame, current_ticker: str) -> go.Figure:
     tickers = [str(t) for t in d.index]
     themes = d["basket"].astype(str).tolist()
     ccqs_vals = d["ccqs"].astype(float).tolist()
-    tiers = d["leadership_tier"].astype(str).tolist()
-    states = d["primary_state"].astype(str).tolist()
+    tiers = d["leadership_tier"].astype(str).tolist()              # internal
+    states = d["primary_state"].astype(str).tolist()               # internal
     setups = d["setup_label"].astype(str).tolist()
+    # Phase 26 — translate to display strings at the render boundary only.
+    tiers_disp = [display_tier(t) for t in tiers]
+    states_disp = [display_state(s) for s in states]
     chg_1d = d.get("ccqs_change_1d", d.get("ccqs_change", pd.Series(float("nan"), index=d.index))).astype(float).tolist()
     chg_5d = d.get("ccqs_change_5d", pd.Series(float("nan"), index=d.index)).astype(float).tolist()
     chg_21d = d.get("ccqs_change_21d", pd.Series(float("nan"), index=d.index)).astype(float).tolist()
@@ -465,8 +475,8 @@ def peers_table(df: pd.DataFrame, current_ticker: str) -> go.Figure:
         [_hl(WHITE, c) for c in is_current],                                                # Ticker
         [_hl(WHITE, c) for c in is_current],                                                # Theme
         [_hl(color_ccqs(v), c) for c, v in zip(is_current, ccqs_vals)],                     # CCQS
-        [_hl(color_tier(t), c) for c, t in zip(is_current, tiers)],                         # Leadership Tier
-        [_hl(color_state(s), c) for c, s in zip(is_current, states)],                       # State
+        [_hl(color_tier(t), c) for c, t in zip(is_current, tiers)],                         # Leadership Tier (color from internal)
+        [_hl(color_state(s), c) for c, s in zip(is_current, states)],                       # State (color from internal)
         [_hl(WHITE, c) for c in is_current],                                                # Setup
         [_hl(color_ret(v), c) for c, v in zip(is_current, chg_1d)],                         # Δ 1d
         [_hl(color_ret(v), c) for c, v in zip(is_current, chg_5d)],                         # Δ 5d
@@ -478,8 +488,8 @@ def peers_table(df: pd.DataFrame, current_ticker: str) -> go.Figure:
             tickers,
             themes,
             [_fmt_num(v, 1) for v in ccqs_vals],
-            tiers,
-            states,
+            tiers_disp,                              # Phase 26 display string
+            states_disp,                             # Phase 26 display string
             setups,
             [_fmt_signed(v, 2) for v in chg_1d],
             [_fmt_signed(v, 2) for v in chg_5d],

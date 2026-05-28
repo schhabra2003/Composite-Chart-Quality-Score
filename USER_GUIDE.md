@@ -89,23 +89,33 @@ If you want to do a mean-reversion screen, this is exactly the cohort to look at
 
 ## D. Understanding the classification layers
 
-### D.1 State machine (6 values, Phase 11A validated)
+> ℹ️ **Phase 26 display rename note.** Filter expressions, code snippets,
+> and the bullets that name specific tiers/states in this section use
+> the **internal labels** (ALL_CAPS — what the parquet stores). The
+> dashboard renders the **display strings** introduced in Phase 26
+> (e.g. EXHAUSTION → "Parabolic", STRONG_PERFORMER → "Steady",
+> UNCLASSIFIED/NaN → "No RS Signal"). See the maps in §D.1 / §D.3.
+
+### D.1 State machine (6 values, Phase 11A validated, Phase 26 display rename)
 
 States describe the stock's CURRENT CYCLE POSITION. They do NOT predict forward direction.
 
-| State | Definition | 60d mean return | t vs universe |
-| ----- | ---------- | --------------- | ------------- |
-| EXHAUSTION | Parabolic / late-stage | **+9.32%** | +20.8 (above) |
-| INDETERMINATE | Transitional / no clear regime | +6.33% | +22.4 (above) |
-| DETERIORATING | Structurally damaged | +5.68% | +11.7 (above) |
-| Universe | — | +5.20% | — |
-| TRENDING | Clean uptrend in progress | +4.23% | −22.7 (**BELOW**) |
-| PULLBACK | Buyable pullback in uptrend | +4.13% | −26.7 (**BELOW**) |
-| CONSOLIDATING | Pre-breakout consolidation | +2.70% | −30.6 (**BELOW**) |
+**Display string ↔ internal label** (Phase 26 rename; code/parquet
+continues to use the ALL_CAPS internal label):
 
-**Surprising but empirically true:** TRENDING and PULLBACK stocks UNDERPERFORM the universe mean. The "obvious quality" market has already priced them in. EXHAUSTION stocks OUTPERFORM (momentum continuation). The state machine is a CONTEXT classifier, NOT a buy/sell signal.
+| Display | Internal | Definition | 60d mean return | t vs universe |
+| ------- | -------- | ---------- | --------------- | ------------- |
+| **Parabolic** | EXHAUSTION | Parabolic / late-stage | **+9.32%** | +20.8 (above) |
+| **No Edge** | INDETERMINATE | Transitional / no clear regime | +6.33% | +22.4 (above) |
+| **Breaking Down** | DETERIORATING | Structurally damaged | +5.68% | +11.7 (above) |
+| *Universe* | — | — | +5.20% | — |
+| Trending | TRENDING | Clean uptrend in progress | +4.23% | −22.7 (**BELOW**) |
+| Pullback | PULLBACK | Buyable pullback in uptrend | +4.13% | −26.7 (**BELOW**) |
+| Consolidating | CONSOLIDATING | Pre-breakout consolidation | +2.70% | −30.6 (**BELOW**) |
 
-State persistence is reasonable (72.3% local stability — same state as both yesterday and tomorrow). DETERIORATING is the stickiest state (mean 12.9-day run); PULLBACK is the noisiest active state (mean 3.6-day run).
+**Surprising but empirically true:** Trending and Pullback stocks UNDERPERFORM the universe mean. The "obvious quality" market has already priced them in. Parabolic stocks OUTPERFORM (momentum continuation). The state machine is a CONTEXT classifier, NOT a buy/sell signal.
+
+State persistence is reasonable (72.3% local stability — same state as both yesterday and tomorrow). Breaking Down is the stickiest state (mean 12.9-day run); Pullback is the noisiest active state (mean 3.6-day run).
 
 ### D.2 Setup classifier (12 values, Phase 25 redesign)
 
@@ -156,24 +166,27 @@ names on most days don't sit at a label-worthy chart event.
 `0.0` for blank. Preserved as a column for downstream compatibility;
 boolean classifier under the hood.
 
-### D.3 Leadership tier (10 values, Phase 11C validated, Phase 11.C.1 patched)
+### D.3 Leadership tier (10 values, Phase 11C validated, Phase 11.C.1 + Phase 26 display rename)
 
 Tiers describe CURRENT RS-QUALITY POSITION. The hierarchy is NOT monotonic in forward returns.
 
-| Tier | Definition | μ 60d | Population |
-| ---- | ---------- | ----- | ---------- |
-| ELITE_LEADER | s_lead ≥ 90 + rs_spy ≥ 95 + 4 confirms | **+15.24%** | 0.18% |
-| STRONG_LEADER | s_lead ≥ 80 + rs_spy ≥ 75 + mtf ≥ 2 | +6.32% | 1.15% |
-| EMERGING_LEADER | rs_spy 60-85 + slope ≥ 10 + mtf ≥ 2 + qqq ok | +4.68% (UNDER universe) | 5.86% |
-| ESTABLISHED_LEADER | rs_spy ≥ 75 + RS Line new high | +6.61% | 1.51% |
-| STRONG_PERFORMER | rs_spy ≥ 60 | +7.04% | 24.29% |
-| NEUTRAL | rs_spy 45-60 | +5.90% | 12.59% |
-| WEAK_PERFORMER | rs_spy 25-45 + slope ≥ −5 | +4.41% (UNDER universe) | 8.05% |
-| DETERIORATING | rs_spy < 40 + slope < −5 | +4.82% (UNDER universe) | 17.50% |
-| WEAK_LAGGARD | rs_spy < 25 + slope < 0 | +7.02% | 2.95% |
-| UNCLASSIFIED | Doesn't fit any specific tier (Phase 11.C.1) | varies | 8.63% |
+**Display string ↔ internal label** (Phase 26 rename; code/parquet
+continues to use the ALL_CAPS internal label):
 
-**Critical takeaway:** Only ELITE_LEADER has a truly distinctive forward-return edge. All other 8 tiers cluster within ±2.5pp of universe. The tier label tells you what KIND of leadership profile the stock has TODAY — not what will happen next.
+| Display | Internal | Definition | μ 60d | Population |
+| ------- | -------- | ---------- | ----- | ---------- |
+| Elite Leader | ELITE_LEADER | s_lead ≥ 90 + rs_spy ≥ 95 + 4 confirms | **+15.24%** | 0.18% |
+| Strong Leader | STRONG_LEADER | s_lead ≥ 80 + rs_spy ≥ 75 + mtf ≥ 2 | +6.32% | 1.15% |
+| Emerging Leader | EMERGING_LEADER | rs_spy 60-85 + slope ≥ 10 + mtf ≥ 2 + qqq ok | +4.68% (UNDER universe) | 5.86% |
+| Established Leader | ESTABLISHED_LEADER | rs_spy ≥ 75 + RS Line new high | +6.61% | 1.51% |
+| **Steady** | STRONG_PERFORMER | rs_spy ≥ 60 | +7.04% | 24.29% |
+| Neutral | NEUTRAL | rs_spy 45-60 | +5.90% | 12.59% |
+| Weak Performer | WEAK_PERFORMER | rs_spy 25-45 + slope ≥ −5 | +4.41% (UNDER universe) | 8.05% |
+| **Fading Leader** | DETERIORATING | rs_spy < 40 + slope < −5 | +4.82% (UNDER universe) | 17.50% |
+| Weak Laggard | WEAK_LAGGARD | rs_spy < 25 + slope < 0 | +7.02% | 2.95% |
+| **No RS Signal** | UNCLASSIFIED *or* NaN | Doesn't fit any specific tier (Phase 11.C.1) OR insufficient RS history | varies | 8.63% + ~18% NaN |
+
+**Critical takeaway:** Only Elite Leader has a truly distinctive forward-return edge. All other 8 tiers cluster within ±2.5pp of universe. The tier label tells you what KIND of leadership profile the stock has TODAY — not what will happen next.
 
 ---
 

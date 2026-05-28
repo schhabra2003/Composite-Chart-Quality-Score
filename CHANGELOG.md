@@ -950,3 +950,120 @@ Two fixes were applied after first-pass coverage review:
 | LLY | Indeterminate Pattern | Extended |
 | UNH | Trending (Generic) | Tight Base |
 
+## Phase 26 — State + Leadership Tier display rename + cron move (2026-05-28)
+
+Display-layer rename of 5 state/tier labels plus the NaN/UNCLASSIFIED
+consolidation. **No methodology change.** Internal classifier labels
+(TRENDING, EXHAUSTION, STRONG_PERFORMER, ...) are unchanged in
+`compute/state.py` / `compute/leadership.py` and remain the keys for
+`STATE_WEIGHTS` lookup, tier composition logic, regime gates, and every
+downstream consumer. Only the user-facing strings rendered on the
+Streamlit dashboard are translated.
+
+### Pattern A — translation at render layer
+
+New module `compute/display_labels.py` is the single source of truth.
+Parquet columns (`state.parquet`, `leadership.parquet`) keep storing
+the internal ALL_CAPS labels exactly as before; the dashboard
+translates at the render boundary. No schema change. No cache rebuild
+needed for future label tweaks.
+
+### The 5 renames + 1 consolidation
+
+**State (3 of 6 change, 3 kept):**
+
+| Internal (unchanged) | Display |
+|---|---|
+| TRENDING | Trending |
+| PULLBACK | Pullback |
+| CONSOLIDATING | Consolidating |
+| EXHAUSTION | **Parabolic** |
+| DETERIORATING | **Breaking Down** |
+| INDETERMINATE | **No Edge** |
+
+**Leadership Tier (3 renames + NaN consolidation, 6 Title Case):**
+
+| Internal (unchanged) | Display |
+|---|---|
+| ELITE_LEADER | Elite Leader |
+| STRONG_LEADER | Strong Leader |
+| ESTABLISHED_LEADER | Established Leader |
+| EMERGING_LEADER | Emerging Leader |
+| STRONG_PERFORMER | **Steady** |
+| NEUTRAL | Neutral |
+| WEAK_PERFORMER | Weak Performer |
+| DETERIORATING | **Fading Leader** |
+| WEAK_LAGGARD | Weak Laggard |
+| UNCLASSIFIED | **No RS Signal** |
+| NaN (insufficient RS history) | **No RS Signal** *(consolidation)* |
+
+### Rationale per rename
+
+- **EXHAUSTION → Parabolic** — descriptive, not predictive (consistent
+  with Phase 25 principle: name the geometry, don't predict the outcome).
+- **State DETERIORATING → Breaking Down** — resolves the state/tier
+  naming collision; "Breaking Down" describes price-structure damage.
+- **INDETERMINATE → No Edge** — honest about what the residual state
+  means; mirrors Phase 25's "blank" residual pattern (suppresses chart-pull).
+- **STRONG_PERFORMER → Steady** — at 33% of universe, "Strong Performer"
+  overpromised. "Steady" honestly describes the mid-pack-above-average band.
+- **Tier DETERIORATING → Fading Leader** — resolves the state/tier
+  collision; captures former-strength + current-decline.
+- **UNCLASSIFIED + NaN → "No RS Signal"** — collapses the
+  user-facing distinction between two operationally identical "no RS
+  signal" states (Phase 11.C.1 catch-all + insufficient-history NaN).
+  Internal distinction preserved in parquet for debugging.
+
+### Render points translated (`compute.display_labels.display_*`)
+
+- `app/utils/tables.py`: top_stocks_table, emerging_leaders_table,
+  newly_broken_table, peers_table — translate `tiers` / `states` lists
+  after color lookup, before passing to `render_table`.
+- `app/streamlit_app.py`: sidebar Leadership Tier / State multiselects
+  show display strings, filter the dataframe by reverse-mapping to
+  internal labels. Stock-detail chips use `display_tier()` / `display_state()`.
+
+### Render points NOT translated (intentional, methodology layer)
+
+- `compute/state.py`, `compute/leadership.py` — classifier output
+  values remain ALL_CAPS internal labels.
+- `compute/ccqs.py` `STATE_WEIGHTS` — keys remain ALL_CAPS internal.
+- `app/utils/data_loader.py` STATE_WEIGHTS lookup — receives internal
+  labels from parquet.
+- `app/utils/colors.py` `color_tier()` / `color_state()` — palette keys
+  remain ALL_CAPS internal (colors computed BEFORE display translation).
+- `tests/reference/tv_snapshots.py` — stores ALL_CAPS internal labels.
+
+### TV reference behavior
+
+The TV parity test compares internal labels (parquet column ↔ snapshot
+dict). Phase 26 leaves both sides unchanged. **140/140 PASS without
+any snapshot modification** (verified post-implementation).
+
+### Validation
+
+- 13/13 new `tests/test_phase26_display_labels.py` PASS:
+  full map coverage, NaN consolidation, no state/tier collision,
+  STATE_WEIGHTS lookup intact, parquet still stores internal labels,
+  coverage distributions identical pre/post translation.
+- 38/38 existing pipeline + metric integrity tests PASS.
+- **140/140 TradingView reference fields PASS** (bit-identical).
+- Coverage distributions match Phase 25 exactly (no detection change).
+
+### Pre-existing test bug fixed in passing
+
+`tests/test_pipeline_integrity.py::test_setup_distribution_non_degenerate`
+was checking that no "non-generic" setup exceeded 40%, but failed to
+treat the Phase 25 blank `""` residual as a catch-all (it hit 50.6%
+post-Phase 25). Fixed by adding `""` to the residual exclusion list
+alongside `"(Generic)"` and `"Indeterminate Pattern"`.
+
+### Daily cron moved 4:30 PM ET → 4:05 PM ET
+
+`.github/workflows/pipeline.yml`: cron schedule changed from
+`30 20 / 30 21 * * 1-5` (4:30 PM ET) to `5 20 / 5 21 * * 1-5`
+(4:05 PM ET — 5 minutes after NYSE close). DST-aware guard unchanged
+(still gates on ET hour == 16). The pipeline now publishes the daily
+refresh ~25 minutes earlier; data settlement on yfinance's end-of-day
+feed is reliable within 5 minutes of cash-equity close.
+

@@ -201,13 +201,26 @@ def test_tier_distribution_non_degenerate(leadership):
 
 def test_setup_distribution_non_degenerate(setups):
     """Setup distribution must include at least 10 distinct setups and no
-    single setup > 40% (excluding Indeterminate Pattern catch-all)."""
+    single non-residual setup > 40%.
+
+    Catch-all / residual labels that are intentionally allowed to dominate:
+      - blank ("")               — Phase 25 residual (silence beats noise)
+      - "(Generic)" / "Indeterminate Pattern" — legacy 27-label residuals
+        (kept here for backward compatibility with the historical setup
+        vocabulary; not produced by the Phase 25 classifier).
+    """
     latest_date = setups.index.get_level_values("date").max()
     latest = setups.xs(latest_date, level="date")
     dist = latest["setup"].astype(str).value_counts(normalize=True)
     assert len(dist) >= 10, f"Only {len(dist)} setups present on {latest_date.date()}"
-    # The largest non-catch-all setup should not exceed 40%
-    non_generic = dist[~dist.index.str.contains("(Generic)|Indeterminate Pattern", regex=True)]
+    # The largest non-catch-all setup should not exceed 40%.
+    # Exclude residuals: blank (Phase 25), "(Generic)" / "Indeterminate Pattern" (legacy).
+    is_residual = (
+        (dist.index == "")
+        | dist.index.str.contains(r"\(Generic\)", regex=True)
+        | (dist.index == "Indeterminate Pattern")
+    )
+    non_generic = dist[~is_residual]
     if len(non_generic) > 0:
         max_setup = non_generic.idxmax()
         max_pct = non_generic.max()
