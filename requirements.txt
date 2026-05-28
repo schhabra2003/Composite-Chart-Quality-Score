@@ -1,3 +1,8 @@
+# Phase 27.1 (2026-05-28): pinned versions unchanged; comment touched to
+# force Streamlit Cloud to rebuild and pick up the root .streamlit/
+# config.toml that forces light theme (was only at app/.streamlit/,
+# which Streamlit Cloud doesn't always pick up if it runs from repo root).
+# Also commits the Phase 27 audit script.
 # Phase 27 (2026-05-28): pinned versions unchanged; comment touched to
 # force Streamlit Cloud to rebuild and pick up the Phase 27 setup
 # cascade fix (bug — extended names mis-labeled as Pullbacks) + new
