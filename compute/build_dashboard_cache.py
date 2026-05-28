@@ -134,19 +134,19 @@ def _dollar_volume_quintiles(ohlcv_path: Path) -> dict[str, int]:
 
 
 def _design_space_regime(benchmarks_path: Path) -> dict:
-    """Phase 17 — empirically-derived CCQS-LC design-space regime.
+    """Phase 17 — empirically-derived CCQS design-space regime.
 
-    Phase 16-17 empirical evidence established that CCQS-LC's component-based
-    composite signal is regime-conditional: it works in "trending market"
-    conditions and fails in deep drawdowns. The deployment gate is
-    empirically defined as `dd_lt_15pct` — SPY drawdown from its 252-day
-    high is shallower than 15%.
+    Phase 16-17 empirical evidence established that the CCQS composite
+    signal is regime-conditional: it works in "trending market" conditions
+    and fails in deep drawdowns. The deployment gate is empirically defined
+    as `dd_lt_15pct` — SPY drawdown from its 252-day high is shallower than
+    15%.
 
     Phase 17.0 empirical justification:
       • t-statistic 8.74, p < 0.0001 vs other candidate regime indicators
       • IC differential at 63d: +0.093 (in-regime +0.027 vs off-regime −0.066)
       • Walk-forward validation: regime-on periods at 126d horizon are the
-        only configuration where CCQS-LC survives OOS robustness criteria
+        only configuration where CCQS survives OOS robustness criteria
         (Phase 17.4)
       • Real-time computable from SPY closing price + 252-day rolling max
 
@@ -182,7 +182,7 @@ def _design_space_regime(benchmarks_path: Path) -> dict:
         "indicator": "dd_lt_15pct",
         "indicator_description": (
             "SPY drawdown from 252-day high is shallower than 15%. "
-            "Empirically derived gate for CCQS-LC predictive validity."
+            "Empirically derived gate for CCQS predictive validity."
         ),
         "latest_date": latest['date'].strftime("%Y-%m-%d"),
         "spy_close": round(float(latest['adj_close']), 2),

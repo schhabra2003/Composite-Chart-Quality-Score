@@ -3070,12 +3070,12 @@ confirms Phase 14R clean.
 
 ---
 
-### Phase 16 — CCQS-LC empirical re-validation (investigation, 2026-05-27)
+### Phase 16 — CCQS empirical re-validation (investigation, 2026-05-27)
 
 Phase 15.1.D (SC walk-forward) revealed 90% failure rate of small-cap
 features under Sub-Investigation D rigor. User directed: "Apply
-Sub-Investigation D-level rigor to CCQS-LC validation. Empirically
-verify what CCQS-LC actually does well and what might be illusion."
+Sub-Investigation D-level rigor to CCQS validation. Empirically
+verify what CCQS actually does well and what might be illusion."
 
 Nine sub-investigations on 874-ticker LC universe (4.77 GB feature matrix,
 463 features × 2360 dates, includes all 11 production CCQS components):
@@ -3129,7 +3129,7 @@ empirical 17%).
 - B: Document + status quo
 - C: Fundamental reconsideration (regression on screened features)
 
-Critical empirical finding: CCQS-LC's component-based composite signal
+Critical empirical finding: CCQS's component-based composite signal
 is regime-conditional. Static weights cannot adapt. The improvement
 opportunity is regime-aware deployment, not weight recalibration.
 
@@ -3191,7 +3191,7 @@ basis (t-statistic citation). RED state triggers an additional
 - `tests/reference/tv_snapshots.py` unchanged (140/140 TV reference parity preserved)
 - All sanity checks pass; pipeline outputs bit-identical to Phase 14R
 
-**Net effect:** Production CCQS-LC now ships with empirically-validated
+**Net effect:** Production CCQS now ships with empirically-validated
 design-space awareness. Methodology Lock §3 preserved (no methodology
 change — display-layer addition citing empirical evidence).
 

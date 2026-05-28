@@ -89,14 +89,22 @@ def load_dashboard_data() -> tuple[pd.DataFrame, str]:
     setups_latest = setups.xs(latest, level="date") if not setups.empty else pd.DataFrame()
     features_latest = features.xs(latest, level="date") if not features.empty else pd.DataFrame()
 
-    # Δ Today
+    # Phase 18 — Δ CCQS at three trading-day horizons (1d, 5d, 21d) replaces
+    # the single Δ Today column. Lookbacks step through the sorted unique
+    # date index in ccqs.parquet, so offsets are trading-day-accurate
+    # regardless of weekends / market holidays.
     dates_sorted = ccqs.index.get_level_values("date").unique().sort_values()
-    if len(dates_sorted) >= 2:
-        prev_date = dates_sorted[-2]
-        ccqs_prev = ccqs.xs(prev_date, level="date")["ccqs"]
-        ccqs_change = ccqs_latest["ccqs"] - ccqs_prev
-    else:
-        ccqs_change = pd.Series(0.0, index=ccqs_latest.index)
+
+    def _delta(offset: int) -> pd.Series:
+        if len(dates_sorted) > offset:
+            prior = dates_sorted[-1 - offset]
+            ccqs_prior = ccqs.xs(prior, level="date")["ccqs"]
+            return ccqs_latest["ccqs"] - ccqs_prior
+        return pd.Series(float("nan"), index=ccqs_latest.index)
+
+    ccqs_change_1d = _delta(1)
+    ccqs_change_5d = _delta(5)
+    ccqs_change_21d = _delta(21)
 
     basket_map = _basket_map()
     baskets = pd.Series(
@@ -108,7 +116,10 @@ def load_dashboard_data() -> tuple[pd.DataFrame, str]:
     combined = pd.DataFrame({
         "ccqs":                   ccqs_latest["ccqs"],
         "grade":                  ccqs_latest["grade"],
-        "ccqs_change":            ccqs_change,
+        "ccqs_change":            ccqs_change_1d,       # kept for back-compat (1d)
+        "ccqs_change_1d":         ccqs_change_1d,
+        "ccqs_change_5d":         ccqs_change_5d,
+        "ccqs_change_21d":        ccqs_change_21d,
         "leadership_tier":        leadership_latest.get("leadership_tier", pd.Series(index=ccqs_latest.index)),
         "primary_state":          states_latest.get("primary_state", pd.Series(index=ccqs_latest.index)),
         "state_confidence":       states_latest.get("state_confidence", pd.Series(0.0, index=ccqs_latest.index)),
@@ -141,9 +152,11 @@ def load_themes_data() -> pd.DataFrame:
         & (t_latest["n_constituents"] >= 3)
     ].sort_values("theme_ccqs", ascending=False)
 
-    # Top member per basket: highest CCQS among tickers in that basket
+    # Phase 18 — also surface the full ticker list per basket (sorted by
+    # CCQS descending) so users can cross-reference on charting platforms.
     ccqs = _read_parquet("ccqs.parquet")
     top_member_map: dict[str, str] = {}
+    members_map: dict[str, str] = {}
     if not ccqs.empty:
         ccqs_latest = ccqs.xs(latest, level="date") if latest in ccqs.index.get_level_values("date") else pd.DataFrame()
         if not ccqs_latest.empty:
@@ -155,9 +168,16 @@ def load_themes_data() -> pd.DataFrame:
                 tmp = tmp.rename(columns={tmp.columns[0]: "ticker"})
             tmp = tmp.sort_values("ccqs", ascending=False)
             top_member_map = tmp.groupby("basket").head(1).set_index("basket")["ticker"].to_dict()
+            # Comma-joined ticker list per basket, sorted by CCQS desc.
+            members_map = (
+                tmp.groupby("basket")["ticker"]
+                .apply(lambda s: ", ".join(s.astype(str).tolist()))
+                .to_dict()
+            )
 
     t_latest = t_latest.copy()
     t_latest["top_member"] = t_latest.index.map(top_member_map).fillna("—")
+    t_latest["members"] = t_latest.index.map(members_map).fillna("—")
     t_latest = t_latest.reset_index().rename(columns={"basket": "basket_name"})
     return t_latest
 
@@ -188,97 +208,13 @@ def load_regime_context() -> dict:
     return _read_json("regime_context.json")
 
 
-def reliability_flags(ticker: str, basket: str, primary_state: str,
-                       regime_context: dict,
-                       leadership_tier: str | None = None) -> list[dict]:
-    """Compute display-layer reliability flags for a stock.
-
-    Returns a list of {label, severity, detail} dicts to be rendered as
-    chips below the Stock Detail header. Empty list when nothing to flag.
-
-    No methodology change — these flags are based on Priority 2b conditional
-    IC findings + Phase 11D cross-layer synthesis findings about where CCQS
-    is and is not reliable. CCQS itself is unchanged.
-    """
-    if not regime_context:
-        return []
-
-    flags: list[dict] = []
-
-    # 1. Mega-cap (dollar-volume Q5)
-    q = regime_context.get("dvol_quintile_by_ticker", {}).get(ticker)
-    if q == 5:
-        flags.append({
-            "label": "Mega-cap",
-            "severity": "warn",
-            "detail": "CCQS shows IC -0.017 at 60d and -0.007 at 126d in the "
-                      "top dollar-volume quintile (Priority 2b). Use the score "
-                      "with reduced confidence here.",
-        })
-
-    # 2. Defensive sector / basket
-    defensive = set(regime_context.get("defensive_baskets", []))
-    if basket and basket in defensive:
-        flags.append({
-            "label": "Defensive sector",
-            "severity": "warn",
-            "detail": "CCQS has documented negative IC on this basket "
-                      "(Priority 2b bottom-10). The composite carries a "
-                      "cyclical bias and is less reliable for stable / "
-                      "yield-dominated names.",
-        })
-
-    # 3. Market vol HIGH regime
-    mv = regime_context.get("market_vol", {})
-    if mv.get("current_regime") == "HIGH":
-        flags.append({
-            "label": "High market vol regime",
-            "severity": "warn",
-            "detail": f"SPY 20d realized vol is {mv.get('spy_vol_20d_latest','?')} "
-                      f"(>= tercile threshold {mv.get('tercile_hi','?')}). CCQS "
-                      "IC turns negative at 60d/126d in this regime "
-                      "(Priority 2b). Use with reduced confidence today.",
-        })
-
-    # 4. EXHAUSTION state — 20d signal is statistically zero
-    if str(primary_state) == "EXHAUSTION":
-        flags.append({
-            "label": "EXHAUSTION 20d caveat",
-            "severity": "info",
-            "detail": "In EXHAUSTION state, CCQS has near-zero 20d "
-                      "predictability (IC ~ 0, t = -0.3 per Priority 2b). "
-                      "5d, 60d, and 126d still carry signal.",
-        })
-
-    # 5. Phase 11D — CCQS regime-dependence by leadership tier.
-    # Phase 11D empirically validated that CCQS Q10−Q1 spread varies
-    # dramatically by tier: +5.26% in ESTABLISHED_LEADER, +3.22% in
-    # STRONG_LEADER (works as expected); −9.24% in WEAK_LAGGARD,
-    # −1.93% in DETERIORATING tier (inverts due to mean reversion).
-    # Surface this regime context so users don't naively trust CCQS
-    # in regimes where it's empirically unreliable.
-    tier_str = str(leadership_tier) if leadership_tier else ""
-    if tier_str in ("ELITE_LEADER", "STRONG_LEADER", "ESTABLISHED_LEADER"):
-        flags.append({
-            "label": "High-quality regime — CCQS reliable",
-            "severity": "ok",
-            "detail": "Phase 11D analysis: in this tier, top CCQS decile "
-                      "outperforms bottom CCQS decile by +3 to +5 pp at 60d. "
-                      "CCQS ranking is empirically reliable here.",
-        })
-    elif tier_str in ("WEAK_LAGGARD", "DETERIORATING"):
-        flags.append({
-            "label": "Low-quality regime — CCQS may invert",
-            "severity": "warn",
-            "detail": "Phase 11D analysis: in this tier, the LOWEST CCQS "
-                      "decile actually OUTPERFORMS the highest CCQS decile "
-                      "at 60d (by up to +9.24 pp in WEAK_LAGGARD). Mean "
-                      "reversion dominates — consider the cohort as "
-                      "mean-reversion candidates rather than ranking by "
-                      "CCQS directly.",
-        })
-
-    return flags
+# Phase 18 — per-stock reliability_flags() removed. CCQS is a technical
+# scoring system, not a predictive model; per-stock "reliability" framing
+# (mega-cap warnings, defensive-sector warnings, EXHAUSTION caveats,
+# leadership-tier inversion warnings) was misleading and has been
+# retired. Broad-market context is now surfaced via a single optional
+# caution banner in app/streamlit_app.py, triggered only by SPY
+# drawdown depth.
 
 
 def _today_and_prev_dates(df: pd.DataFrame) -> tuple | None:
@@ -291,70 +227,86 @@ def _today_and_prev_dates(df: pd.DataFrame) -> tuple | None:
 
 
 @st.cache_data(ttl=TTL, show_spinner=False)
-def get_emerging_leaders_today() -> pd.DataFrame:
-    """Tickers that moved INTO a healthy leadership tier today."""
+def get_emerging_leaders_today(n: int = 10) -> pd.DataFrame:
+    """Phase 18 — top N stocks by largest positive 1-day Δ CCQS today.
+
+    Replaces the prior tier-transition definition with a magnitude-ranked
+    list so the section always shows a standardized N rows regardless of
+    how many stocks crossed a tier boundary on any given day.
+    Returns DataFrame [leadership_tier, ccqs] for compatibility with the
+    existing renderer.
+    """
     lead = _read_parquet("leadership.parquet")
     ccqs = _read_parquet("ccqs.parquet")
     if lead.empty or ccqs.empty:
         return pd.DataFrame()
 
-    pair = _today_and_prev_dates(lead)
+    pair = _today_and_prev_dates(ccqs)
     if pair is None:
         return pd.DataFrame()
     today, prev = pair
-
-    today_t = lead.xs(today, level="date")["leadership_tier"]
-    prev_t = lead.xs(prev, level="date")["leadership_tier"]
-    joined = pd.concat({"prev": prev_t, "today": today_t}, axis=1).dropna()
-    HEALTHY = {"ELITE_LEADER", "STRONG_LEADER", "EMERGING_LEADER", "ESTABLISHED_LEADER"}
-    upgrades = joined[
-        (~joined["prev"].astype(str).isin(HEALTHY))
-        & (joined["today"].astype(str).isin(HEALTHY))
-    ]
-    if upgrades.empty:
-        return pd.DataFrame()
-
-    ccqs_today = ccqs.xs(today, level="date")[["ccqs"]]
-    out = upgrades.join(ccqs_today, how="left")
-    out = out.rename(columns={"today": "leadership_tier"})[["leadership_tier", "ccqs"]]
-    out = out.dropna(subset=["ccqs"]).sort_values("ccqs", ascending=False)
-    return out
-
-
-@st.cache_data(ttl=TTL, show_spinner=False)
-def get_newly_broken_today() -> pd.DataFrame:
-    """Tickers that moved INTO DETERIORATING state today."""
-    state = _read_parquet("state.parquet")
-    ccqs = _read_parquet("ccqs.parquet")
-    if state.empty or ccqs.empty:
-        return pd.DataFrame()
-
-    pair = _today_and_prev_dates(state)
-    if pair is None:
-        return pd.DataFrame()
-    today, prev = pair
-
-    today_s = state.xs(today, level="date")["primary_state"]
-    prev_s = state.xs(prev, level="date")["primary_state"]
-    joined = pd.concat({"prev_state": prev_s, "today_state": today_s}, axis=1).dropna()
-    broken = joined[
-        (joined["today_state"].astype(str) == "DETERIORATING")
-        & (joined["prev_state"].astype(str) != "DETERIORATING")
-    ]
-    if broken.empty:
-        return pd.DataFrame()
 
     ccqs_today = ccqs.xs(today, level="date")["ccqs"]
     ccqs_prev = ccqs.xs(prev, level="date")["ccqs"]
     change = (ccqs_today - ccqs_prev).rename("ccqs_change")
-    out = broken[["prev_state"]].join(change, how="left")
-    out = out.dropna(subset=["ccqs_change"]).sort_values("ccqs_change", ascending=True)
+
+    tier_today = lead.xs(today, level="date")["leadership_tier"] if not lead.empty else pd.Series(dtype=object)
+
+    out = pd.DataFrame({
+        "leadership_tier": tier_today.reindex(change.index),
+        "ccqs": ccqs_today.reindex(change.index),
+        "ccqs_change": change,
+    })
+    out = out.dropna(subset=["ccqs", "ccqs_change"])
+    out = out.sort_values("ccqs_change", ascending=False).head(n)
     return out
 
 
 @st.cache_data(ttl=TTL, show_spinner=False)
-def get_grade_jumps_today() -> pd.DataFrame:
-    """Tickers whose grade changed today (any change in letter)."""
+def get_newly_broken_today(n: int = 10) -> pd.DataFrame:
+    """Phase 18 — top N stocks by largest negative 1-day Δ CCQS today.
+
+    Replaces the prior "moved into DETERIORATING state" filter with a
+    magnitude-ranked list so the section always shows a standardized N
+    rows. Returns DataFrame [prev_state, ccqs_change] for compatibility
+    with the existing renderer.
+    """
+    state = _read_parquet("state.parquet")
+    ccqs = _read_parquet("ccqs.parquet")
+    if ccqs.empty:
+        return pd.DataFrame()
+
+    pair = _today_and_prev_dates(ccqs)
+    if pair is None:
+        return pd.DataFrame()
+    today, prev = pair
+
+    ccqs_today = ccqs.xs(today, level="date")["ccqs"]
+    ccqs_prev = ccqs.xs(prev, level="date")["ccqs"]
+    change = (ccqs_today - ccqs_prev).rename("ccqs_change")
+
+    prev_state = (
+        state.xs(prev, level="date")["primary_state"]
+        if not state.empty else pd.Series(dtype=object)
+    )
+
+    out = pd.DataFrame({
+        "prev_state": prev_state.reindex(change.index),
+        "ccqs_change": change,
+    })
+    out = out.dropna(subset=["ccqs_change"])
+    out = out.sort_values("ccqs_change", ascending=True).head(n)
+    return out
+
+
+@st.cache_data(ttl=TTL, show_spinner=False)
+def get_grade_jumps_today(n: int = 10) -> pd.DataFrame:
+    """Phase 18 — top N stocks by largest |Δ CCQS| where grade letter changed.
+
+    If fewer than N stocks had a grade-letter transition today, pad with
+    the next largest |Δ CCQS| stocks (grade_move = "—") so the section
+    always renders N rows.
+    """
     ccqs = _read_parquet("ccqs.parquet")
     if ccqs.empty:
         return pd.DataFrame()
@@ -367,15 +319,25 @@ def get_grade_jumps_today() -> pd.DataFrame:
     prev_g = ccqs.xs(prev, level="date")["grade"]
     today_c = ccqs.xs(today, level="date")["ccqs"]
     prev_c = ccqs.xs(prev, level="date")["ccqs"]
-    joined = pd.concat({"prev": prev_g, "today": today_g}, axis=1).dropna()
-    changed = joined[joined["prev"].astype(str) != joined["today"].astype(str)]
-    if changed.empty:
-        return pd.DataFrame()
+    change = (today_c - prev_c).rename("ccqs_change")
 
-    out = pd.DataFrame(index=changed.index)
-    out["grade_move"] = changed["prev"].astype(str) + " → " + changed["today"].astype(str)
-    out["ccqs_change"] = (today_c - prev_c).reindex(changed.index)
-    out = out.dropna(subset=["ccqs_change"]).sort_values("ccqs_change", ascending=False)
+    joined = pd.concat({"prev": prev_g, "today": today_g}, axis=1).dropna()
+    changed_mask = joined["prev"].astype(str) != joined["today"].astype(str)
+
+    grade_move = pd.Series("—", index=joined.index, dtype=object)
+    grade_move.loc[changed_mask] = (
+        joined.loc[changed_mask, "prev"].astype(str)
+        + " → "
+        + joined.loc[changed_mask, "today"].astype(str)
+    )
+
+    out = pd.DataFrame({"grade_move": grade_move, "ccqs_change": change.reindex(joined.index)})
+    out = out.dropna(subset=["ccqs_change"])
+    # Prefer grade-changers; then fall back to largest absolute movers.
+    out["_rank_key"] = (~changed_mask.reindex(out.index).fillna(False)).astype(int)
+    out["_abs_change"] = out["ccqs_change"].abs()
+    out = out.sort_values(["_rank_key", "_abs_change"], ascending=[True, False]).head(n)
+    out = out.drop(columns=["_rank_key", "_abs_change"])
     return out
 
 
@@ -384,13 +346,13 @@ def get_grade_jumps_today() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 COMPONENT_DISPLAY_NAMES = {
-    "s_rs":                  "RS",
-    "s_rs_leadership":       "RS Leadership",
+    "s_rs":                  "Relative Strength",
+    "s_rs_leadership":       "Relative Strength Leadership",
     "s_residual_momentum":   "Residual Momentum",
-    "s_rsl":                 "RSL",
+    "s_rsl":                 "Relative Strength Line",
     "s_trend_slope":         "Trend Slope",
     "s_structure":           "Structure",
-    "s_mtf":                 "MTF",
+    "s_mtf":                 "Multi-Timeframe Alignment",
     "s_extension":           "Extension",
     "s_demand":              "Demand",
     "s_momentum":            "Momentum",
@@ -617,14 +579,14 @@ def load_key_metrics_for_ticker(ticker: str) -> pd.DataFrame:
         return f"{int(v):,}" if pd.notna(v) else "—"
 
     metrics = [
-        ("% from 50 DMA",            fmt_pct(get("pct_ma_50"))),
-        ("% from 200 DMA",           fmt_pct(get("pct_ma_200"))),
-        ("% from 52w High",          fmt_pct(get("pct_from_52w_high"))),
-        ("ADX-14",                   fmt_num(get("adx_14"), 1)),
-        ("RSI-14",                   fmt_num(get("rsi_14"), 1)),
-        ("Realized Vol 60d",         fmt_num(get("realized_vol_60"), 1)),
-        ("Within-Basket Z (21d)",    fmt_num(get("within_basket_z_21d"), 2)),
-        ("Distribution Days (25d)",  fmt_int(get("distribution_days_25"))),
+        ("% from 50-day Moving Average",        fmt_pct(get("pct_ma_50"))),
+        ("% from 200-day Moving Average",       fmt_pct(get("pct_ma_200"))),
+        ("% from 52-week High",                 fmt_pct(get("pct_from_52w_high"))),
+        ("Average Directional Index (14)",      fmt_num(get("adx_14"), 1)),
+        ("Relative Strength Index (14)",        fmt_num(get("rsi_14"), 1)),
+        ("Realized Volatility (60-day)",        fmt_num(get("realized_vol_60"), 1)),
+        ("Within-Basket Z-Score (21-day)",      fmt_num(get("within_basket_z_21d"), 2)),
+        ("Distribution Days (25-day)",          fmt_int(get("distribution_days_25"))),
     ]
     return pd.DataFrame(metrics, columns=["metric", "value"])
 

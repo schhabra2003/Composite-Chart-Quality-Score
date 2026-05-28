@@ -433,18 +433,18 @@ See `SPEC.md` §Path C deferred backlog section for the full list. Highlights:
 
 ---
 
-## Phase 16-17 — CCQS-LC empirical re-validation + regime-aware deployment
+## Phase 16-17 — CCQS empirical re-validation + regime-aware deployment
 
 **Status (2026-05-27):** Phase 17 deployed.
 
 After Phase 15.1.D revealed 90% walk-forward failure on small caps, Phase 16
 applied the same Sub-Investigation D rigor to LC under the user direction:
 
-> "Apply Sub-Investigation D-level rigor to CCQS-LC validation. Empirically
-> verify what CCQS-LC actually does well and what might be illusion. No
+> "Apply Sub-Investigation D-level rigor to CCQS validation. Empirically
+> verify what CCQS actually does well and what might be illusion. No
 > assumptions preserved."
 
-### Phase 16 — Comprehensive CCQS-LC re-validation (16.A-16.I)
+### Phase 16 — Comprehensive CCQS re-validation (16.A-16.I)
 
 Nine sub-investigations on 874-ticker LC universe (4.77 GB feature matrix,
 463 features × 2360 dates including all 11 production CCQS components):
@@ -522,6 +522,115 @@ title; RED state also adds explicit `st.error` banner with empirical citation.
 **No changes to STATE_WEIGHTS, components.parquet, ccqs.parquet, or TV
 references — methodology preserved; regime awareness added as display layer.**
 
-**Net effect**: production CCQS-LC now ships with empirically-validated
+**Net effect**: production CCQS now ships with empirically-validated
 design-space awareness. Users see at a glance whether the day's
 environment is within the validated working regime.
+
+---
+
+## Phase 18 — UI / UX cleanup pass (2026-05-27)
+
+User-driven dashboard cleanup. Thirteen targeted changes, zero methodology
+impact: STATE_WEIGHTS, CCQS computation, and TradingView reference parity
+are all preserved bit-identically (140 / 140 fields, 11 / 11 sanity checks).
+
+### Vocabulary
+
+- **18.1** — Dropped the "-LC" suffix everywhere. The system only operates
+  on the large-cap universe, so "CCQS-LC" added confusion rather than
+  precision. Affected: regime chip copy, `SPEC.md` §16-17, `USER_GUIDE.md`
+  §J, `CHANGELOG.md`, internal Phase 17 docstrings.
+- **18.10** — Expanded acronyms in every user-facing surface. Component
+  display names: `RS` → "Relative Strength", `RSL` → "Relative Strength
+  Line", `MTF` → "Multi-Timeframe Alignment". Key-metrics labels: `ADX-14`
+  → "Average Directional Index (14)", `RSI-14` → "Relative Strength
+  Index (14)", `% from 50 DMA` → "% from 50-day Moving Average", and so
+  on. Methodology paragraph rewritten without acronyms.
+
+### Top Stocks table
+
+- **18.2** — Removed the standalone "RS" column. `rs_rating_spy` is already
+  one of the strongest inputs to CCQS via `s_rs` and `s_rs_leadership`;
+  showing it as a separate column duplicated signal already encoded in
+  the rank.
+- **18.3** — Replaced the single "Δ Today" column with three Δ CCQS
+  columns at 1-day / 5-day / 21-day trading-day horizons. Δ values are
+  computed at runtime from the slim dashboard cache (no schema change to
+  any parquet); the 5d / 21d offsets step through the sorted unique date
+  index in `ccqs.parquet`, so lookbacks are trading-day-accurate
+  regardless of market holidays.
+- Renamed the "Tier" column header to "Leadership Tier" for clarity.
+
+### Themes table
+
+- **18.4** — Removed the "Members" (constituent count) column. Cardinality
+  is metadata, not insight.
+- **18.6** — Removed the "% Grade A+" column. It overlapped with the
+  `% > 50-day Moving Average` breadth measure; kept the latter as the
+  cleaner price-action signal independent of the CCQS score itself.
+- **18.5** — Verified the breadth math: `pct_above_50dma` =
+  `g["pct_above_sma_50"].mean() × 100` in `compute/aggregation.py:243`,
+  where `pct_above_sma_50` is a 0/1 per-ticker binary in
+  `features.parquet`. Computation is correct.
+- **18.13** — Added a "Constituents" column that lists every basket
+  member, sorted by current CCQS descending, comma-joined. Users can
+  cross-reference on charting platforms / brokerages without leaving
+  the dashboard.
+
+### What Changed Today
+
+- **18.7** — Replaced the threshold-gated lists with magnitude-ranked
+  top-10 lists. Section headers renamed:
+  - "New Emerging Leaders" → **"Strongest Risers"** (top 10 by 1-day Δ CCQS)
+  - "Newly Deteriorating" → **"Largest Decliners"** (bottom 10 by 1-day Δ CCQS)
+  - "Grade Jumps" → **"Grade Changes"** (top 10 by |Δ CCQS|; grade-letter
+    changers preferred, padded with the next largest absolute movers when
+    fewer than 10 changed grade letters on the day)
+
+### Stock detail
+
+- **18.8** — Rebuilt the header to a two-tier layout: a large-weight ticker
+  symbol, then a row of labeled key-value chips (Score, Leadership Tier,
+  State, Theme). Replaces the previous flat middle-dot pipe.
+- **18.9** — Removed the reliability chips block entirely. CCQS is a
+  technical scoring system, not a predictive model; per-stock "reliability"
+  framing was misleading (e.g., labelling mega-caps as a *warning* when
+  they are simply a different quintile).
+
+### Market-context caution
+
+- **18.12** — Replaced the always-on three-state regime chip with a
+  context-only caution. No banner in GREEN regime (the silent majority
+  case). YELLOW shows an `st.info` caution noting the broad market is
+  below its 200-day moving average. RED shows an `st.warning` noting the
+  broad market is in a meaningful drawdown. Copy is professional and
+  measured; CCQS rankings are always described as a screening aid, not
+  a directional signal.
+
+### Data correctness
+
+- **18.11** — Confirmed SNDK is already correctly assigned to the
+  "Memory and Storage" basket (`data/universe.py` lines 33, 1223, 2090,
+  2254). No change needed; the user's "SDNK" was a typo for SNDK
+  (SanDisk's NASDAQ ticker).
+
+### Files touched
+
+```
+app/streamlit_app.py
+app/utils/tables.py
+app/utils/data_loader.py
+compute/build_dashboard_cache.py
+SPEC.md
+USER_GUIDE.md
+CHANGELOG.md
+data/cache/dashboard/regime_context.json   # text refresh from build script
+```
+
+### Net effect
+
+The dashboard reads like a focused technical screen: top stocks by CCQS
+with three change-horizon columns, themes by basket with breadth and
+constituent listing, three magnitude-ranked change boards, and a clean
+stock detail with labeled chips. Caution banners only when the broad
+market context warrants them. No chip noise on normal days.

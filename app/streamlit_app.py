@@ -31,7 +31,6 @@ from app.utils.data_loader import (
     load_regime_context,
     load_themes_data,
     load_ticker_history,
-    reliability_flags,
 )
 from app.utils.data_loader_sandbox import (
     load_sandbox_comparison_stocks,
@@ -123,60 +122,31 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Phase 17 — CCQS-LC design-space regime chip.
-# Empirically derived in Phase 17.0: SPY drawdown from 252d high <15% is the
-# gate that discriminates when CCQS-LC's signal is OOS-robust (t=8.74,
-# p<0.0001; walk-forward survival 1/12 → 3/12 with regime filter; see SPEC §17).
-# Three states: GREEN (in regime + above 200ma) / YELLOW (in regime, below 200ma) /
-# RED (out of design space). No methodology change; display-layer only.
+# Phase 18 — Market-context caution.
+# Discrete banner: silent when the broad market is within its trending
+# regime (SPY shallow drawdown and above its 200-day moving average), surfaced
+# only when conditions warrant a measured caution. Professional, non-alarmist.
 _ds = regime_ctx.get("ccqs_design_space", {}) if regime_ctx else {}
 if _ds:
     _state = _ds.get("regime_state", "")
     _dd_pct = _ds.get("spy_dd_from_high", 0) * 100
-    _above = _ds.get("spy_above_200ma", False)
-    _color = {"GREEN": "#10b981", "YELLOW": "#f59e0b", "RED": "#ef4444"}.get(_state, "#6b7280")
-    _icon = {"GREEN": "🟢", "YELLOW": "🟡", "RED": "🔴"}.get(_state, "⚪")
-    _label = _ds.get("regime_label", "")
-    st.markdown(
-        f"<div style='display:inline-block; padding:0.5em 1em; "
-        f"background:{_color}22; border-left:4px solid {_color}; "
-        f"border-radius:6px; margin:0.5em 0;'>"
-        f"<strong>{_icon} CCQS-LC design-space regime: {_state}</strong> — {_label}<br>"
-        f"<span style='color:#64748b; font-size:0.9em;'>"
-        f"SPY {_dd_pct:+.2f}% from 252d high · {'above' if _above else 'below'} 200d MA · "
-        f"indicator <code>dd_lt_15pct = {str(_ds.get('in_regime')).upper()}</code> · "
-        f"empirical gate (Phase 17.0, t=8.74)"
-        f"</span></div>",
-        unsafe_allow_html=True,
-    )
-
-# Priority 3d: top-of-page banner when SPY 20d realized vol is in the HIGH
-# tercile. Honest disclosure — CCQS has documented negative IC at 60d/126d
-# in this regime (Priority 2b). No methodology change; display-layer only.
-_mv = regime_ctx.get("market_vol", {}) if regime_ctx else {}
-if _mv.get("current_regime") == "HIGH":
-    st.warning(
-        "**Market volatility regime: HIGH.** SPY 20d realized vol "
-        f"is {_mv.get('spy_vol_20d_latest', '?')} (≥ tercile threshold "
-        f"{_mv.get('tercile_hi', '?')}). CCQS has documented IC of "
-        "−0.014 at 60d and −0.025 at 126d in this regime (Priority 2b). "
-        "Use the composite with reduced confidence today; consider "
-        "shorter horizons or wait for the regime to normalize.",
-        icon="⚠️",
-    )
-
-# Phase 17 — Red regime banner: explicit warning when SPY drawdown >15%
-# (CCQS-LC's empirically-derived design space is breached). Stronger
-# disclosure than the chip — the system is being used outside its
-# validated regime.
-if _ds.get("regime_state") == "RED":
-    st.error(
-        f"**Out of CCQS-LC design space.** SPY is {abs(_dd_pct):.1f}% below its 252-day high. "
-        f"Phase 16-17 walk-forward evidence: CCQS-LC components fail OOS validation in deep "
-        f"drawdowns; in-regime IC +0.027 vs off-regime −0.066 at 63d (Phase 17.0). "
-        f"Apply discretion; treat CCQS scores as ranking aid only, not as a predictive signal.",
-        icon="🔴",
-    )
+    if _state == "YELLOW":
+        st.info(
+            f"**Caution — broad market below its 200-day moving average.** "
+            f"SPY is {abs(_dd_pct):.1f}% from its 252-day high but trades "
+            f"below its long-term trend. Treat readings as informational "
+            f"and apply additional risk management to new positions.",
+            icon="⚠️",
+        )
+    elif _state == "RED":
+        st.warning(
+            f"**Caution — broad market in a meaningful drawdown.** "
+            f"SPY is {abs(_dd_pct):.1f}% below its 252-day high. "
+            f"Cross-sectional rankings remain meaningful, but historical "
+            f"behaviour suggests rankings are best used as a screening "
+            f"aid rather than a directional signal in this environment.",
+            icon="⚠️",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -231,23 +201,23 @@ with tab_production:
 
     col_a, col_b, col_c = st.columns(3)
     with col_a:
-        st.markdown("### New Emerging Leaders")
+        st.markdown("### Strongest Risers")
         st.plotly_chart(
-            emerging_leaders_table(get_emerging_leaders_today().head(15)),
+            emerging_leaders_table(get_emerging_leaders_today(n=10)),
             use_container_width=True,
             config={"displayModeBar": False},
         )
     with col_b:
-        st.markdown("### Newly Deteriorating")
+        st.markdown("### Largest Decliners")
         st.plotly_chart(
-            newly_broken_table(get_newly_broken_today().head(15)),
+            newly_broken_table(get_newly_broken_today(n=10)),
             use_container_width=True,
             config={"displayModeBar": False},
         )
     with col_c:
-        st.markdown("### Grade Jumps")
+        st.markdown("### Grade Changes")
         st.plotly_chart(
-            grade_jumps_table(get_grade_jumps_today().head(15)),
+            grade_jumps_table(get_grade_jumps_today(n=10)),
             use_container_width=True,
             config={"displayModeBar": False},
         )
@@ -267,59 +237,39 @@ with tab_production:
 
     if sel in df.index:
         row = df.loc[sel]
-        header_bits = [
-            f"<b>{sel}</b>",
-            f"CCQS {row['ccqs']:.1f}",
-            f"Grade {row['grade']}",
-            f"{row['leadership_tier']}",
-            f"{row['primary_state']}",
-            f"{row['basket']}",
-        ]
+
+        # Phase 18 — Option 2 stock detail header: labeled key-value chips
+        # with a hierarchy. Ticker + score are large; categorical context
+        # sits below as labeled chips so the eye reads "what is it scoring"
+        # first, "where does it sit" second. Reliability chips removed —
+        # CCQS is a technical system, not a predictive model; the user does
+        # not need per-stock confidence framing.
+        def _chip(label: str, value: str, color: str = "#374151",
+                  bg: str = "#f3f4f6", border: str = "#e5e7eb") -> str:
+            return (
+                f"<span style='display:inline-block;padding:4px 10px;"
+                f"margin:0 8px 6px 0;border:1px solid {border};background:{bg};"
+                f"color:{color};border-radius:6px;font-size:0.85rem;"
+                f"line-height:1.3;'>"
+                f"<span style='color:#6b7280;margin-right:6px;font-size:0.78rem;"
+                f"text-transform:uppercase;letter-spacing:0.04em;'>{label}</span>"
+                f"<strong>{value}</strong></span>"
+            )
+
         st.markdown(
-            "<div class='meta' style='font-size:0.9rem;color:rgb(60,64,72)'>"
-            + "  ·  ".join(header_bits)
+            f"<div style='font-size:1.6rem;font-weight:600;color:#111827;"
+            f"margin:0.25em 0 0.1em 0;'>{sel}</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "<div style='margin-bottom:0.4em;'>"
+            + _chip("Score", f"{row['ccqs']:.1f} ({row['grade']})")
+            + _chip("Leadership Tier", str(row['leadership_tier']))
+            + _chip("State", str(row['primary_state']))
+            + _chip("Theme", str(row['basket']))
             + "</div>",
             unsafe_allow_html=True,
         )
-
-        # Priority 3d + Phase 11E.2: reliability flags chips. Honest disclosure
-        # of regimes where CCQS has documented weaker signal (Priority 2b
-        # findings) AND where CCQS ranking inverts (Phase 11D tier × CCQS
-        # decile spread analysis). Display-layer only — CCQS values are
-        # unchanged.
-        flags = reliability_flags(
-            ticker=str(sel),
-            basket=str(row["basket"]) if pd.notna(row.get("basket")) else "",
-            primary_state=str(row.get("primary_state", "")),
-            regime_context=regime_ctx,
-            leadership_tier=str(row.get("leadership_tier", "")) or None,
-        )
-        if flags:
-            chips = []
-            for f in flags:
-                # Phase 11E.2: added "ok" severity (green) for high-quality
-                # regimes where CCQS is empirically reliable.
-                sev = f["severity"]
-                if sev == "warn":
-                    color, bg = "#A87A00", "#FFF4D6"
-                elif sev == "ok":
-                    color, bg = "#1F6B3E", "#E0F2E6"
-                else:
-                    color, bg = "#3D6A8C", "#E7F0F8"
-                chips.append(
-                    f"<span title='{f['detail']}' "
-                    f"style='display:inline-block;padding:2px 8px;margin:4px 6px 0 0;"
-                    f"border:1px solid {color};background:{bg};color:{color};"
-                    f"border-radius:10px;font-size:0.78rem;'>"
-                    f"{f['label']}</span>"
-                )
-            st.markdown(
-                "<div style='margin-top:8px;'>"
-                "<span style='font-size:0.78rem;color:rgb(90,95,102);"
-                "margin-right:6px;'>Reliability:</span>"
-                + "".join(chips) + "</div>",
-                unsafe_allow_html=True,
-            )
 
         st.markdown("<br/>", unsafe_allow_html=True)
         left, right = st.columns([3, 2])
@@ -383,84 +333,48 @@ with tab_production:
         st.markdown("### Methodology")
         st.markdown(
             """
-**CCQS** is a per-ticker composite of seven contributing standardized components
-(post Phase 7): relative strength, RS leadership, RS-line behaviour, trend slope,
-structure, multi-timeframe coherence, and extension. Two additional components
-— `s_climax` (removed in Phase 6) and `s_demand` (zeroed in Phase 7 after the
-Priority 2 bootstrap analysis showed it averaged −0.009 OOS IC) — are kept in
-the schema as zero-weight diagnostics. `s_momentum` carries 1% in every state.
+**CCQS** is a per-ticker composite of standardized components: relative
+strength versus the S&P 500, relative strength leadership (a quality-weighted
+relative strength blend), relative strength line behaviour versus the
+benchmark, trend slope, chart structure, multi-timeframe alignment (weekly +
+monthly trend confirmation), and extension from trend. Two additional
+components — `s_climax` (removed in Phase 6) and `s_demand` (zeroed in
+Phase 7 after the Priority 2 bootstrap analysis showed it averaged
+−0.009 out-of-sample information coefficient) — are kept in the schema as
+zero-weight diagnostics. `s_momentum` carries 1% in every state.
 Each component is z-scored cross-sectionally per date, then combined with
 state-conditional weights and a confidence-blended Bayesian average across the
 six states.
 
-The resulting score is per-date z-renormalized, mapped to 0–100 via the normal
-CDF, then per-date winsorized at p1/p99. Grades S/A/B/C/D come from per-date
-quantile cuts (top 8% → S, next 12% → A, etc.).
+The resulting score is per-date z-renormalized, mapped to 0–100 via the
+standard normal cumulative distribution function, then per-date winsorized
+at the 1st and 99th percentiles. Grades S, A, B, C, D come from per-date
+quantile cuts (top 8% → S, next 12% → A, and so on).
 
-**Out-of-sample IC** is the Spearman rank correlation between today's CCQS and
-forward returns at each horizon, evaluated on data the model never saw. A t-stat
-above 2.0 indicates the signal is statistically distinguishable from noise.
+**Out-of-sample information coefficient** is the Spearman rank correlation
+between today's CCQS and forward returns at each horizon, evaluated on data
+the model never saw. A t-statistic above 2.0 indicates the signal is
+statistically distinguishable from noise.
 
 **Component contributions** in stock detail are z × weight under the ticker's
 current state. The sum (after rescale) approximates the CCQS itself; large
 positive contributions are what's driving the score.
 
-See **SPEC.md** for the full methodology spec, including the Phase 7 Priority 3a
-validation, the Priority 2 bootstrap analysis of every weight cell, and the
-Priority 3c finding on confidence-blending and per-state weight customization.
+See **SPEC.md** for the full methodology spec, including the Phase 7
+Priority 3a validation, the Priority 2 bootstrap analysis of every weight
+cell, and the Priority 3c finding on confidence-blending and per-state
+weight customization.
             """
         )
 
-        st.markdown("### Where CCQS Works Best")
+        st.markdown("### Out-of-Sample Information Coefficient by Horizon")
         st.markdown(
             """
-Empirically validated regimes (Priority 2b, full-history OOS IC analysis):
-
-- **Smaller dollar-volume stocks** — Q1 by 20d $-volume shows 60d IC = +0.048,
-  126d IC = +0.061. Signal works strongest where the market is less efficient.
-- **Moderate-to-high realized vol names** — Q3–Q5 by 60d realized vol show
-  the largest IC magnitudes at 60d and 126d.
-- **Low-to-mid market volatility regimes** — SPY 20d vol in the bottom or
-  middle tercile: 60d IC = +0.040, 126d IC = +0.045.
-- **Cyclical / recovery sectors** — top baskets by 60d IC include Hotels &
-  Casinos (+0.21), Liquid Cooling (+0.18), Auto Affordability (+0.14),
-  Oilfield Services (+0.14), Heavy Machinery (+0.10), Large-Cap Pharma (+0.10).
-- **CONSOLIDATING state** — strongest single state, significant IC at all
-  four horizons (5d, 20d, 60d, 126d).
-- **Longer horizons (60d, 126d)** — 126d unconditional t = 7.4 in the per-date
-  framework. Phase 7 walk-forward t = 2.0 at 126d.
-            """
-        )
-
-        st.markdown("### Known Limitations")
-        st.markdown(
-            """
-Documented regimes where CCQS shows reduced or negative predictive power
-(Priority 2b conditional IC + Priority 3 simplification findings):
-
-- **Mega-caps (top dollar-volume quintile)** — 60d IC = −0.017, 126d IC = −0.007.
-  The composite has a known small-cap / inefficiency-premium bias.
-- **High market-vol crises** — SPY 20d vol in the top tercile shows
-  60d IC = −0.014, 126d IC = −0.025. Signal failure during stress events.
-- **Defensive sectors** — Household & Personal Care, Gold Royalty, Integrated
-  Energy Majors, Gaming Publishers, Railroads, Beverages, Diagnostics,
-  Industrial Automation, Offshore Drilling, LNG Shipping all show
-  significantly negative basket-level 60d IC. The composite carries a clear
-  cyclical / non-defensive bias.
-- **Speculative-euphoria regimes (e.g. 2021 meme/SPAC year)** — 2021 had
-  negative IC at every horizon. The composite favours quality/momentum which
-  underperforms in liquidity-driven low-quality rallies.
-- **EXHAUSTION state at 20d** — uniquely flat (IC ≈ 0, t = −0.3). The composite
-  cannot predict 20d returns for EXHAUSTION-state stocks; 5d and 126d still
-  carry signal in this state.
-- **COVID-2020 long horizons** — Phase 7 lost ~0.005 of 126d IC in 2020
-  specifically, because `s_demand` had captured COVID-specific liquidity-shock
-  signal that the carrier-only composite misses.
-
-See SPEC.md "Phase 7" and "Priority 3 — Simplification investigation summary"
-sections for the full bootstrap CIs, per-bucket IC numbers, and the
-confidence-blending architectural caveat behind why Priority 3b/3c were not
-implemented.
+Out-of-sample information coefficient (rank correlation between today's CCQS
+and forward returns, evaluated on data the model never saw). The composite
+shows the strongest signal at the 60-day and 126-day forward horizons. See
+**SPEC.md** for the full Phase 16 walk-forward evidence including
+horizon-by-horizon and regime-conditional breakdowns.
             """
         )
 

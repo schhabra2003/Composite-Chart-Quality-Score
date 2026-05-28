@@ -9,7 +9,7 @@
   },
   "ccqs_design_space": {
     "indicator": "dd_lt_15pct",
-    "indicator_description": "SPY drawdown from 252-day high is shallower than 15%. Empirically derived gate for CCQS-LC predictive validity.",
+    "indicator_description": "SPY drawdown from 252-day high is shallower than 15%. Empirically derived gate for CCQS predictive validity.",
     "latest_date": "2026-05-27",
     "spy_close": 750.45,
     "spy_252d_max": 750.59,

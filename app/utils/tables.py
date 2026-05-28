@@ -146,21 +146,27 @@ def _whites(n: int) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# 1. Top Stocks (8 columns)
+# 1. Top Stocks (9 columns) — Phase 18: replaced single RS + Δ Today with
+# three Δ CCQS columns (1-day / 5-day / 21-day).
 # ---------------------------------------------------------------------------
 
-TOP_STOCKS_COL_WIDTHS = [0.09, 0.20, 0.08, 0.14, 0.11, 0.18, 0.08, 0.12]
-TOP_STOCKS_HEADERS = ["Ticker", "Theme", "CCQS", "Tier", "State", "Setup", "RS", "Δ Today"]
-TOP_STOCKS_ALIGNS = ["left", "left", "right", "left", "left", "left", "right", "right"]
+TOP_STOCKS_COL_WIDTHS = [0.10, 0.22, 0.08, 0.14, 0.11, 0.17, 0.06, 0.06, 0.06]
+TOP_STOCKS_HEADERS = [
+    "Ticker", "Theme", "CCQS", "Leadership Tier", "State", "Setup",
+    "Δ 1d", "Δ 5d", "Δ 21d",
+]
+TOP_STOCKS_ALIGNS = [
+    "left", "left", "right", "left", "left", "left", "right", "right", "right",
+]
 
 
 def top_stocks_table(df: pd.DataFrame, n: int = 50) -> go.Figure:
-    """Ticker, Theme, CCQS, Tier, State, Setup, RS, Δ Today."""
+    """Ticker, Theme, CCQS, Leadership Tier, State, Setup, Δ 1d, Δ 5d, Δ 21d."""
     if df.empty:
         return render_table(
             TOP_STOCKS_HEADERS,
-            [["—"]] * 8,
-            [_whites(1)] * 8,
+            [["—"]] * len(TOP_STOCKS_HEADERS),
+            [_whites(1)] * len(TOP_STOCKS_HEADERS),
             TOP_STOCKS_COL_WIDTHS,
             aligns=TOP_STOCKS_ALIGNS,
         )
@@ -172,19 +178,24 @@ def top_stocks_table(df: pd.DataFrame, n: int = 50) -> go.Figure:
     tiers = d["leadership_tier"].astype(str).tolist()
     states = d["primary_state"].astype(str).tolist()
     setups = d["setup_label"].astype(str).tolist()
-    rs = d["rs_rating_spy"].tolist()
-    change_vals = d["ccqs_change"].astype(float).tolist()
+    # Δ CCQS at three trading-day horizons. ccqs_change_5d / 21d are added
+    # in load_dashboard_data (Phase 18); ccqs_change kept for back-compat
+    # with peers / sandbox paths.
+    chg_1d = d.get("ccqs_change_1d", d.get("ccqs_change", pd.Series(float("nan"), index=d.index))).astype(float).tolist()
+    chg_5d = d.get("ccqs_change_5d", pd.Series(float("nan"), index=d.index)).astype(float).tolist()
+    chg_21d = d.get("ccqs_change_21d", pd.Series(float("nan"), index=d.index)).astype(float).tolist()
 
     n_rows = len(d)
     fill_cols = [
         _whites(n_rows),                            # Ticker
         _whites(n_rows),                            # Theme
         [color_ccqs(v) for v in ccqs_vals],         # CCQS
-        [color_tier(t) for t in tiers],             # Tier
+        [color_tier(t) for t in tiers],             # Leadership Tier
         [color_state(s) for s in states],           # State
         _whites(n_rows),                            # Setup
-        _whites(n_rows),                            # RS
-        [color_ret(v) for v in change_vals],        # Δ Today
+        [color_ret(v) for v in chg_1d],             # Δ 1d
+        [color_ret(v) for v in chg_5d],             # Δ 5d
+        [color_ret(v) for v in chg_21d],            # Δ 21d
     ]
     return render_table(
         headers=TOP_STOCKS_HEADERS,
@@ -195,8 +206,9 @@ def top_stocks_table(df: pd.DataFrame, n: int = 50) -> go.Figure:
             tiers,
             states,
             setups,
-            [_fmt_int(v) for v in rs],
-            [_fmt_signed(v, 2) for v in change_vals],
+            [_fmt_signed(v, 2) for v in chg_1d],
+            [_fmt_signed(v, 2) for v in chg_5d],
+            [_fmt_signed(v, 2) for v in chg_21d],
         ],
         fill_colors=fill_cols,
         col_widths=TOP_STOCKS_COL_WIDTHS,
@@ -205,24 +217,29 @@ def top_stocks_table(df: pd.DataFrame, n: int = 50) -> go.Figure:
 
 
 # ---------------------------------------------------------------------------
-# 2. Themes (7 columns)
+# 2. Themes (6 columns) — Phase 18:
+#   • Dropped "Members" count column (cardinality metadata, not insight)
+#   • Dropped "% Grade A+" column (overlaps with % > 50-day MA breadth)
+#   • Added "Constituents" column listing all basket tickers (sorted by CCQS
+#     desc) so users can cross-check on charting platforms / brokerages
 # ---------------------------------------------------------------------------
 
 THEMES_HEADERS = [
     "Theme", "Theme CCQS", "Theme Class", "Momentum",
-    "Members", "% > 50DMA", "% Grade A+", "Top Member",
+    "% > 50-day Moving Average", "Top Member", "Constituents",
 ]
-THEMES_COL_WIDTHS = [0.20, 0.10, 0.13, 0.13, 0.07, 0.08, 0.08, 0.21]
-THEMES_ALIGNS = ["left", "right", "left", "left", "right", "right", "right", "left"]
+THEMES_COL_WIDTHS = [0.16, 0.08, 0.11, 0.11, 0.10, 0.08, 0.36]
+THEMES_ALIGNS = ["left", "right", "left", "left", "right", "left", "left"]
 
 
 def themes_table(df: pd.DataFrame) -> go.Figure:
-    """Theme, Theme CCQS, Theme Class, Momentum, Members, % > 50DMA, % Grade A+, Top Member."""
+    """Theme, Theme CCQS, Theme Class, Momentum, % > 50-day MA, Top Member,
+    Constituents."""
     if df.empty:
         return render_table(
             THEMES_HEADERS,
-            [["—"]] * 8,
-            [_whites(1)] * 8,
+            [["—"]] * len(THEMES_HEADERS),
+            [_whites(1)] * len(THEMES_HEADERS),
             THEMES_COL_WIDTHS,
             aligns=THEMES_ALIGNS,
         )
@@ -232,10 +249,11 @@ def themes_table(df: pd.DataFrame) -> go.Figure:
     ccqs_vals = d["theme_ccqs"].astype(float).tolist()
     classes = d["theme_class"].astype(str).tolist()
     momentum = d["momentum_class"].astype(str).tolist()
-    n_vals = d["n_constituents"].astype(int).tolist()
     pct_50_vals = d["pct_above_50dma"].astype(float).tolist()
-    pct_a_vals = d["pct_grade_a_plus"].astype(float).tolist()
     top_members = d["top_member"].astype(str).tolist()
+    members = d.get(
+        "members", pd.Series(["—"] * len(d), index=d.index)
+    ).astype(str).tolist()
 
     n_rows = len(d)
     fill_cols = [
@@ -243,10 +261,9 @@ def themes_table(df: pd.DataFrame) -> go.Figure:
         [color_ccqs(v) for v in ccqs_vals],                    # Theme CCQS
         [color_theme_class(c) for c in classes],               # Theme Class
         [color_momentum(m) for m in momentum],                 # Momentum
-        _whites(n_rows),                                       # Members
-        _whites(n_rows),                                       # % > 50DMA
-        _whites(n_rows),                                       # % Grade A+
+        _whites(n_rows),                                       # % > 50-day MA
         _whites(n_rows),                                       # Top Member
+        _whites(n_rows),                                       # Constituents
     ]
     return render_table(
         headers=THEMES_HEADERS,
@@ -255,10 +272,9 @@ def themes_table(df: pd.DataFrame) -> go.Figure:
             [_fmt_num(v, 1) for v in ccqs_vals],
             classes,
             momentum,
-            [_fmt_int(v) for v in n_vals],
             [_fmt_pct(v, 0) for v in pct_50_vals],
-            [_fmt_pct(v, 0) for v in pct_a_vals],
             top_members,
+            members,
         ],
         fill_colors=fill_cols,
         col_widths=THEMES_COL_WIDTHS,
@@ -416,13 +432,13 @@ def key_metrics_table(df: pd.DataFrame) -> go.Figure:
 
 
 def peers_table(df: pd.DataFrame, current_ticker: str) -> go.Figure:
-    """Ticker, Theme, CCQS, Tier, State, Setup, RS, Δ Today — same shape as
-    top_stocks_table. Current ticker row highlighted in pale gold."""
+    """Ticker, Theme, CCQS, Leadership Tier, State, Setup, Δ 1d, Δ 5d, Δ 21d —
+    same shape as top_stocks_table. Current ticker row highlighted."""
     if df.empty:
         return render_table(
             TOP_STOCKS_HEADERS,
-            [["—"]] * 8,
-            [_whites(1)] * 8,
+            [["—"]] * len(TOP_STOCKS_HEADERS),
+            [_whites(1)] * len(TOP_STOCKS_HEADERS),
             TOP_STOCKS_COL_WIDTHS,
             aligns=TOP_STOCKS_ALIGNS,
         )
@@ -433,8 +449,9 @@ def peers_table(df: pd.DataFrame, current_ticker: str) -> go.Figure:
     tiers = d["leadership_tier"].astype(str).tolist()
     states = d["primary_state"].astype(str).tolist()
     setups = d["setup_label"].astype(str).tolist()
-    rs = d["rs_rating_spy"].tolist()
-    change_vals = d["ccqs_change"].astype(float).tolist()
+    chg_1d = d.get("ccqs_change_1d", d.get("ccqs_change", pd.Series(float("nan"), index=d.index))).astype(float).tolist()
+    chg_5d = d.get("ccqs_change_5d", pd.Series(float("nan"), index=d.index)).astype(float).tolist()
+    chg_21d = d.get("ccqs_change_21d", pd.Series(float("nan"), index=d.index)).astype(float).tolist()
 
     is_current = [t == current_ticker for t in tickers]
 
@@ -445,11 +462,12 @@ def peers_table(df: pd.DataFrame, current_ticker: str) -> go.Figure:
         [_hl(WHITE, c) for c in is_current],                                                # Ticker
         [_hl(WHITE, c) for c in is_current],                                                # Theme
         [_hl(color_ccqs(v), c) for c, v in zip(is_current, ccqs_vals)],                     # CCQS
-        [_hl(color_tier(t), c) for c, t in zip(is_current, tiers)],                         # Tier
+        [_hl(color_tier(t), c) for c, t in zip(is_current, tiers)],                         # Leadership Tier
         [_hl(color_state(s), c) for c, s in zip(is_current, states)],                       # State
         [_hl(WHITE, c) for c in is_current],                                                # Setup
-        [_hl(WHITE, c) for c in is_current],                                                # RS
-        [_hl(color_ret(v), c) for c, v in zip(is_current, change_vals)],                    # Δ Today
+        [_hl(color_ret(v), c) for c, v in zip(is_current, chg_1d)],                         # Δ 1d
+        [_hl(color_ret(v), c) for c, v in zip(is_current, chg_5d)],                         # Δ 5d
+        [_hl(color_ret(v), c) for c, v in zip(is_current, chg_21d)],                        # Δ 21d
     ]
     return render_table(
         headers=TOP_STOCKS_HEADERS,
@@ -460,8 +478,9 @@ def peers_table(df: pd.DataFrame, current_ticker: str) -> go.Figure:
             tiers,
             states,
             setups,
-            [_fmt_int(v) for v in rs],
-            [_fmt_signed(v, 2) for v in change_vals],
+            [_fmt_signed(v, 2) for v in chg_1d],
+            [_fmt_signed(v, 2) for v in chg_5d],
+            [_fmt_signed(v, 2) for v in chg_21d],
         ],
         fill_colors=fill_cols,
         col_widths=TOP_STOCKS_COL_WIDTHS,
