@@ -1,3 +1,5 @@
+# Phase 20 (2026-05-27): pinned versions unchanged; comment touched to
+# force Streamlit Cloud to rebuild and pick up Phase 20 basket renames.
 # Phase 18 (2026-05-27): pinned versions unchanged; comment touched to
 # force Streamlit Cloud to rebuild and pick up Phase 18 UI cleanup pass.
 # Phase 17 (2026-05-27): pinned versions unchanged; comment touched to

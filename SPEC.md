@@ -547,7 +547,7 @@ no broad GICS sector baskets introduced.
 | AAPL | Hyperscalers | 91.02 | A | TRENDING | Iconic mega-cap technology; clean fit with existing AMZN/GOOGL/META/MSFT/ORCL |
 | BNY | Money Center Banks | 94.92 | S | TRENDING | Custody bank, prior ticker BK rebranded to BNY in 2024 |
 | HON | Industrial Automation | 64.79 | B | TRENDING | Industrial conglomerate — best existing fit alongside ROK/ETN/EMR/AME/PH |
-| SBUX | Restaurants and QSR | 66.56 | B | PULLBACK | Largest US restaurant chain; clean fit with MCD/YUM/QSR/CMG/DPZ |
+| SBUX | Quick Service Restaurants | 66.56 | B | PULLBACK | Largest US restaurant chain; clean fit with MCD/YUM/QSR/CMG/DPZ |
 | TGT | Grocery and Clubs | 85.17 | A | PULLBACK | Big-box mass-merchandiser — best existing fit with WMT/COST/KR/BJ/ACI |
 
 Universe size: **863 passing tickers** (was 858 → +5). Declared universe: **884**

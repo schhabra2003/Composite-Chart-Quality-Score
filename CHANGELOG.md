@@ -634,3 +634,33 @@ with three change-horizon columns, themes by basket with breadth and
 constituent listing, three magnitude-ranked change boards, and a clean
 stock detail with labeled chips. Caution banners only when the broad
 market context warrants them. No chip noise on normal days.
+
+---
+
+## Phase 20 — Basket name cleanup (2026-05-27)
+
+Seven basket renames to fix redundancy, jargon, and misleading "and" connectors. No methodology change, no ticker membership change, no TradingView parity impact.
+
+### Renames applied
+
+| Old | New | Reason |
+|---|---|---|
+| Battery Storage and BESS | **Battery Energy Storage** | Redundant — "BESS" expands to "Battery Energy Storage System". |
+| RF and Wireless Connectivity | **Wireless Connectivity Chips** | RF *is* wireless connectivity; "Chips" clarifies these are silicon (QCOM, SWKS) not carriers. |
+| Trucking and LTL | **Freight Trucking** | LTL is a subset of trucking, not a peer. |
+| Restaurants and QSR | **Quick Service Restaurants** | All members are QSR/fast food (MCD, YUM, etc.); peer basket "Casual Dining" already covers the sit-down names. |
+| Cannabis and MSOs | **Cannabis Multi-State Operators** | Expands the acronym; consistent with Phase 18's acronym-cleanup pattern. |
+| Volatility and Market Plumbing | **Market Infrastructure and Exchanges** | "Plumbing" is industry slang; "Infrastructure and Exchanges" is the standard term for CBOE/CME/ICE/NDAQ/etc. |
+| CRO and Clinical Services | **Contract Research and Clinical Services** | Expands the acronym. CRO = Contract Research Organization. |
+
+### Files touched
+
+`data/universe.py` (CATEGORIES, BASKET_PRIORITY, PRIMARY_BASKETS, PRIMARY_BASKET_CONSTITUENTS — 94 occurrences); `SPEC.md`; `USER_GUIDE.md`; `CHANGELOG.md`. Pipeline aggregation re-run; dashboard cache rebuilt.
+
+### Validation
+
+- 25/25 metric integrity tests PASS
+- 140/140 TradingView reference fields PASS (methodology unchanged)
+- 147 baskets in `theme_aggregates.parquet` (unchanged count)
+- 6 of 7 renamed baskets show in the dashboard's Themes table with new names; 7th ("Market Infrastructure and Exchanges") is a tag overlay whose constituents all dedup into higher-priority primary baskets (Exchanges and Market Data, Brokers and Trading Platforms, etc.), so it surfaces only when used as a tag — rename takes effect there.
+
