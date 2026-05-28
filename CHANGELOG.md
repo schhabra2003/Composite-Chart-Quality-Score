@@ -664,3 +664,40 @@ Seven basket renames to fix redundancy, jargon, and misleading "and" connectors.
 - 147 baskets in `theme_aggregates.parquet` (unchanged count)
 - 6 of 7 renamed baskets show in the dashboard's Themes table with new names; 7th ("Market Infrastructure and Exchanges") is a tag overlay whose constituents all dedup into higher-priority primary baskets (Exchanges and Market Data, Brokers and Trading Platforms, etc.), so it surfaces only when used as a tag — rename takes effect there.
 
+
+---
+
+## Phase 21 — SNDK basket coverage (2026-05-27)
+
+SNDK (SanDisk, post-WDC spinoff Feb 2025) was in only 1 basket (Memory and
+Storage) while peers MU/WDC/STX are in 3 baskets each. Added SNDK to three
+additional baskets where its peers live and where the business fits.
+
+### Additions
+
+| Basket | Reason |
+|---|---|
+| **Servers and AI Hardware** | Same coverage as WDC, STX. SanDisk SSDs go into the same server platforms. |
+| **Enterprise Storage and Data Infrastructure** | Same coverage as WDC, STX. SanDisk is a pure-play enterprise flash vendor. |
+| **AI Hardware Supply Chain** | Same coverage as MU. NAND flash is a critical part of the AI hardware supply chain (training/inference workloads need fast storage tiers). |
+
+### Skipped (intentional)
+
+- **HBM and Advanced Memory** — SanDisk is NAND flash, not HBM (High Bandwidth Memory). HBM is a DRAM product made by Micron, Samsung, SK Hynix. Adding SNDK here would be a misclassification.
+
+### Status note
+
+SNDK still has NaN CCQS for ~4-5 more trading days while the
+`residual_momentum_252d` rolling window fills in (SNDK started trading
+2025-02-18, so it needs through ~early June 2026 to accumulate the full
+252-day window). The basket assignments take effect immediately once
+scoring begins.
+
+### Validation
+
+- 25/25 metric integrity tests PASS
+- 140/140 TradingView reference fields PASS
+- SNDK now in 4 baskets (Memory and Storage primary + 3 tag overlays):
+  Servers and AI Hardware, Enterprise Storage and Data Infrastructure,
+  AI Hardware Supply Chain. Confirmed via PRIMARY_BASKETS + TAGS dict.
+
