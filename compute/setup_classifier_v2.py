@@ -1,6 +1,6 @@
-"""Phase 25 — Setup classifier v2 (display-layer redesign).
+"""Phase 25 + Phase 27 — Setup classifier v2 (display-layer cascade).
 
-12-label chart-evocative cascade. First-match-wins. Pure descriptive
+13-label chart-evocative cascade. First-match-wins. Pure descriptive
 labels — no predictive language, no gestalt-pattern naming. Replaces
 the 27-label cascade in compute/setup_classifier.py (preserved as
 legacy for reference; not deleted).
@@ -22,25 +22,40 @@ universe-of-the-day, (b) self-relative ratios against the name's own
 trailing history, or (c) scale-invariant % values. No absolute price
 levels, no per-name hand-tuned values.
 
-The 12 labels (cascade order, first match wins):
+The 13 labels (cascade order, first match wins):
 
    1. New High
    2. Breakout
    3. Failed Breakout
    4. Tight Base
    5. Coiling
-   6. Shallow Pullback
-   7. Deep Pullback
+   6. Shallow Pullback     [Phase 27: + not-extended gate]
+   7. Deep Pullback        [Phase 27: + not-extended gate]
    8. Extended
    9. At Highs
   10. Basing Low
   11. Breakdown
-  12. Sideways
+  12. Reclaim              [Phase 27: NEW — bullish symmetric to Failed Breakout]
+  13. Sideways
 
 If no condition matches → empty string ("") — silence beats noise.
 
-Inputs: features.parquet (the additional Phase 25 primitives in
-features.py Cat 24 power the cascade — see compute/features.py).
+Phase 27 changes (2026-05-28):
+  • Bug fix — Shallow Pullback (cond 6) + Deep Pullback (cond 7) now
+    require pct_ma_50 ≤ own 80th-pct of 252d history. Without this
+    gate, extended names like INTC (+45.7% above 50MA vs own p80 +32%)
+    were being labelled "Deep Pullback" because they sat in the
+    10-20%-off-20d band, masking the dominant extension feature. After
+    the gate, such names fall through to "Extended" (cond 8) which is
+    the correct institutional reading.
+  • New label — "Reclaim" (cond 12, between Breakdown and Sideways):
+    a Breakdown that has been reclaimed within the last 5 days
+    (today's close above the level that was breached). Symmetric
+    analog of "Failed Breakout" (cond 3). Catches the bear-trap /
+    Wyckoff-spring pattern that was previously blank.
+
+Inputs: features.parquet (the additional Phase 25 + Phase 27 primitives
+in features.py Cat 24 power the cascade — see compute/features.py).
 """
 from __future__ import annotations
 
@@ -60,6 +75,7 @@ SETUP_LABELS_V2: list[str] = [
     "At Highs",
     "Basing Low",
     "Breakdown",
+    "Reclaim",   # Phase 27
     "Sideways",
 ]
 
@@ -84,7 +100,7 @@ def _cross_sectional_percentile_rank(s: pd.Series) -> pd.Series:
 
 
 def classify_setup_v2(features: pd.DataFrame) -> pd.DataFrame:
-    """Apply the 12-label cascade to (ticker, date)-indexed feature matrix.
+    """Apply the 13-label cascade to (ticker, date)-indexed feature matrix.
 
     Returns a DataFrame with the same index, columns ["setup",
     "setup_confidence"]. Confidence is 1.0 for every assigned label
@@ -107,6 +123,8 @@ def classify_setup_v2(features: pd.DataFrame) -> pd.DataFrame:
     # below the level cleared by that breakout. See compute/features.py
     # `failed_breakout_flag_5d_v2`. Replaces the legacy 10d-window flag.
     failed_brk = _bool(f["failed_breakout_flag_5d_v2"])
+    # Phase 27 — symmetric Reclaim flag (bullish analog of Failed Breakout).
+    failed_brkdn = _bool(f["failed_breakdown_flag_5d_v2"])
     bb_width_p = f["bb_width_pct_252d"].astype(float)
     pct_ma_50 = f["pct_ma_50"].astype(float)
     pct_from_52w_high = f["pct_from_52w_high"].astype(float)
@@ -181,21 +199,33 @@ def classify_setup_v2(features: pd.DataFrame) -> pd.DataFrame:
     matched |= cond_5
 
     # 6. "Shallow Pullback" — bullish stack, 3-10% off 20d high, holding 21EMA.
+    #    Phase 27 — added not-extended gate (pct_ma_50 <= own 80th-pct of
+    #    252d history). Without this gate, extended names sitting in the
+    #    3-10%-off-20d band were classified Shallow Pullback even when the
+    #    dominant chart feature was the extension (e.g. QCOM, FTNT, CRWD at
+    #    +33–48% above 50MA vs own p80 +3–14%). With the gate, such names
+    #    fall through to "Extended" (cond 8) — the correct institutional read.
     pct_off_20d = -pct_from_20d_high
     cond_6 = (
         bullish_stack
         & (pct_off_20d >= 3.0) & (pct_off_20d <= 10.0)
         & (close >= ema_21)
+        & (pct_ma_50 <= pct_ma_50_p80)        # Phase 27 not-extended gate
     ).fillna(False)
     cond_6 &= ~matched
     setup[cond_6] = "Shallow Pullback"
     matched |= cond_6
 
     # 7. "Deep Pullback" — bullish stack, 10-20% off 20d high, holding 50d MA.
+    #    Phase 27 — added not-extended gate, same rationale as cond 6.
+    #    INTC was the canary that exposed this bug: pct_ma_50 +45.7% vs
+    #    own p80 +31.99%, off-20d-high 11.1% → labelled "Deep Pullback"
+    #    pre-fix; correctly labelled "Extended" post-fix.
     cond_7 = (
         bullish_stack
         & (pct_off_20d > 10.0) & (pct_off_20d <= 20.0)
         & (close >= sma_50)
+        & (pct_ma_50 <= pct_ma_50_p80)        # Phase 27 not-extended gate
     ).fillna(False)
     cond_7 &= ~matched
     setup[cond_7] = "Deep Pullback"
@@ -238,16 +268,26 @@ def classify_setup_v2(features: pd.DataFrame) -> pd.DataFrame:
     setup[cond_11] = "Breakdown"
     matched |= cond_11
 
-    # 12. "Sideways" — bounded 60d range (<20% of price) + mid-range position.
+    # 12. "Reclaim" — Phase 27 NEW. Symmetric bullish analog of Failed
+    #     Breakout: a Breakdown within the last 5 days has been reclaimed
+    #     (today's close is above the level that was breached). Catches
+    #     the bear-trap / Wyckoff-spring pattern previously blank. Placed
+    #     after Breakdown so a CURRENT-day breakdown (cond 11) takes
+    #     precedence over a recently-reclaimed prior breakdown.
+    cond_12 = failed_brkdn & ~matched
+    setup[cond_12] = "Reclaim"
+    matched |= cond_12
+
+    # 13. "Sideways" — bounded 60d range (<20% of price) + mid-range position.
     # User-approved widening (Phase 25 validation review): 15% → 20%, 30-70 → 25-75.
     # Preserves Sideways' "deliberately boring, suppress chart-pull" role.
-    cond_12 = (
+    cond_13 = (
         (range_60d_pct < 20.0)
         & (position_in_60d >= 0.25) & (position_in_60d <= 0.75)
     ).fillna(False)
-    cond_12 &= ~matched
-    setup[cond_12] = "Sideways"
-    matched |= cond_12
+    cond_13 &= ~matched
+    setup[cond_13] = "Sideways"
+    matched |= cond_13
 
     # Confidence: 1.0 when assigned, 0.0 when blank (silence beats noise).
     setup_conf = matched.astype(float)

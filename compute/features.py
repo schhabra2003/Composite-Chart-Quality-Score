@@ -577,15 +577,16 @@ FEATURE_ORDER: list[str] = [
     "sharpe_ratio_60d", "information_ratio_60d", "sortino_ratio_60d",
     "max_drawdown_pct_60d",
     "return_autocorrelation_21d_lag1", "vol_percentile_21d",
-    # Cat 24 (11) — Setup-cascade primitives (Phase 25)
+    # Cat 24 (12) — Setup-cascade primitives (Phase 25 + Phase 27)
     "close_max_40d", "close_min_40d",
     "high_max_20d", "pct_from_20d_high",
     "range_20d_pct_of_price", "range_60d_pct_of_price",
     "range_20d_to_60d_ratio", "position_in_60d_range",
     "pct_ma_50_p80_252d", "true_range_x_atr14",
     "failed_breakout_flag_5d_v2",
+    "failed_breakdown_flag_5d_v2",  # Phase 27 — symmetric to failed_breakout
 ]
-assert len(FEATURE_ORDER) == 137, f"FEATURE_ORDER has {len(FEATURE_ORDER)} entries, expected 137"
+assert len(FEATURE_ORDER) == 138, f"FEATURE_ORDER has {len(FEATURE_ORDER)} entries, expected 138"
 
 
 def compute_features(long_df: pd.DataFrame) -> pd.DataFrame:
@@ -678,6 +679,27 @@ def compute_features(long_df: pd.DataFrame) -> pd.DataFrame:
     )
     feats["failed_breakout_flag_5d_v2"] = (
         (recent_breakout_level_5d.notna()) & (c < recent_breakout_level_5d)
+    ).astype(float)
+
+    # Phase 27 — Symmetric Reclaim (Failed Breakdown) primitive:
+    #   "Within last 5 trading days, condition #11 (Breakdown) was true on
+    #    some prior day, AND today's close is ABOVE that day's breakdown level."
+    # Condition #11: close < prior 40d min AND close < 50MA.
+    # breakdown_level_today = the prior 40d min that today's breakdown breached;
+    # rolling 5d min across (level | breakdown_flag) gives the LOWEST level
+    # breached in the last N days; .shift(1) excludes today's own breakdown.
+    # This is the bullish symmetric analog of failed_breakout_flag_5d_v2 —
+    # catches the "bear trap" / "reclaim" pattern (a breakdown that has since
+    # been reclaimed, often a strong reversal signal).
+    breakdown_today_flag = (c < feats["close_min_40d"].shift(1)) & (c < feats["sma_50"])
+    breakdown_level_today = feats["close_min_40d"].shift(1)
+    recent_breakdown_level_5d = (
+        breakdown_level_today.where(breakdown_today_flag)
+                             .rolling(5, min_periods=1).min()
+                             .shift(1)
+    )
+    feats["failed_breakdown_flag_5d_v2"] = (
+        (recent_breakdown_level_5d.notna()) & (c > recent_breakdown_level_5d)
     ).astype(float)
 
     # --- Category 4: Trend Slope & Regression ---------------------------

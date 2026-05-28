@@ -1067,3 +1067,123 @@ alongside `"(Generic)"` and `"Indeterminate Pattern"`.
 refresh ~25 minutes earlier; data settlement on yfinance's end-of-day
 feed is reliable within 5 minutes of cash-equity close.
 
+## Phase 27 — Setup cascade bug fix + "Reclaim" label (2026-05-28)
+
+Two surgical changes to the Phase 25 setup classifier, both
+display-layer only. **No methodology change** — CCQS scores, state
+classifications, leadership tiers, and STATE_WEIGHTS are bit-identical.
+140/140 TV parity preserved.
+
+### Bug fix — extended names mis-labeled as Pullbacks
+
+User flagged INTC's "Deep Pullback" label as wrong on 2026-05-28.
+Investigation confirmed the bug: INTC sits at `pct_ma_50 = +45.7%`
+while its own 252d 80th-percentile is only `+32.0%` — unambiguously
+extended above its 50-day moving average. But the Phase 25 cascade
+fired "Deep Pullback" (cond 7) before "Extended" (cond 8) because
+INTC also sat 11.1% off its 20-day high, hitting the Deep Pullback
+gate.
+
+**Affected names today**: 29 of 83 Shallow/Deep Pullback labels
+(35%) carried the same bug. Worst case: UMC at +75% above 50MA vs
+own p80 +14%, labelled "Shallow Pullback" pre-fix.
+
+**Fix**: added `pct_ma_50 ≤ pct_ma_50_p80_252d` (own 80th-pct gate) to
+both Shallow Pullback (cond 6) and Deep Pullback (cond 7) — matches
+the equivalent gate already present on "New High" (cond 1) since
+Phase 25. Extended names now correctly fall through to "Extended"
+(cond 8). Tight Base (cond 4) and Coiling (cond 5) retain no extension
+gate because consolidation near 252d highs after extension is the
+institutionally valid "constructive base" pattern.
+
+**Coverage shift after fix:**
+- Shallow Pullback: 71 → 36 (-35 names)
+- Deep Pullback:    12 →  8 (-4 names)
+- Extended:         48 → 75 (+27 names)
+- INTC verified: was "Deep Pullback", now "Extended" ✓
+- UMC, QCOM, DDOG, FTNT, CRWD, PANW, MRVL, ON, NTAP, ELV, CVS, ... → "Extended" ✓
+
+### New label — "Reclaim" (cond 12, symmetric to Failed Breakout)
+
+Phase 25 had Failed Breakout (cond 3 — a breakout that has been
+reversed below the cleared level) but no symmetric bullish analog.
+Audit identified this as the one principled gap in the 12-cascade.
+
+Added "Reclaim" as cond 12 (between Breakdown and Sideways): a
+Breakdown within the last 5 trading days that has since been
+reclaimed (today's close is above the level that was breached). This
+is the textbook bear-trap / Wyckoff-spring pattern — a strong
+short-covering signal that was previously labeled blank.
+
+**New primitive** `failed_breakdown_flag_5d_v2` in `compute/features.py`
+Cat 24 (length 137 → 138), exact symmetric mirror of
+`failed_breakout_flag_5d_v2`:
+
+```python
+breakdown_today_flag = (c < close_min_40d.shift(1)) & (c < sma_50)
+breakdown_level_today = close_min_40d.shift(1)
+recent_breakdown_level_5d = (
+    breakdown_level_today.where(breakdown_today_flag)
+                         .rolling(5, min_periods=1).min()
+                         .shift(1)
+)
+failed_breakdown_flag_5d_v2 = (
+    recent_breakdown_level_5d.notna() & (c > recent_breakdown_level_5d)
+).astype(float)
+```
+
+**Coverage**: 24 names today (2.8%) — comparable to Failed Breakout (2.3%).
+Sample: DE, INTU, ISRG, LDOS, PYPL, WMT — names that had a Breakdown
+in the past 5d and have since reclaimed the breached level.
+
+### Updated cascade (13 labels)
+
+```
+1. New High        8. Extended
+2. Breakout        9. At Highs
+3. Failed Breakout 10. Basing Low
+4. Tight Base      11. Breakdown
+5. Coiling         12. Reclaim       (NEW)
+6. Shallow Pullback 13. Sideways
+7. Deep Pullback
+```
+
+Blank residual: 50.6% → 45.6% (down 5pp — 24 ex-blanks now get Reclaim, plus secondary shifts from the bug fix). Still within the 40-50% design band.
+
+### Coverage table after Phase 27
+
+| Label | Pre-Phase 27 (n) | Post-Phase 27 (n) | Δ |
+|---|---:|---:|---:|
+| (blank) | 435 | 392 | −43 |
+| Sideways | 89 | 93 | +4 |
+| Extended | 48 | 75 | +27 |
+| Basing Low | 59 | 62 | +3 |
+| Breakout | 19 | 50 | +31 (note¹) |
+| Tight Base | 47 | 42 | −5 |
+| Shallow Pullback | 71 | 36 | −35 (bug fix) |
+| Breakdown | 37 | 33 | −4 |
+| **Reclaim (NEW)** | — | **24** | +24 |
+| Failed Breakout | 20 | 20 | 0 |
+| Coiling | 17 | 17 | 0 |
+| At Highs | 5 | 8 | +3 |
+| Deep Pullback | 12 | 8 | −4 (bug fix) |
+| New High | 1 | 0 | −1 |
+
+¹ Note on Breakout: between the Phase 25 and Phase 27 cache builds, an
+intraday OHLCV refresh pulled fresh bars (Phase 26's loader retry for
+the 9 missing names). Several names that were near-breakout on the
+earlier snapshot crossed their 40d high on the updated bars. The
++31 Breakout gain is the joint effect of (a) the bug fix freeing some
+extended-but-also-breaking-out names from Shallow Pullback to Breakout,
+and (b) intraday tape action between the two cache builds.
+
+### Validation
+
+- 140/140 TradingView reference fields PASS (bit-identical, no canary
+  changed setup label).
+- 11/11 pipeline sanity checks PASS.
+- 51/51 pytest tests PASS (pipeline_integrity, metric_integrity,
+  phase26_display_labels).
+- Spot-checks: 27 of 29 previously-mis-labeled names now correctly
+  labeled Extended. Reclaim catches 24 real bear-trap names today.
+

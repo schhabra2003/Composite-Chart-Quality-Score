@@ -117,7 +117,7 @@ continues to use the ALL_CAPS internal label):
 
 State persistence is reasonable (72.3% local stability — same state as both yesterday and tomorrow). Breaking Down is the stickiest state (mean 12.9-day run); Pullback is the noisiest active state (mean 3.6-day run).
 
-### D.2 Setup classifier (12 values, Phase 25 redesign)
+### D.2 Setup classifier (13 values, Phase 25 redesign + Phase 27 fix/addition)
 
 Setups describe **the present chart state** in 1–2 descriptive words.
 First-match-wins along a cascade. Pure descriptive labels — no
@@ -132,13 +132,14 @@ noise).
 | 3 | Failed Breakout | A breakout fired in the last 5 days and price has since closed back below the cleared level |
 | 4 | Tight Base | Bullish MA stack, low cross-sectional ADR, sitting within 5% of the 252-day high — quiet, near the highs |
 | 5 | Coiling | Bullish stack, 20-day range compressing within the 60-day range, BB-width in bottom 20% of own history — tightening |
-| 6 | Shallow Pullback | Bullish stack, 3–10% off the 20-day high, holding the 21EMA |
-| 7 | Deep Pullback | Bullish stack, 10–20% off the 20-day high, holding the 50-day MA |
+| 6 | Shallow Pullback | Bullish stack, 3–10% off the 20-day high, holding the 21EMA, **and not extended above own 80th-pct** (Phase 27 fix) |
+| 7 | Deep Pullback | Bullish stack, 10–20% off the 20-day high, holding the 50-day MA, **and not extended above own 80th-pct** (Phase 27 fix) |
 | 8 | Extended | Bullish stack and pct-from-50d-MA above the name's own 80th-percentile of history |
 | 9 | At Highs | Bullish stack, within 5% of the 252-day high — residual catch-all when no tighter label fits |
 | 10 | Basing Low | Within 10% of the 252-day low and low ADR — quiet near a multi-month base |
 | 11 | Breakdown | Closed below the prior 40-day low and below the 50-day MA |
-| 12 | Sideways | 60-day range under 20% of price and position within the middle 50% of the 60-day range |
+| 12 | **Reclaim** | A Breakdown fired in the last 5 days and price has since closed back **above** the breached level — bear-trap / Wyckoff-spring (Phase 27 NEW) |
+| 13 | Sideways | 60-day range under 20% of price and position within the middle 50% of the 60-day range |
 | – | (blank) | None of the above; suppressed by design |
 
 **How to use the cascade.** Earlier labels trump later ones, so labels

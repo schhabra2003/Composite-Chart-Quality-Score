@@ -3374,6 +3374,97 @@ Lock §3 preserved.
 
 ---
 
+### Phase 27 — Setup cascade bug fix + "Reclaim" label (SHIPPED, 2026-05-28)
+
+Two surgical changes to the Phase 25 setup classifier — both
+display-layer only. **No methodology change.** 140/140 TV parity
+preserved.
+
+**1. Bug fix — extended names mis-labeled as Pullbacks.**
+
+User flagged INTC's "Deep Pullback" label as wrong. Investigation
+confirmed: INTC sits at `pct_ma_50 = +45.7%` while its own 252d
+80th-percentile is `+32.0%` — unambiguously extended above its 50d
+MA. But the Phase 25 cascade fired Deep Pullback (cond 7) before
+Extended (cond 8) because INTC also sat 11.1% off its 20d high.
+
+Audit showed **29 of 83 Shallow/Deep Pullback labels carried the same
+bug** (worst case: UMC at +75% above 50MA vs own p80 +14%, labelled
+Shallow Pullback).
+
+**Fix:** added the `pct_ma_50 ≤ pct_ma_50_p80_252d` (own 80th-pct)
+gate to both cond 6 (Shallow Pullback) and cond 7 (Deep Pullback) —
+matching the equivalent gate already present on cond 1 (New High)
+since Phase 25. Extended names now fall through correctly to cond 8.
+Tight Base (cond 4) and Coiling (cond 5) intentionally retain no
+extension gate because consolidation near 252d highs after extension
+IS the institutionally valid "constructive base" pattern.
+
+Coverage shift: Shallow Pullback 71 → 36, Deep Pullback 12 → 8,
+Extended 48 → 75. INTC verified: was Deep Pullback, now Extended.
+
+**2. New label — "Reclaim" (cond 12, symmetric to Failed Breakout).**
+
+Phase 25 deep audit (Phase 26 follow-up) identified one principled
+asymmetric gap: Failed Breakout has no bullish twin. The textbook
+bear-trap / Wyckoff-spring pattern — a Breakdown that has been
+reclaimed within 5 days — was previously blank.
+
+Added cond 12 "Reclaim" between Breakdown (cond 11) and Sideways
+(now cond 13). New primitive `failed_breakdown_flag_5d_v2` in
+`compute/features.py` Cat 24 (FEATURE_ORDER 137 → 138) — exact
+symmetric mirror of `failed_breakout_flag_5d_v2`:
+
+```python
+breakdown_today = (c < close_min_40d.shift(1)) & (c < sma_50)
+breakdown_level = close_min_40d.shift(1)
+recent_breakdown_level_5d = (
+    breakdown_level.where(breakdown_today)
+                   .rolling(5, min_periods=1).min()
+                   .shift(1)
+)
+failed_breakdown_flag_5d_v2 = (
+    recent_breakdown_level_5d.notna() &
+    (c > recent_breakdown_level_5d)
+).astype(float)
+```
+
+Coverage: 24 names today (2.8%), comparable to Failed Breakout (2.3%).
+
+**Updated 13-cascade order (first match wins):**
+
+1. New High
+2. Breakout
+3. Failed Breakout
+4. Tight Base
+5. Coiling
+6. Shallow Pullback [+ not-extended gate]
+7. Deep Pullback [+ not-extended gate]
+8. Extended
+9. At Highs
+10. Basing Low
+11. Breakdown
+12. **Reclaim** *(new)*
+13. Sideways
+
+Blank → blank ("" — silence beats noise).
+
+**Validation:**
+- 140/140 TV reference fields PASS (no canary changed setup; INTC
+  isn't a canary)
+- 11/11 pipeline sanity checks PASS
+- 51/51 pytest tests PASS (including 13 Phase 26 + all metric integrity)
+- Spot-checks: 27 of 29 previously-mis-labeled names now correctly
+  labeled Extended (INTC, UMC, QCOM, FTNT, CRWD, PANW, MRVL, ON,
+  NTAP, INTC, AMN, OSCR, ELV, CVS, etc.); 24 real Reclaim names
+  surfaced (DE, INTU, ISRG, LDOS, PYPL, WMT, etc.)
+
+**Net effect:** Setup classifier vocabulary is sharper (no
+extended-mislabeled-as-pullback noise), and has a symmetric label
+for the bear-trap pattern. Methodology Lock §3 preserved.
+
+---
+
 ### Phase X.4 — Targeted 20-60d horizon audit (2026-05-22)
 
 Goal: push 20d and 60d OOS IC toward statistical significance (t > 2.0) while
