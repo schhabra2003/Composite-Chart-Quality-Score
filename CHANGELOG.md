@@ -701,3 +701,47 @@ scoring begins.
   Servers and AI Hardware, Enterprise Storage and Data Infrastructure,
   AI Hardware Supply Chain. Confirmed via PRIMARY_BASKETS + TAGS dict.
 
+
+---
+
+## Phase 23 — Add 9 major recent IPOs (2026-05-28)
+
+Universe expanded from 883 → 892 tickers. All additions are well-known
+recent listings that belong in already-defined baskets.
+
+### Tickers added
+
+| Ticker | Company | Listed | Primary basket | Tag overlays |
+|---|---|---|---|---|
+| **CRWV** | CoreWeave | Mar 2025 | AI Cloud Challengers and Neocloud | AI Hardware Supply Chain, AI Data Center Capex |
+| **ALAB** | Astera Labs | Mar 2024 | AI ASICs and Custom Silicon | AI Hardware Supply Chain |
+| **RDDT** | Reddit | Mar 2024 | Consumer Internet | Digital Advertising Platforms |
+| **TEM** | Tempus AI | Jun 2024 | Healthcare AI and Automation | Diagnostics and Life Science Tools |
+| **CRCL** | Circle Internet Group | Jun 2025 | Stablecoin and Tokenization Proxies | — |
+| **PSKY** | Paramount Skydance | Aug 2025 | Streaming and Audio | — |
+| **BIRK** | Birkenstock | Oct 2023 | Apparel and Footwear | Luxury Goods |
+| **KGS** | Kodiak Gas Services | Jun 2023 | Midstream Pipelines | — |
+| **CAVA** | Cava Group | Jun 2023 | Casual Dining | — |
+
+### Methodology note — long warmup
+
+Per the Phase 16 feature-cascade structure, residual-momentum-252d
+requires ~504 valid trading days (252 of rs_rating_spy warmup + 252 of
+residual slope window). Most of these names won't score immediately:
+
+- BIRK, CAVA, KGS (listed 2023): should score soon (close to 504-day mark)
+- RDDT, ALAB (Mar 2024): ~14 months listed → ~290 days short of the 504 threshold
+- TEM (Jun 2024): ~11 months listed → ~340 days short
+- CRWV (Mar 2025): ~14 months listed → ~290 days short
+- CRCL, PSKY (Jun-Aug 2025): just listed; ~250-280 days short
+
+All will surface in the dashboard automatically as their windows fill.
+The basket assignments are in place now so the pipeline picks up OHLCV
+on the next daily run and tickers appear in basket constituent lists.
+
+### Validation
+
+- 25/25 metric integrity tests PASS
+- 140/140 TradingView reference fields PASS (methodology unchanged)
+- Universe count: 892 unique tickers across 275 baskets
+
