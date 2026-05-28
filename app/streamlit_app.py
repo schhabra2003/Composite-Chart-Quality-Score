@@ -271,6 +271,26 @@ with tab_production:
             unsafe_allow_html=True,
         )
 
+        # Phase 24 — partial-CCQS disclaimer. When `is_partial` is True the
+        # score was computed by renormalizing state weights across the
+        # components the ticker has accumulated; typical for recent IPOs
+        # and spin-offs still inside the 504-day long-window-feature warmup.
+        if bool(row.get("is_partial", False)):
+            wp = float(row.get("weight_present", 1.0)) * 100.0
+            nv = int(row.get("n_valid_components", 11))
+            st.markdown(
+                f"<div style='margin-bottom:0.8em;padding:8px 12px;"
+                f"border-left:3px solid #d97706;background:#fef3c7;"
+                f"border-radius:4px;font-size:0.85rem;color:#78350f;'>"
+                f"<strong>Partial CCQS</strong> — computed from "
+                f"{nv} of 11 components ({wp:.0f}% of state weight present). "
+                f"This name has insufficient history for long-window features "
+                f"(typical for IPOs / spin-offs in the ~2-year warmup); "
+                f"score will converge to full-data as history accumulates."
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
         st.markdown("<br/>", unsafe_allow_html=True)
         left, right = st.columns([3, 2])
         with left:

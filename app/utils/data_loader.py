@@ -127,6 +127,13 @@ def load_dashboard_data() -> tuple[pd.DataFrame, str]:
         "basket":                 baskets,
         "rs_rating_spy":          features_latest.get("rs_rating_spy", pd.Series(index=ccqs_latest.index)),
         "information_ratio_252d": features_latest.get("information_ratio_252d", pd.Series(0.0, index=ccqs_latest.index)),
+        # Phase 24 — partial-history disclosure. is_partial=True when CCQS
+        # was computed by renormalizing state weights across the components
+        # the ticker has accumulated (typical for IPOs / spin-offs still
+        # inside the 504-day long-window-feature warmup).
+        "is_partial":             ccqs_latest.get("is_partial", pd.Series(False, index=ccqs_latest.index)).fillna(False).astype(bool),
+        "weight_present":         ccqs_latest.get("weight_present", pd.Series(1.0, index=ccqs_latest.index)),
+        "n_valid_components":     ccqs_latest.get("n_valid_components", pd.Series(11, index=ccqs_latest.index)),
     })
     combined = combined.dropna(subset=["ccqs"])
 

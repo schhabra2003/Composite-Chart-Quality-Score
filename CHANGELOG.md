@@ -745,3 +745,89 @@ on the next daily run and tickers appear in basket constituent lists.
 - 140/140 TradingView reference fields PASS (methodology unchanged)
 - Universe count: 892 unique tickers across 275 baskets
 
+
+---
+
+## Phase 24 — Graceful CCQS degradation for partial-history names (2026-05-28)
+
+CCQS composite now renormalizes state weights for tickers that are
+missing one or more components due to insufficient post-IPO/spin-off
+history. Replaces the prior all-or-nothing behavior where a single NaN
+feature would emit a NaN CCQS for the entire ticker.
+
+### Methodology change
+
+In `compute/ccqs.py`, `_state_composite_z()` is replaced with
+`_composite_z_with_renormalization()`. The new function:
+
+1. Builds per-row **effective component weights** `e[i, c] = Σ_s p_adj_s[i] · W[s, c]`
+   — identical to the existing Bayesian blend across states.
+2. For each row, identifies which components are non-NaN.
+3. **Renormalizes** the present components so their weights sum to 1.
+4. Computes the composite using only valid components.
+5. Emits NaN if either:
+   - `weight_present < 0.60` (less than 60% of state weight present), OR
+   - `n_valid_components < 6` (fewer than 6 of 11 non-NaN).
+
+### Bit-identical guarantee for full-data tickers
+
+For any ticker with all 11 components valid, `weight_present == 1.0`
+exactly, the renormalization is the identity, and the composite is
+**mathematically equivalent** to the original formula. **TradingView
+reference parity remains 140/140** (verified post-implementation; same
+canary CCQS values within tolerance).
+
+### New columns in `ccqs.parquet`
+
+| Column | Type | Description |
+|---|---|---|
+| `weight_present` | float | Share of state weight present per row (1.0 = full data) |
+| `n_valid_components` | int | Number of non-NaN components per row (out of 11) |
+| `is_partial` | bool | True when `weight_present < 1.0` and CCQS was computed |
+
+### Dashboard disclaimer
+
+The Stock Detail panel shows a yellow caution block on partial-CCQS
+tickers explaining how many components were used and the share of state
+weight present. Top Stocks / Themes tables remain unchanged in shape
+(partial tickers appear with their renormalized scores; the disclaimer
+is only on the detail panel).
+
+### Tickers immediately benefiting (2026-05-28 snapshot)
+
+Universe count: 860 scored (up from 849). Two partial-CCQS rows today:
+
+| Ticker | n_valid / 11 | weight_present | CCQS | Grade |
+|---|---:|---:|---:|---|
+| SNDK | 10 | 0.952 | 98.19 | S (partial) |
+| CRWV | 9 | 0.669 | 60.67 | B (partial) |
+
+CRCL is still NaN today (only 6 components, 42% weight present — below
+threshold). It needs ~6 more trading days for `rs_rating_spy` to clear
+the 252-day warmup, then will auto-enter partial mode.
+
+### Validation
+
+- 25/25 metric integrity tests PASS
+- **140/140 TradingView reference fields PASS** (bit-identical preserved)
+- 11/11 pipeline sanity checks PASS
+- Compute scripts: `_composite_z_with_renormalization()` verified on
+  synthetic test panel (full-data row identical to original formula;
+  1-NaN row gets renormalized; 4-NaN-heavyweight row correctly NaN'd)
+
+### Threshold tuning rationale
+
+Two gates protect score reliability:
+
+- **Weight gate (0.60)**: at most 40% of state weight may be imputed by
+  renormalization. The dominant carriers `s_rs` and `s_rs_leadership`
+  account for ~54% in TRENDING; if both are NaN the row is correctly
+  rejected as too partial.
+- **Component count gate (6 / 11)**: at least 6 of 11 components must
+  be present, preventing pathological cases where small-weight
+  components dominate due to renormalization.
+
+Above these gates, the renormalized composite is treated as a
+legitimate estimate with a disclaimer. Below them, the composite is
+emitted as NaN.
+

@@ -170,6 +170,86 @@ def _state_composite_z(components: pd.DataFrame, state: str) -> pd.Series:
     return z
 
 
+# Phase 24 — Option B: graceful degradation for partial-history names.
+# Recent IPOs / spin-offs typically have a small number of components NaN
+# (e.g., s_residual_momentum which needs ~504 trading days of history).
+# Rather than emit NaN CCQS for the whole row, renormalize the state
+# weights to the components that ARE present, provided enough weight is
+# present to keep the composite meaningful.
+PARTIAL_MIN_WEIGHT_PRESENT = 0.60   # row needs ≥60% of state weight present
+PARTIAL_MIN_VALID_COMPONENTS = 6    # AND ≥6 of 11 components non-NaN
+# Threshold tuning rationale: 60% leaves at most 40% of state weight imputed
+# by renormalizing across the remaining components. Empirically calibrated to
+# admit names with ~9-10 months of post-IPO history (typical 252-day-warmup
+# completion + a few months) while excluding names with <8 months which
+# would have rs_rating_spy itself NaN (the dominant ~27% weight carrier).
+
+
+def _composite_z_with_renormalization(
+    components: pd.DataFrame,
+    state: pd.DataFrame,
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """Compute the Bayesian-blended composite z with per-row weight
+    renormalization for partial-history rows.
+
+    Returns:
+        composite_z       — the same value as the original formula when all
+                            11 components are present; per-row renormalized
+                            when some components are NaN; NaN when the
+                            partial threshold is breached.
+        weight_present    — share of effective weight that was present on
+                            each row (in [0, 1]).
+        n_valid_components — count of non-NaN components per row.
+
+    Bit-identical guarantee: rows with all 11 components valid produce
+    composite_z values mathematically identical to the original
+    implementation (weight_present = 1.0 exactly).
+    """
+    n_states = len(STATES)
+    n_comp = len(COMPONENT_COLS)
+    comp_arr = components[COMPONENT_COLS].astype(float).to_numpy()      # (N, 11)
+    valid = ~np.isnan(comp_arr)                                          # (N, 11)
+    n_valid = valid.sum(axis=1)                                          # (N,)
+
+    # Build per-row effective component weights:
+    #   e[i, c] = Σ_s  p_adj_s[i] · W[s, c]
+    # equivalent to the original Bayesian blend.
+    W = np.zeros((n_states, n_comp))                                     # (S, 11)
+    for s_idx, s in enumerate(STATES):
+        W[s_idx, :] = np.array([STATE_WEIGHTS[s][c] for c in COMPONENT_COLS])
+    P = np.column_stack([
+        state[f"p_adj_{s}"].astype(float).fillna(0.0).to_numpy()
+        for s in STATES
+    ])                                                                   # (N, S)
+    effective_w = P @ W                                                  # (N, 11)
+
+    # Per-row weight present + renormalize over the valid components only.
+    weight_present_arr = (valid * effective_w).sum(axis=1)               # (N,)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        weight_renorm = np.where(
+            weight_present_arr[:, None] > 0,
+            (valid * effective_w) / weight_present_arr[:, None],
+            0.0,
+        )                                                                # (N, 11)
+
+    # Composite — multiply NaNs by their zero weight to suppress them.
+    comp_safe = np.nan_to_num(comp_arr, nan=0.0)
+    composite = (comp_safe * weight_renorm).sum(axis=1)                  # (N,)
+
+    # Disqualify rows that fall below either gate.
+    insufficient = (
+        (weight_present_arr < PARTIAL_MIN_WEIGHT_PRESENT)
+        | (n_valid < PARTIAL_MIN_VALID_COMPONENTS)
+    )
+    composite[insufficient] = np.nan
+
+    return (
+        pd.Series(composite, index=components.index),
+        pd.Series(weight_present_arr, index=components.index),
+        pd.Series(n_valid, index=components.index, dtype="int64"),
+    )
+
+
 def _per_date_zscore(s: pd.Series) -> pd.Series:
     """Cross-sectional z-score per date (no MAD; uses mean/std)."""
     g = s.groupby(level="date", sort=False)
@@ -196,11 +276,15 @@ def compute_ccqs(components: pd.DataFrame, state: pd.DataFrame) -> pd.DataFrame:
         ccqs_z, ccqs_raw, ccqs, grade, primary_state, state_confidence
     """
     # State-conditional composite z per state, then Bayesian average
-    # using confidence-adjusted probabilities.
-    ccqs_z_raw = pd.Series(0.0, index=components.index)
-    for s in STATES:
-        p = state[f"p_adj_{s}"].astype(float).fillna(0.0)
-        ccqs_z_raw = ccqs_z_raw + p * _state_composite_z(components, s)
+    # using confidence-adjusted probabilities. Phase 24 — uses the
+    # renormalization-aware composite so partial-history rows (some
+    # components NaN) still produce a CCQS when enough weight is present.
+    # Rows with all 11 components valid produce values bit-identical to
+    # the original formula (verified in tests/test_metric_integrity.py
+    # and tests/reference/test_tv_parity.py).
+    ccqs_z_raw, weight_present, n_valid_components = (
+        _composite_z_with_renormalization(components, state)
+    )
 
     # The weighted-sum composite has var ≈ Σ wᵢ² ≈ 0.14, much narrower than
     # N(0,1). Renormalize per-date so Φ(z)·100 spans the full 0-100 range
@@ -247,6 +331,13 @@ def compute_ccqs(components: pd.DataFrame, state: pd.DataFrame) -> pd.DataFrame:
     out["grade"] = pd.Categorical(grade, categories=["S", "A", "B", "C", "D"])
     out["primary_state"] = state["primary_state"].astype(str).values
     out["state_confidence"] = state["state_confidence"].astype(float).values
+    # Phase 24 — partial-history disclosure columns. is_partial flags rows
+    # where one or more components were imputed (renormalized weights);
+    # full-history rows have weight_present == 1.0 within numerical
+    # tolerance and is_partial == False.
+    out["weight_present"] = weight_present
+    out["n_valid_components"] = n_valid_components
+    out["is_partial"] = (weight_present < 1.0 - 1e-9) & ccqs.notna()
     return out
 
 

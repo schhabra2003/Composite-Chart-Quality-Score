@@ -30,8 +30,12 @@ DST = ROOT / "data" / "cache" / "dashboard"
 
 
 # Columns the dashboard actually reads (see app/utils/data_loader.py).
+# Phase 24 — added is_partial / weight_present / n_valid_components so the
+# stock detail page can surface a disclaimer for tickers whose CCQS was
+# computed via renormalization (recent IPOs / spin-offs with insufficient
+# long-window history).
 HISTORY_COLS = {
-    "ccqs.parquet":       ["ccqs", "grade"],
+    "ccqs.parquet":       ["ccqs", "grade", "is_partial", "weight_present", "n_valid_components"],
     "state.parquet":      ["primary_state", "state_confidence"],
     "leadership.parquet": ["leadership_tier"],
     "setups.parquet":     ["setup"],
