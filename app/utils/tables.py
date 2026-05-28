@@ -226,9 +226,12 @@ def top_stocks_table(df: pd.DataFrame, n: int = 50) -> go.Figure:
 
 THEMES_HEADERS = [
     "Theme", "Theme CCQS", "Theme Class", "Momentum",
-    "% > 50-day Moving Average", "Top Member", "Constituents",
+    "% > 50d MA", "Top Member", "Constituents",
 ]
-THEMES_COL_WIDTHS = [0.16, 0.08, 0.11, 0.11, 0.10, 0.08, 0.36]
+# Widened Theme Class (fits NARROW_LEADERSHIP, 17 chars) and Momentum
+# (fits MODERATE_ACCELERATING, 21 chars) without truncation; tightened
+# % > 50d MA header (data is "100%" / "88%" / "71%", short).
+THEMES_COL_WIDTHS = [0.17, 0.07, 0.13, 0.16, 0.07, 0.07, 0.33]
 THEMES_ALIGNS = ["left", "right", "left", "left", "right", "left", "left"]
 
 
