@@ -139,13 +139,14 @@ def test_grade_distribution(ccqs):
 EXPECTED_COMPONENTS = [
     "s_rs", "s_rs_leadership", "s_residual_momentum",
     "s_rsl", "s_trend_slope", "s_structure",
-    "s_mtf", "s_extension", "s_demand", "s_momentum",
+    "s_mtf", "s_extension", "s_momentum",
     "s_volume",
+    # Phase 28 — s_demand removed (was 0.0 in every state since Phase 7).
 ]
 
 
 def test_components_present(components):
-    """All 11 components must be present in the components.parquet."""
+    """All 10 components must be present in the components.parquet."""
     missing = set(EXPECTED_COMPONENTS) - set(components.columns)
     extra = set(components.columns) - set(EXPECTED_COMPONENTS)
     assert not missing, f"Missing components: {missing}"

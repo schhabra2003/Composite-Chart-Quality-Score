@@ -119,38 +119,32 @@ STATE_WEIGHTS: dict[str, dict[str, float]] = {
     "TRENDING": {
         "s_rs": 0.271716, "s_rs_leadership": 0.271716, "s_residual_momentum": 0.048500,
         "s_rsl": 0.008314, "s_trend_slope": 0.008314, "s_structure": 0.195636,
-        "s_mtf": 0.163030, "s_extension": 0.000000, "s_demand": 0.000000,
-        "s_momentum": 0.002771, "s_volume": 0.030000,
+        "s_mtf": 0.163030, "s_extension": 0.000000,        "s_momentum": 0.002771, "s_volume": 0.030000,
     },
     "PULLBACK": {
         "s_rs": 0.248517, "s_rs_leadership": 0.282405, "s_residual_momentum": 0.048500,
         "s_rsl": 0.004850, "s_trend_slope": 0.003233, "s_structure": 0.203331,
-        "s_mtf": 0.158147, "s_extension": 0.019400, "s_demand": 0.000000,
-        "s_momentum": 0.001617, "s_volume": 0.030000,
+        "s_mtf": 0.158147, "s_extension": 0.019400,        "s_momentum": 0.001617, "s_volume": 0.030000,
     },
     "CONSOLIDATING": {
         "s_rs": 0.230836, "s_rs_leadership": 0.253919, "s_residual_momentum": 0.048500,
         "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.253919,
-        "s_mtf": 0.173127, "s_extension": 0.009700, "s_demand": 0.000000,
-        "s_momentum": 0.000000, "s_volume": 0.030000,
+        "s_mtf": 0.173127, "s_extension": 0.009700,        "s_momentum": 0.000000, "s_volume": 0.030000,
     },
     "EXHAUSTION": {
         "s_rs": 0.247959, "s_rs_leadership": 0.315585, "s_residual_momentum": 0.047549,
         "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.180335,
-        "s_mtf": 0.169063, "s_extension": 0.009510, "s_demand": 0.000000,
-        "s_momentum": 0.000000, "s_volume": 0.030000,
+        "s_mtf": 0.169063, "s_extension": 0.009510,        "s_momentum": 0.000000, "s_volume": 0.030000,
     },
     "DETERIORATING": {
         "s_rs": 0.230375, "s_rs_leadership": 0.287969, "s_residual_momentum": 0.048500,
         "s_rsl": 0.000000, "s_trend_slope": 0.000000, "s_structure": 0.230375,
-        "s_mtf": 0.172781, "s_extension": 0.000000, "s_demand": 0.000000,
-        "s_momentum": 0.000000, "s_volume": 0.030000,
+        "s_mtf": 0.172781, "s_extension": 0.000000,        "s_momentum": 0.000000, "s_volume": 0.030000,
     },
     "INDETERMINATE": {
         "s_rs": 0.242381, "s_rs_leadership": 0.286450, "s_residual_momentum": 0.048500,
         "s_rsl": 0.008314, "s_trend_slope": 0.008314, "s_structure": 0.198311,
-        "s_mtf": 0.165259, "s_extension": 0.009700, "s_demand": 0.000000,
-        "s_momentum": 0.002771, "s_volume": 0.030000,
+        "s_mtf": 0.165259, "s_extension": 0.009700,        "s_momentum": 0.002771, "s_volume": 0.030000,
     },
 }
 

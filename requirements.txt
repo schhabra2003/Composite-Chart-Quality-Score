@@ -1,3 +1,8 @@
+# Phase 28 (2026-05-28): pinned versions unchanged; comment touched to
+# force Streamlit Cloud to rebuild and pick up the Phase 28 cleanup:
+# (A) component contributions table now hides 0-weight rows per ticker
+# (B) s_demand component removed (had weight 0.0 in every state since
+# Phase 7). CCQS bit-identical, 140/140 TV parity preserved.
 # Phase 27.1 (2026-05-28): pinned versions unchanged; comment touched to
 # force Streamlit Cloud to rebuild and pick up the root .streamlit/
 # config.toml that forces light theme (was only at app/.streamlit/,

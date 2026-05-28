@@ -56,8 +56,12 @@ EPS = 1e-10
 COMPONENT_COLS = [
     "s_rs", "s_rs_leadership", "s_residual_momentum",
     "s_rsl", "s_trend_slope", "s_structure",
-    "s_mtf", "s_extension", "s_demand", "s_momentum",
+    "s_mtf", "s_extension", "s_momentum",
     "s_volume",
+    # Phase 28 — s_demand removed. Had weight 0.0 in every state since Phase 7
+    # (Priority 3a — s_demand removal + carrier redistribution). The column
+    # was zeroed in STATE_WEIGHTS but never dropped from the matrix. CCQS
+    # bit-identical (it was already contributing nothing).
 ]
 
 # Volume-gate cap on S_RS_LEADERSHIP: 70th percentile of standard normal.
@@ -448,7 +452,9 @@ def compute_components(features: pd.DataFrame, z_scores: pd.DataFrame) -> pd.Dat
     out["s_structure"] = _compute_s_structure(features, z)
     out["s_mtf"] = _compute_s_mtf(features, z)
     out["s_extension"] = _compute_s_extension(features, z)
-    out["s_demand"] = _compute_s_demand(features, z)
+    # Phase 28 — s_demand removed (weight 0.0 in every state since Phase 7).
+    # The _compute_s_demand function is preserved in this file for reference
+    # but no longer called or stored.
     out["s_momentum"] = _compute_s_momentum(features, z)
     out["s_volume"] = _compute_s_volume(features)
     return out

@@ -15,7 +15,7 @@ What this DOES check:
   • state_confidence in [0, 1]
   • Valid primary_state values
   • Valid leadership_tier values
-  • All 11 components present, no inf, values bounded |z|<15
+  • All 10 components present, no inf, values bounded |z|<15
   • Key metric arithmetic (% from 50d/200d MA, % from 52w high) matches raw OHLCV
   • RSI-14 and ADX-14 in [0, 100]
   • Δ CCQS 1d/5d/21d computable from trading-day-sorted history
@@ -172,11 +172,12 @@ def test_elite_leader_share_small(loaded, latest):
 COMP_COLS = [
     "s_rs", "s_rs_leadership", "s_residual_momentum", "s_rsl",
     "s_trend_slope", "s_structure", "s_mtf", "s_extension",
-    "s_demand", "s_momentum", "s_volume",
+    "s_momentum", "s_volume",
+    # Phase 28 — s_demand removed (was 0.0 in every state since Phase 7).
 ]
 
 
-def test_components_11_present(loaded, latest):
+def test_components_10_present(loaded, latest):
     lc = loaded["components"].xs(latest, level="date")
     missing = set(COMP_COLS) - set(lc.columns)
     assert not missing, f"missing components: {sorted(missing)}"

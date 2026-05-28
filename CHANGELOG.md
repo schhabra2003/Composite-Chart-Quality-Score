@@ -1187,3 +1187,49 @@ and (b) intraday tape action between the two cache builds.
 - Spot-checks: 27 of 29 previously-mis-labeled names now correctly
   labeled Extended. Reclaim catches 24 real bear-trap names today.
 
+## Phase 28 — Dead-weight cleanup: s_demand removed + 0-weight rows hidden (2026-05-28)
+
+User-flagged that the Component Contributions table displays rows
+contributing literally nothing to CCQS — specifically `s_demand`
+(weight 0.0 in every state since Phase 7) and `s_extension` (0-weight
+for stocks in TRENDING / DETERIORATING but active in the other 4 states).
+
+### Change A — display: hide 0-weight rows
+
+`app/utils/data_loader.py::load_components_for_ticker` now filters
+any component whose weight in the ticker's primary state is `0.0`.
+Per-row, not global: a stock in PULLBACK still sees `s_extension`
+(weight 1.9% there); a TRENDING stock like NVDA no longer sees it.
+
+### Change B — methodology: drop s_demand permanently
+
+`s_demand` had weight `0.000000` in all six entries of `STATE_WEIGHTS`
+since Phase 7. The column was zeroed but never dropped. Now removed
+from `COMPONENT_COLS` (compute/components.py), `STATE_WEIGHTS`
+(compute/ccqs.py), and display name map (data_loader.py). The
+`_compute_s_demand` function body is preserved as reference but no
+longer called. Test files updated from 11→10 expected components.
+
+### Validation
+
+- **140/140 TV reference fields PASS** — CCQS bit-identical for all 10
+  canaries (the dropped term was always `0 × z = 0`).
+- **11/11 pipeline sanity checks PASS**.
+- **51/51 pytest tests PASS** (component-count assertions updated).
+- Dashboard cache: 25.51 MB (was 25.52 MB — one column gone).
+
+### Audit finding — 30 of 138 features have ZERO downstream references
+
+Separate audit identified 30 features in `compute/features.py`
+`FEATURE_ORDER` that are computed daily but never referenced by any
+of the four consumers (components, state, leadership, setup classifier).
+Candidates for a follow-up cleanup phase. Examples: `ema_8`, `ema_50`,
+`atr_pct`, `realized_vol_20`, `macd_line/signal/histogram`,
+`rs_line_spy_value`, `rs_line_qqq_value`, `residual_momentum_63d`,
+`residual_momentum_252d`, `bb_upper_20`, `bb_lower_20`, `sharpe_ratio_60d`,
+`information_ratio_60d`, `sortino_ratio_60d`, `ulcer_index_60d`,
+`base_duration_days`, `high_max_20d`, `range_20d_pct_of_price`. Not
+removed in Phase 28 — user decides separately.
+
+
+

@@ -361,9 +361,9 @@ COMPONENT_DISPLAY_NAMES = {
     "s_structure":           "Structure",
     "s_mtf":                 "Multi-Timeframe Alignment",
     "s_extension":           "Extension",
-    "s_demand":              "Demand",
     "s_momentum":            "Momentum",
     "s_volume":              "Volume Pattern",
+    # Phase 28 — s_demand removed (weight 0.0 in every state since Phase 7).
 }
 
 
@@ -395,6 +395,14 @@ def load_components_for_ticker(ticker: str) -> pd.DataFrame:
     rows = []
     for cmp_name, z in comp_row.items():
         w = float(weights.get(cmp_name, 0.0))
+        # Phase 28 — hide components with zero weight in this ticker's primary
+        # state. They contribute literally nothing to the CCQS for this name;
+        # showing them is pure noise. A component zeroed in one state can
+        # still be active in another (e.g., s_extension is 0 in TRENDING but
+        # 1-2% in PULLBACK/CONSOLIDATING/EXHAUSTION/INDETERMINATE), so this
+        # filter is per-row, not global.
+        if w == 0.0:
+            continue
         contrib = float(z) * w if pd.notna(z) else 0.0
         display = COMPONENT_DISPLAY_NAMES.get(
             cmp_name,
