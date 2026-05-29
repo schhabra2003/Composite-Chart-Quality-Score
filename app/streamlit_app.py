@@ -354,7 +354,15 @@ with tab_production:
         st.markdown("### Basket Peers")
         basket = row.get("basket")
         if isinstance(basket, str) and basket != "—":
-            peers = df[df["basket"].astype(str) == basket].sort_values("ccqs", ascending=False).head(10)
+            # Phase 30.2 — use all tagged members of the basket (primary +
+            # tag), not just tickers whose PRIMARY = basket. Otherwise a
+            # solo-primary basket like Magnificent Seven (only AAPL primary)
+            # would render its own selected ticker as the only peer. By
+            # pulling all tagged members we show the full cohort the basket
+            # represents.
+            from data.universe import tickers_tagged
+            members = set(tickers_tagged(basket))
+            peers = df[df.index.isin(members)].sort_values("ccqs", ascending=False).head(10)
         else:
             peers = df.head(0)
         st.plotly_chart(
