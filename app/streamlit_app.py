@@ -65,11 +65,22 @@ from compute.display_labels import (  # Phase 26 display-layer translation
 # ---------------------------------------------------------------------------
 # Page config — once per session
 # ---------------------------------------------------------------------------
-st.set_page_config(
-    page_title="CCQS",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+# Phase 31 — guarded so this script can be embedded as a page inside a
+# parent Streamlit app (e.g. adfundmgmt.streamlit.app/CCQS) where the
+# parent has already called set_page_config(). Streamlit raises
+# StreamlitSetPageConfigMustBeFirstCommandError when called twice; we
+# silently skip the second call in that case.
+try:
+    st.set_page_config(
+        page_title="CCQS",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+except Exception:
+    # Either set_page_config was already called by a parent app, or we are
+    # running before any other Streamlit command — either way, swallow and
+    # continue. Standalone deploys hit the success branch.
+    pass
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
