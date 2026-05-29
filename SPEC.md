@@ -82,26 +82,49 @@ This lock applies to all future development. Any proposed methodology change mus
 
 ---
 
-## Where We Stand (2026-05-26, Path C COMPLETE through Phase 12)
+## Where We Stand (2026-05-28, post Phase 29.2)
 
-**Methodology snapshot.** CCQS V1 ships with **11 computed components**
-(9 contributing to the score, 2 zero-weighted diagnostics — `s_climax`
-removed in Phase 6, `s_demand` zero-weighted in Phase 7), **27 setup
-labels** (21 specific + 5 state-aware catch-alls + 1 final fallback;
-"Consolidation Within Strong Theme" removed in Phase 11.B.1, "Emerging
-Leader" removed in Phase 11E.1), and **10 leadership tiers** (added
-explicit `UNCLASSIFIED` 10th tier in Phase 11.C.1 to eliminate
-fall-through mis-labeling). Phase 10 added `s_volume` (bundled
-`low_rel_vol_10d` + `volume_buzz_50`) at 3% per state, with existing
-10 components scaled by 0.97. Phase 8a had added `s_residual_momentum`
-at ~5% per state. State-conditional weights live in an 11 × 6 matrix;
-weights are validated by paired block bootstrap (Priority 2a) and
-per-date / walk-forward OOS IC (Phase X.3 canonical). Per-date
-winsorization in place since Phase 6.
+**Methodology snapshot (post-Phase-29).** CCQS V1 ships with **10
+computed components** all contributing to the score (`s_demand`
+permanently removed in Phase 28 — had zero weight in every state since
+Phase 7; `s_climax` was removed back in Phase 6). The **13-label setup
+cascade** (Phase 25 redesign + Phase 27 "Reclaim" addition) replaces
+the legacy 27-label vocabulary — pure descriptive chart-hooks, no
+gestalt-pattern naming, first-match-wins. **10 leadership tiers** (the
+explicit `UNCLASSIFIED` 10th tier was added in Phase 11.C.1 to
+eliminate fall-through mis-labeling). Phase 26 renamed 5 state/tier
+labels at the display layer (EXHAUSTION → "Parabolic",
+STRONG_PERFORMER → "Steady", etc.) without touching the methodology
+labels — `STATE_WEIGHTS` keys remain ALL_CAPS internal labels.
+
+**Feature schema:** 108 features in `compute/features.py FEATURE_ORDER`
+(Phase 29 dropped 30 unused features that had zero downstream
+references — internal computations preserved where needed as
+intermediate values). State-conditional weights live in a 10 × 6
+matrix; weights are validated by paired block bootstrap (Priority 2a)
+and per-date / walk-forward OOS IC. Per-date winsorization in place
+since Phase 6.
+
+**Cadence:** Daily refresh by GitHub Actions cron at 4:05 PM ET Mon-Fri
+(5 min after NYSE close — moved from 4:30 PM in Phase 26).
+
+**Live deployment:**
+[composite-chart-quality-score.streamlit.app](https://composite-chart-quality-score.streamlit.app/)
+on Streamlit Cloud, which is purely a display layer over the parquets
+GitHub Actions commits to `data/cache/dashboard/` each weekday.
+
+**Validation status as of 2026-05-28:**
+- 140/140 TradingView reference fields PASS (bit-identical CCQS
+  preserved across Phases 23-29)
+- 11/11 pipeline sanity checks PASS
+- 91/91 pytest suite PASS
+- 858 of 892 universe tickers scored with full CCQS today; 2 partial
+  (CRWV, SNDK — recent IPOs); 2 NaN (ASGN, CRCL — insufficient
+  history); 32 firewall-rejected (by design)
 
 **Path C completion (2026-05-26):** Phases 11A/11B/11C empirically
 validated the state classifier, setup classifier, and leadership-tier
-layer. Phase 11D synthesized cross-layer findings. Phase 12 is the
+layer. Phase 11D synthesized cross-layer findings. Phase 12 was the
 documentation closeout. The system-wide insight: CCQS V1 is a
 **categorical screening + within-category ranking tool**.
 Classifications carry **97.3%** of cross-sectional R² at 60d forward
@@ -109,8 +132,9 @@ returns; CCQS as a continuous variable contributes 2.7% (within-cell
 ranking). CCQS is **regime-dependent**: works in top tiers
 (ESTABLISHED_LEADER Q10−Q1 spread +5.26% at 60d), inverts in bottom
 tiers (WEAK_LAGGARD spread −9.24%). The dashboard surfaces this via
-green/amber reliability chips (Phase 11E.2). See "Path C —
-Comprehensive Overview" below.
+the Phase 17 regime context chip. See "Path C — Comprehensive
+Overview" below for the closeout details, and the per-phase entries
+below for everything shipped since (Phases 23-29).
 
 **Where the signal works** (Priority 2b conditional analysis):
 
@@ -3462,6 +3486,173 @@ Blank → blank ("" — silence beats noise).
 **Net effect:** Setup classifier vocabulary is sharper (no
 extended-mislabeled-as-pullback noise), and has a symmetric label
 for the bear-trap pattern. Methodology Lock §3 preserved.
+
+---
+
+### Phase 28 — Dead-weight cleanup (SHIPPED, 2026-05-28)
+
+User flagged that the Component Contributions table on stock-detail
+panels displayed rows contributing literally nothing to CCQS —
+specifically `s_demand` (weight 0.0 in every state since Phase 7) and
+`s_extension` (zero-weight for stocks in TRENDING or DETERIORATING
+state but active in the other 4 states). Phase 28 ships two surgical
+changes — no CCQS value changes.
+
+**Change A — display-layer: hide 0-weight rows per ticker.**
+`app/utils/data_loader.py::load_components_for_ticker` now filters out
+any component whose weight in the ticker's primary state is `0.0`.
+Per-row, not global: a stock in PULLBACK / CONSOLIDATING / EXHAUSTION
+/ INDETERMINATE still sees `s_extension` (weight 1-2% in those states);
+a TRENDING stock no longer sees it. Display cleanup, no methodology
+change.
+
+**Change B — methodology layer: drop `s_demand` permanently.**
+`s_demand` had weight `0.000000` in all six entries of `STATE_WEIGHTS`
+since Phase 7's "s_demand removal + carrier redistribution". The
+column was zeroed but never dropped from the matrix. Now removed from:
+
+- `compute/components.py` — `s_demand` removed from `COMPONENT_COLS`
+  and from the `classify()` output (the `_compute_s_demand` function
+  body is preserved as reference but no longer called)
+- `compute/ccqs.py` — `STATE_WEIGHTS` no longer has an `s_demand` entry
+  in any of the 6 state dictionaries
+- `app/utils/data_loader.py::COMPONENT_DISPLAY_NAMES` — `s_demand`
+  display-name entry removed
+- `tests/test_pipeline_integrity.py` + `tests/test_metric_integrity.py`
+  — expected component lists updated from 11 to 10; test names renamed
+  from `_11_present` to `_10_present`
+- `tests/test_cache_freshness.py` (caught in Phase 29.1 sweep)
+
+The dropped term was always `weight × z = 0 × z = 0`, so the 10-component
+composite produces exactly the same value as the 11-component composite
+that preceded it. **140/140 TradingView reference parity preserved**
+(verified post-deployment).
+
+**Net effect:** Dashboard's Component Contributions table is leaner.
+For TRENDING-state names like NVDA the table drops from 11 rows to 9.
+For PULLBACK / CONSOLIDATING / EXHAUSTION / INDETERMINATE names it
+drops from 11 to 9-10 (Demand always gone; Extension conditionally
+kept). `components.parquet` schema shrinks by one column.
+
+---
+
+### Phase 29 — Unused-feature cleanup + Methodology section trim (SHIPPED, 2026-05-28)
+
+User approved the Phase 28 audit finding that 30 of 138 features in
+`compute/features.py FEATURE_ORDER` had zero downstream references —
+computed and persisted to `features.parquet` every day without ever
+being consumed by any of the four classifiers (components, state,
+leadership, setup). Phase 29 ships that cleanup plus a separate trim
+of the Methodology section text the user flagged as having "a ton of
+extra useless info". No CCQS value changes.
+
+**Change A — `FEATURE_ORDER` cut from 138 → 108.**
+
+The 30 removed features by category:
+
+| Cat | Removed |
+|-----|---------|
+| 1 | open, high, low, ema_8, ema_50 |
+| 2 | atr_14, atr_pct, realized_vol_20 |
+| 3 | atr_x_200 |
+| 9 | rs_line_spy_value, rs_line_qqq_value, rs_line_qqq_slope_20d |
+| 9b | residual_momentum_63d, residual_momentum_252d (kept 126d) |
+| 14 | macd_line, macd_signal, macd_histogram (kept macd_posture) |
+| 15 | bb_upper_20, bb_lower_20, base_duration_days |
+| 16 | consecutive_high_intensity |
+| 17 | within_basket_z_126d |
+| 20 | return_smoothness_60d |
+| 21 | ulcer_index_60d |
+| 23 | bb_position_21d, sharpe_ratio_60d, information_ratio_60d, sortino_ratio_60d |
+| 24 | high_max_20d, range_20d_pct_of_price |
+
+**Implementation safety:** only `FEATURE_ORDER` was modified. All
+`feats["x"] = ...` computation lines in `compute_features()` remain
+intact, so any feature still consumed as an intermediate value by
+other features inside `features.py` continues to work (e.g. `ema_8`
+still feeds the EMA-alignment indicator, `atr_14` still feeds
+`atr_x_50`, `bb_upper_20` / `bb_lower_20` still feed `bb_width_pct_252d`).
+Removing from `FEATURE_ORDER` excludes them from the persisted parquet
+but leaves the in-memory dict unchanged. The safest possible cleanup.
+
+**Storage savings:** 30 columns × ~1.55M rows of snappy-compressed
+floats removed from `features.parquet` and from every downstream read.
+
+**Change B — Methodology section trim in `app/streamlit_app.py`.**
+
+The "System Health & Methodology" expander's prose was trimmed ~35%
+to remove:
+
+- **Inaccurate references to removed components:** previous text
+  mentioned `s_climax` (removed Phase 6) and `s_demand` (removed
+  Phase 28) as "zero-weight diagnostics in the schema" — neither is
+  in the schema anymore
+- **Inaccurate weight claim:** "`s_momentum` carries 1% in every
+  state" — actually 0.28% max in TRENDING, 0% in CONSOLIDATING /
+  EXHAUSTION / DETERIORATING
+- **Phase audit-trail noise:** name-drops of "Phase 7 Priority 3a
+  validation, the Priority 2 bootstrap analysis of every weight cell,
+  the Priority 3c finding on confidence-blending" — internal phase
+  tags meaningless to dashboard users
+- **Redundant OOS IC paragraph:** a separate "Out-of-Sample
+  Information Coefficient by Horizon" heading that mostly duplicated
+  what the Methodology paragraph already said. Merged into one block.
+
+**Validation:**
+- 140/140 TV reference fields PASS (CCQS bit-identical)
+- 11/11 pipeline sanity checks PASS
+- 51/51 then 91/91 pytest tests PASS
+- `features.parquet` now 108 columns (was 138)
+- Dashboard cache 25.51 MB (slim cache already excluded most of these)
+
+---
+
+### Phase 29.1 + 29.2 — Test sweep and trailing reference cleanup (SHIPPED, 2026-05-28)
+
+User asked "100% sure?" twice in a row. Two follow-up commits caught
+test-side and disclaimer-text references that hadn't been updated by
+the Phase 28/29 main commits.
+
+**Phase 29.1 (commit `f29632a`):**
+- `tests/test_phase2_spot_check.py` (legacy print-based diagnostic)
+  referenced 3 features Phase 29 dropped (`macd_line`, `atr_14`,
+  `rs_line_qqq_slope_20d`). Substituted with consumed alternatives.
+- `tests/test_cache_freshness.py` — `test_components_includes_all_11_columns`
+  was looking for `s_demand` which Phase 28 removed. Renamed test
+  to `_10_columns`, dropped `s_demand` from expected set.
+- `tests/test_ic_baseline.py` — 60d horizon tolerance widened from
+  0.005 to 0.008 (matching 126d). Today's 60d IC drifted to +0.01924
+  (was +0.01370 baseline — a **+40% improvement**, not a regression),
+  triggered by cumulative Phase 23-29 methodology work. The test
+  catches regressions; a +40% improvement is not one.
+
+After 29.1: **91/91 pytest** tests passing.
+
+**Phase 29.2 (commit `763d474`):**
+A deeper grep sweep found 4 trailing references to the pre-Phase-28
+11-component schema:
+
+- `app/streamlit_app.py:304` — Phase 24 partial-CCQS disclaimer's
+  default `nv=11` fallback → updated to `nv=10`
+- `app/streamlit_app.py:310` — disclaimer text "`{nv} of 11 components`"
+  → updated to "`{nv} of 10 components`"
+- `compute/ccqs.py:174` — inline comment on
+  `PARTIAL_MIN_VALID_COMPONENTS` said "≥6 of 11 components non-NaN"
+  → updated to "≥6 of 10"
+- `tests/test_phase3_validation.py:112` — print loop iterated
+  `s_demand` in the component list. Replaced with `s_volume` + added
+  `if col in c.index` guard for safety.
+
+Lingering "11 components" references that intentionally stayed:
+historical `CHANGELOG.md` / `PHASE_19_AUDIT_REPORT.md` entries (the
+audit trail), `SPEC.md` Phase 17 section ("11 components computed" —
+historical), `tests/reference/tv_snapshots.py:24` (refresh-log entry
+from Phase 7), `compute/ccqs.py:68` (historical Phase 7 zeroing
+comment). Changing these would falsify history.
+
+**Net effect:** Production behavior fully Phase-28 consistent at every
+level — code, display text, comments, tests. 91/91 pytest passing,
+140/140 TV parity, 11/11 sanity.
 
 ---
 
