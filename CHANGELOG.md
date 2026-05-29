@@ -2,6 +2,80 @@
 
 Phase-by-phase implementation history. Companion to `SPEC.md` (authoritative methodology document) and `USER_GUIDE.md` (user-facing interpretation manual).
 
+## Phase 30.1–30.4 — Aggregation + display-layer follow-ups (2026-05-29)
+
+Four sub-phases shipped after Phase 30 reorganized the universe. Each
+addressed a pocket of code that still assumed PRIMARY-only basket
+membership and broke the new "Magnificent Seven" cohort UX.
+
+### Phase 30.1 — Aggregation source switched to all tagged members (`854cead`)
+**Problem.** After Phase 30, Mag7 did not appear in the Themes view.
+**Cause.** `compute/aggregation.py:_basket_membership_long` built the
+membership table from `PRIMARY_BASKET_CONSTITUENTS` (primary-only) and
+filtered baskets with fewer than 3 PRIMARY members. Mag7 has 1
+(AAPL) → excluded. Same logic also hid ~41 TAG baskets.
+**Fix.** Source switched to `CATEGORIES` (primary + tag members). >=3
+total-member threshold preserved for statistical reliability.
+**Effect.** `theme_aggregates.parquet`: 148 → 241 baskets (+93 newly
+visible thematic baskets including AI Data Center Capex, AI Power
+Demand, Quantum Computing, Sovereign AI Infrastructure, Humanoid
+Robotics, Autonomous Vehicles and Robotaxis, etc.). Mag7 row populates
+with n_constituents=7, avg_ccqs=63.21.
+**Test update.** `tests/test_metric_integrity.py:test_theme_pct_above_50dma_correct`
+recompute switched from PRIMARY_BASKETS-only to `tickers_tagged()` to
+mirror the new aggregation source. Without this, the recompute
+membership and the cached aggregate membership would diverge by ~93
+baskets and produce false-positive violations.
+
+### Phase 30.2 — Themes view top_member / members columns (`cd80260`)
+**Problem.** Mag7 row appeared in the Themes view but with em-dash
+("—") in Top Member and Members columns.
+**Cause.** `app/utils/data_loader.py:load_themes_data` used
+`_basket_map()` (PRIMARY-only). For Mag7, only AAPL maps to it; the
+group held one row and apparently did not materialize through the
+Streamlit cache.
+**Fix.** New helper `_all_membership_long()` builds a long
+(ticker, basket) DataFrame from CATEGORIES. CCQS values merged
+against it before groupby — Mag7 group now holds all 7 mega-caps.
+**Effect.** Top Member = GOOGL (highest CCQS in cohort, 86.83);
+Members = "GOOGL, AAPL, AMZN, NVDA, TSLA, MSFT, META". ~40 other TAG
+baskets surfaced similarly.
+
+### Phase 30.3 — Stock Detail "Basket Peers" panel (`9e870ff`)
+**Problem.** AAPL's Basket Peers section rendered just AAPL alone.
+**Cause.** `app/streamlit_app.py:354` filtered the per-ticker
+DataFrame by `df["basket"] == "Magnificent Seven"`, but the "basket"
+column there stores each ticker's PRIMARY. Only AAPL's primary is
+Mag7, so the peer set was one row — AAPL itself.
+**Fix.** Resolve peer set via `tickers_tagged(basket)`, pulling all
+basket members (primary + tag). Sort by CCQS desc, top 10.
+**Effect.** AAPL Basket Peers now shows the full 7-name Mag7 cohort.
+Verified no regression on NVDA (basket = AI Compute, all members
+already primary) and MSFT (basket = Hyperscalers, all 5 already
+primary).
+
+### Phase 30.4 — Basket Peers panel: Theme column reflects viewed basket (`63cd80f`)
+**Problem.** User screenshot: AAPL's Basket Peers listed all 7 Mag7
+names but the Theme column showed each row ticker's PRIMARY
+(Hyperscalers for the 4 megacaps, AI Compute for NVDA, EV for TSLA).
+Visually scrambled even though all 7 are genuine Mag7 peers.
+**Fix.** Override `peers["basket"] = basket` before rendering — every
+row in this panel is by definition a peer in the viewed basket, so
+the Theme column should reflect that, not each row's own primary.
+**Effect.** AAPL's panel now shows "Magnificent Seven" cleanly in
+every Theme cell. NVDA / MSFT panels unchanged (those baskets'
+members already had matching primaries pre-fix).
+
+### Validation (all four sub-phases combined)
+- ✓ 91/91 pytest passed
+- ✓ 140/140 TV reference parity passed (all canaries within tolerance)
+- ✓ Universe consistency: AAPL primary = Mag7; Hyperscalers no AAPL;
+  6 other Mag7 names tagged
+- ✓ theme_aggregates: 241 baskets (~93 newly visible)
+- ✓ Mag7 row: 7 constituents, all valid CCQS, avg 63.21
+- ✓ Streamlit Cache TTL refreshes every 30 min; pushes also auto-
+  redeploy the Streamlit Cloud app within ~3 min
+
 ## Phase 30 — Magnificent Seven basket added; AAPL moved out of Hyperscalers (2026-05-29)
 
 User-driven universe reorganization. A new CORE basket "Magnificent Seven"
