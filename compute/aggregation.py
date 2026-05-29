@@ -58,13 +58,43 @@ THEME_TIERS: list[str] = [
 # ---------------------------------------------------------------------------
 
 def _basket_membership_long() -> pd.DataFrame:
-    """Long table (basket, ticker) of constituents for every populated basket."""
+    """Long table (basket, ticker) of all tagged members for every populated basket.
+
+    Phase 30 (2026-05-29) — switched source from PRIMARY_BASKET_CONSTITUENTS
+    (primary classifications only) to CATEGORIES (all member tickers,
+    primary + tag). Three effects:
+
+    1. The new "Magnificent Seven" CORE basket is now aggregated. It only
+       has AAPL as a primary constituent but all 7 mega-caps are tagged
+       members. Pre-Phase-30, single-primary baskets like this were
+       invisible in the Themes view.
+
+    2. Roughly 40 TAG baskets that previously had 0-2 primary constituents
+       (e.g. "AI Data Center Capex", "AI Power Demand", "Quantum
+       Computing") now surface in the Themes view with their full thematic
+       membership rolled up.
+
+    3. CORE basket aggregates are unchanged: CORE baskets list each
+       member exactly once (as primary), so primary-only vs all-tagged
+       gives the same set.
+
+    The >=3 member threshold is preserved (statistical reliability of
+    basket-level averages). Dedup guards against the same (basket, ticker)
+    pair appearing twice if CATEGORIES has accidental duplicates.
+    """
+    from data.universe import CATEGORIES
     rows: list[tuple[str, str]] = []
-    for basket, tickers in PRIMARY_BASKET_CONSTITUENTS.items():
-        if len(tickers) < 3:
-            continue
-        for t in tickers:
-            rows.append((basket, t))
+    seen: set[tuple[str, str]] = set()
+    for cat_name, baskets in CATEGORIES.items():
+        for basket, tickers in baskets.items():
+            if len(tickers) < 3:
+                continue
+            for t in tickers:
+                key = (basket, t)
+                if key in seen:
+                    continue
+                seen.add(key)
+                rows.append(key)
     return pd.DataFrame(rows, columns=["basket", "ticker"])
 
 

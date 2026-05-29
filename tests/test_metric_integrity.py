@@ -330,15 +330,20 @@ def test_index_alignment(loaded):
 # ---------------------------------------------------------------------------
 
 def test_theme_pct_above_50dma_correct(loaded, latest):
-    """Theme breadth `pct_above_50dma` matches independent recompute."""
-    from data.universe import PRIMARY_BASKETS
+    """Theme breadth `pct_above_50dma` matches independent recompute.
+
+    Phase 30: aggregation now uses ALL tagged members (primary + tag)
+    per `compute/aggregation.py:_basket_membership_long`, so the
+    recompute below mirrors that — using `tickers_tagged()` instead of
+    PRIMARY_BASKETS-only filtering.
+    """
+    from data.universe import tickers_tagged
     themes = loaded["themes"].xs(latest, level="date")
     feat = loaded["features"].xs(latest, level="date")
-    bm = dict(PRIMARY_BASKETS)
     violations = 0
     n_checked = 0
     for theme_name in themes.index:
-        members = [t for t, b in bm.items() if b == theme_name]
+        members = tickers_tagged(theme_name)
         sub = feat.reindex(members)["pct_above_sma_50"].dropna()
         if len(sub) < 3:
             continue
