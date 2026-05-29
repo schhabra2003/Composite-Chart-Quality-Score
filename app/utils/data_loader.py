@@ -65,6 +65,25 @@ def _basket_map() -> dict[str, str]:
         return {}
 
 
+def _all_membership_long() -> pd.DataFrame:
+    """Long (ticker, basket) DataFrame of all tagged members across every
+    basket. Mirrors `compute/aggregation.py:_basket_membership_long` so the
+    dashboard's `top_member` / `members` columns reflect the same
+    membership the Themes aggregation uses (Phase 30.1).
+    """
+    try:
+        from data.universe import CATEGORIES
+        rows: list[tuple[str, str]] = []
+        for _cat, baskets_d in CATEGORIES.items():
+            for basket, tickers in baskets_d.items():
+                for t in tickers:
+                    rows.append((t, basket))
+        df = pd.DataFrame(rows, columns=["ticker", "basket"]).drop_duplicates()
+        return df
+    except Exception:
+        return pd.DataFrame(columns=["ticker", "basket"])
+
+
 # ---------------------------------------------------------------------------
 # Dashboard data — one row per ticker at latest snapshot
 # ---------------------------------------------------------------------------
@@ -161,18 +180,24 @@ def load_themes_data() -> pd.DataFrame:
 
     # Phase 18 — also surface the full ticker list per basket (sorted by
     # CCQS descending) so users can cross-reference on charting platforms.
+    # Phase 30.2 — switched membership source from PRIMARY_BASKETS only to
+    # all tagged members (matches the aggregation in Phase 30.1). Without
+    # this, the new "Magnificent Seven" basket showed "—" because only
+    # AAPL has it as primary; the other 6 are tagged but had their primary
+    # in Hyperscalers / AI Compute / EV. Same effect surfaces ~40 TAG
+    # baskets that previously had no top_member.
     ccqs = _read_parquet("ccqs.parquet")
     top_member_map: dict[str, str] = {}
     members_map: dict[str, str] = {}
     if not ccqs.empty:
         ccqs_latest = ccqs.xs(latest, level="date") if latest in ccqs.index.get_level_values("date") else pd.DataFrame()
         if not ccqs_latest.empty:
-            basket_map = _basket_map()
-            tmp = ccqs_latest[["ccqs"]].copy()
-            tmp["basket"] = tmp.index.map(basket_map)
-            tmp = tmp.dropna(subset=["basket"]).reset_index().rename(columns={"index": "ticker"})
+            membership = _all_membership_long()
+            tmp = ccqs_latest[["ccqs"]].reset_index()
             if "ticker" not in tmp.columns:
                 tmp = tmp.rename(columns={tmp.columns[0]: "ticker"})
+            tmp = tmp.merge(membership, on="ticker", how="inner")
+            tmp = tmp.dropna(subset=["basket", "ccqs"])
             tmp = tmp.sort_values("ccqs", ascending=False)
             top_member_map = tmp.groupby("basket").head(1).set_index("basket")["ticker"].to_dict()
             # Comma-joined ticker list per basket, sorted by CCQS desc.
