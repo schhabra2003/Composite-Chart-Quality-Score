@@ -106,11 +106,14 @@ def main() -> None:
         print(f"      RSI(14)        : {f['rsi_14']:.2f}")
         print()
         print(f"      Components (z-space):")
+        # Phase 28: s_demand removed (weight 0.0 in every state since Phase 7).
+        # Phase 29: still includes s_volume in print loop for completeness.
         for col in ["s_rs", "s_rs_leadership", "s_residual_momentum",
                     "s_rsl", "s_trend_slope",
                     "s_structure", "s_mtf", "s_extension",
-                    "s_demand", "s_momentum"]:
-            print(f"        {col:<22} {c[col]: .3f}")
+                    "s_momentum", "s_volume"]:
+            if col in c.index:
+                print(f"        {col:<22} {c[col]: .3f}")
         print()
         print(f"      Primary state  : {s['primary_state']} (conf {s['state_confidence']:.3f})")
         print(f"      State probs    :")

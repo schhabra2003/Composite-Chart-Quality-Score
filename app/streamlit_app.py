@@ -301,13 +301,13 @@ with tab_production:
         # and spin-offs still inside the 504-day long-window-feature warmup.
         if bool(row.get("is_partial", False)):
             wp = float(row.get("weight_present", 1.0)) * 100.0
-            nv = int(row.get("n_valid_components", 11))
+            nv = int(row.get("n_valid_components", 10))
             st.markdown(
                 f"<div style='margin-bottom:0.8em;padding:8px 12px;"
                 f"border-left:3px solid #d97706;background:#fef3c7;"
                 f"border-radius:4px;font-size:0.85rem;color:#78350f;'>"
                 f"<strong>Partial CCQS</strong> — computed from "
-                f"{nv} of 11 components ({wp:.0f}% of state weight present). "
+                f"{nv} of 10 components ({wp:.0f}% of state weight present). "
                 f"This name has insufficient history for long-window features "
                 f"(typical for IPOs / spin-offs in the ~2-year warmup); "
                 f"score will converge to full-data as history accumulates."

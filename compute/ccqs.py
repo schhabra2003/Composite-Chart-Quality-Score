@@ -171,7 +171,9 @@ def _state_composite_z(components: pd.DataFrame, state: str) -> pd.Series:
 # weights to the components that ARE present, provided enough weight is
 # present to keep the composite meaningful.
 PARTIAL_MIN_WEIGHT_PRESENT = 0.60   # row needs ≥60% of state weight present
-PARTIAL_MIN_VALID_COMPONENTS = 6    # AND ≥6 of 11 components non-NaN
+PARTIAL_MIN_VALID_COMPONENTS = 6    # AND ≥6 of 10 components non-NaN
+                                    # (was "of 11" pre-Phase-28; s_demand
+                                    # removed since it had weight 0 anyway).
 # Threshold tuning rationale: 60% leaves at most 40% of state weight imputed
 # by renormalizing across the remaining components. Empirically calibrated to
 # admit names with ~9-10 months of post-IPO history (typical 252-day-warmup
