@@ -82,7 +82,9 @@ def test_ccqs_latest_date_recent():
     )
 
 
-def test_components_includes_all_11_columns():
+def test_components_includes_all_10_columns():
+    """Phase 28: s_demand permanently removed (had weight 0.0 in every
+    state since Phase 7). Schema is 10 components, not 11."""
     p = DASHBOARD_DIR / "components.parquet"
     if not p.exists():
         pytest.skip(f"File {p} not present")
@@ -90,7 +92,7 @@ def test_components_includes_all_11_columns():
     expected = {
         "s_rs", "s_rs_leadership", "s_residual_momentum",
         "s_rsl", "s_trend_slope", "s_structure",
-        "s_mtf", "s_extension", "s_demand", "s_momentum",
+        "s_mtf", "s_extension", "s_momentum",
         "s_volume",
     }
     missing = expected - set(df.columns)
