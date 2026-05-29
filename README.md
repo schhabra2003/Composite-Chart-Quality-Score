@@ -141,7 +141,7 @@ System is **fully deployed and live in production**. Phase numbering reflects it
 | 1–22 | Foundation, methodology, deployment, UI cleanup | ✅ Shipped |
 | 23 | Add major recent IPOs to universe | ✅ |
 | 24 | Graceful CCQS degradation for partial-history names | ✅ |
-| 25 | Setup label redesign (27-label → 12-cascade) | ✅ |
+| 25 | Setup label redesign (27-label → 12-cascade; Phase 27 made it 13) | ✅ |
 | 26 | State + Leadership Tier display rename + cron move | ✅ |
 | 27 | Setup cascade bug fix + "Reclaim" label (13th) | ✅ |
 | 28 | s_demand permanently removed + 0-weight rows hidden | ✅ |

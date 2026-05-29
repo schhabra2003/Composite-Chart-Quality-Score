@@ -1,10 +1,10 @@
 """
 CCQS V1 — Data Layer (SPEC Section 4)
 
-yfinance batch fetcher for 910 universe tickers + 2 benchmarks (SPY/QQQ).
+yfinance batch fetcher for ~892 universe tickers + 2 benchmarks (SPY/QQQ).
 
 Behavior:
-  - 5-year lookback (1,260 trading days)
+  - ~7-year lookback (LOOKBACK_DAYS = 7*365 + 60 ≈ 1,824 calendar days)
   - Batch download (max 100 per batch) to play nice with Yahoo throttling
   - 3-attempt retry per batch with exponential backoff
   - Parquet caching with 3-hour TTL (market hours) / 18-hour TTL (after close)

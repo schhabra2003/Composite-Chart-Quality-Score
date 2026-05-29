@@ -42,7 +42,7 @@ The CCQS score is the within-category ranking key; the classifications are the s
    - Mean reversion → tier in {WEAK_LAGGARD, DETERIORATING}
    - Pattern-driven → no tier filter, use setup filter
 3. **Filter by state** if relevant (e.g., TRENDING for continuation, EXHAUSTION for parabolic-bounce, CONSOLIDATING for breakout-watch).
-4. **Filter by setup** for a specific chart geometry (e.g., "Tight Base" for narrow consolidation near highs, "Breakout" for range-expansion above the 40d high). Phase 25 vocabulary (12 labels) is descriptive — see §D.2.
+4. **Filter by setup** for a specific chart geometry (e.g., "Tight Base" for narrow consolidation near highs, "Breakout" for range-expansion above the 40d high). Phase 25 vocabulary (13 labels post-Phase-27) is descriptive — see §D.2.
 5. **Within the filtered set, rank by CCQS** to surface the top-of-cohort candidates — but only if the dashboard shows the **green "High-quality regime — CCQS reliable" chip**. If it shows the **amber "Low-quality regime — CCQS may invert" chip**, consider ranking ascending instead (lowest CCQS first) or use CCQS only for screening, not ranking.
 
 ---

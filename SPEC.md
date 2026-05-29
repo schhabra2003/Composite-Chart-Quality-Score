@@ -3937,7 +3937,7 @@ principle 4).
 
 ### Purpose
 
-Daily technical screening system for 910 stocks/ETFs across 275 baskets. Identifies:
+Daily technical screening system for ~892 stocks/ETFs across ~148 themes (post-Phase-23 IPO additions). Identifies:
 
 - Trending leaders (RS-confirmed, multi-timeframe)
 - Buyable pullbacks (Tier S setups)
@@ -4008,8 +4008,8 @@ The canonical universe lives in `data/universe.py`. **DO NOT REGENERATE OR MODIF
 
 ### Universe Stats
 
-- **879 unique tickers** (post Phase 5.2: removed CTRA, TRUL.CN, EUROB.AT)
-- **858 stocks** survive the data-quality firewall and are CCQS-scored
+- **892 unique tickers** (post Phase 23: added 9 major recent IPOs; original spec had 910 before Phase 5.2 removals and subsequent re-additions)
+- **~858 stocks** survive the data-quality firewall and are CCQS-scored on a given day (Phase 24 also restores partial-history names via graceful renormalization)
 - **SPY, QQQ** are kept as benchmarks only (RS denominator + chart overlays) and
   are NOT in the scored panel — their OHLCV is persisted separately at
   `data/cache/benchmarks.parquet`
@@ -4045,7 +4045,7 @@ exceptions.
 
 ```python
 from data.universe import (
-    all_unique_tickers,       # List of 879 scored-panel tickers (post Phase 5.2)
+    all_unique_tickers,       # List of ~892 scored-panel tickers (post Phase 23)
     primary_basket,           # ticker -> primary basket name
     tags_for,                 # ticker -> list of tag baskets
     constituents,             # basket -> list of primary tickers
@@ -4065,8 +4065,8 @@ from data.universe import (
 
 **Primary:** yfinance (Python library, free, no API key)
 - Daily OHLCV: open, high, low, close, adj_close, volume
-- 5-year lookback (1,260 trading days)
-- Batch download, ~60-120 seconds for 910 tickers
+- ~7-year lookback (`LOOKBACK_DAYS = 7*365 + 60` ≈ 1,824 calendar days; original spec was 5y / 1,260 trading days, widened to support warmup back to 2020-01-01)
+- Batch download, ~60-120 seconds for ~892 tickers (post Phase 23)
 - Use `auto_adjust=False` to get both `close` and `adj_close`
 
 **Backup verification:** Stooq (via pandas-datareader)
@@ -5818,7 +5818,7 @@ python3.13 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
-python -m compute.loader      # Pull 910 tickers + 3 benchmarks
+python -m compute.loader      # Pull ~892 tickers + benchmarks (original spec: 910)
 python -m compute.data_quality # Run quality checks
 ```
 
@@ -5900,7 +5900,7 @@ Deploy to private GitHub + Streamlit Community Cloud.
 
 ### Performance Targets
 
-- Data pull: < 2 minutes for 910 tickers
+- Data pull: < 2 minutes for ~892 tickers (original spec: 910)
 - Feature computation: < 30 seconds for full universe
 - Scoring: < 5 seconds
 - Total daily refresh: < 5 minutes
@@ -5917,20 +5917,25 @@ Deploy to private GitHub + Streamlit Community Cloud.
 
 ## Reference Card — Key Numbers
 
-| Metric | Value |
-|--------|------:|
-| Universe size | 910 tickers |
-| Baskets | 275 (180 CORE / 60 TAG / 35 COUNTRY) |
-| Manual overrides | 734 |
-| Benchmarks | 2 (SPY, QQQ) — Path 1.5 |
-| Features per stock | 104 — Path 1.5 |
-| Components | 10 |
-| States | 6 |
-| Setup categories | 24 |
-| Leadership tiers | 7 — Path 1.5 |
-| Theme classes | 7 |
-| Dashboard views | 8 |
-| Reliability layers | 8 |
+| Metric | Original spec | Current (post-Phase-29) |
+|--------|-------------|------:|
+| Universe size | 910 tickers | ~892 tickers (Phase 23 added IPOs) |
+| Baskets | 275 (180 CORE + 60 TAG + 35 COUNTRY) | 275 universe baskets → ~148 populated themes shown in dashboard |
+| Benchmarks | 2 (SPY, QQQ) | 2 (SPY, QQQ) |
+| Features per stock | 104 → 138 (Path C+) | 108 (Phase 29 dropped 30 unused) |
+| Components | 10 → 11 → 10 | 10 (Phase 28 removed s_demand) |
+| States | 6 | 6 |
+| Setup categories | 24 → 29 → 12 | 13 (Phase 25 + 27 Reclaim) |
+| Leadership tiers | 7 → 9 → 10 | 10 (Phase 11.C.1 added UNCLASSIFIED) |
+| Theme classes | 7 | 7 |
+| Dashboard views | 8 | 8 |
+| Reliability layers | 8 | 8 |
+
+The "Original spec" column reflects the pre-implementation plan in
+§16 "Build Phases" above. The "Current" column reflects production
+state on 2026-05-28 (post-Phase-29.3). Methodology refinements
+documented per-phase in the Path C overview + per-Phase entries above
+and in CHANGELOG.md.
 
 ---
 
