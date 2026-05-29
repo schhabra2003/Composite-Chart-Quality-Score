@@ -1,3 +1,10 @@
+# Phase 29 (2026-05-28): pinned versions unchanged; comment touched to
+# force Streamlit Cloud to rebuild and pick up Phase 29 cleanup:
+# (A) FEATURE_ORDER cut from 138 → 108 (30 unused features dropped from
+# persisted parquet — internal computations preserved for derived
+# features). (B) Methodology section text trimmed to remove inaccurate
+# references to removed components (s_climax, s_demand) and Phase
+# audit-trail noise. CCQS bit-identical, 140/140 TV parity preserved.
 # Phase 28 (2026-05-28): pinned versions unchanged; comment touched to
 # force Streamlit Cloud to rebuild and pick up the Phase 28 cleanup:
 # (A) component contributions table now hides 0-weight rows per ticker

@@ -1231,5 +1231,90 @@ Candidates for a follow-up cleanup phase. Examples: `ema_8`, `ema_50`,
 `base_duration_days`, `high_max_20d`, `range_20d_pct_of_price`. Not
 removed in Phase 28 — user decides separately.
 
+## Phase 29 — Unused-feature cleanup + Methodology section trim (2026-05-28)
+
+User approved the Phase 28 audit finding ("30 of 138 features have zero
+downstream references"). Phase 29 ships that cleanup plus a separate
+trim of the Methodology section text that the user flagged as having
+"a ton of extra useless info".
+
+### Change A — FEATURE_ORDER cut from 138 → 108
+
+`compute/features.py` `FEATURE_ORDER` list was reduced by 30 entries.
+The 30 removed features are NOT referenced by any downstream consumer
+— components.py, state.py, leadership.py, setup_classifier_v2.py,
+aggregation.py, build_dashboard_cache.py, data_loader.py, tables.py,
+charts.py, or streamlit_app.py. They were being computed and persisted
+to `features.parquet` every day without ever being read.
+
+Removed features by category:
+
+| Cat | Removed |
+|-----|---------|
+| 1   | open, high, low, ema_8, ema_50 |
+| 2   | atr_14, atr_pct, realized_vol_20 |
+| 3   | atr_x_200 |
+| 9   | rs_line_spy_value, rs_line_qqq_value, rs_line_qqq_slope_20d |
+| 9b  | residual_momentum_63d, residual_momentum_252d (kept 126d) |
+| 14  | macd_line, macd_signal, macd_histogram (kept macd_posture) |
+| 15  | bb_upper_20, bb_lower_20, base_duration_days |
+| 16  | consecutive_high_intensity |
+| 17  | within_basket_z_126d |
+| 20  | return_smoothness_60d |
+| 21  | ulcer_index_60d |
+| 23  | bb_position_21d, sharpe_ratio_60d, information_ratio_60d, sortino_ratio_60d |
+| 24  | high_max_20d, range_20d_pct_of_price |
+
+**Implementation safety**: only the `FEATURE_ORDER` storage schema was
+modified. All `feats["x"] = ...` computation lines in `compute_features()`
+remain intact, so any feature still consumed as an intermediate value
+by other features inside `features.py` continues to work (e.g. `ema_8`
+still feeds `e_align`, `atr_14` still feeds `atr_x_50`, `bb_upper_20` /
+`bb_lower_20` still feed `bb_width_pct_252d`). Removing from
+`FEATURE_ORDER` excludes them from the persisted parquet but leaves
+the in-memory dict unchanged. This is the safest possible cleanup.
+
+**Storage savings**: 30 columns × ~1.55M rows × snappy-compressed
+floats = ~80-100 MB removed from `features.parquet` and from every
+downstream parquet read.
+
+### Change B — Methodology section trim in `app/streamlit_app.py`
+
+The "System Health & Methodology" expander's prose was trimmed by
+~35% to remove:
+
+- **Inaccurate references to removed components**: the previous text
+  mentioned `s_climax` (removed in Phase 6) and `s_demand` (removed
+  in Phase 28) as "zero-weight diagnostics in the schema". Post-Phase
+  28 this is false — `s_demand` is no longer in the schema, and
+  `s_climax` hasn't been since Phase 6.
+- **Inaccurate weight claim**: previous text said "`s_momentum` carries
+  1% in every state" — actually it's 0.28% max (TRENDING) and 0% in
+  CONSOLIDATING / EXHAUSTION / DETERIORATING.
+- **Phase audit-trail noise**: previous text name-dropped "Phase 7
+  Priority 3a validation, the Priority 2 bootstrap analysis of every
+  weight cell, and the Priority 3c finding on confidence-blending" —
+  these are internal phase tags meaningless to users.
+- **Redundant OOS IC section**: there was a separate "Out-of-Sample
+  Information Coefficient by Horizon" heading + paragraph that mostly
+  duplicated what the Methodology paragraph already said. Merged into
+  one tight description.
+
+The trimmed methodology block now (1) accurately states the 10-component
+makeup, (2) explains the per-state weighting / 0-100 mapping / grading
+in two short paragraphs, (3) explains component contributions including
+the Phase 28 zero-weight-row hiding behavior, (4) explains OOS IC + the
+60d/126d horizon strength, and (5) points to SPEC.md for full detail.
+
+### Validation
+
+- **140/140 TradingView reference fields PASS** — CCQS bit-identical
+  for all 10 canaries (no consumed features changed).
+- **11/11 pipeline sanity checks PASS**.
+- **51/51 pytest tests PASS**.
+- `features.parquet` now has 108 columns (was 138).
+- Dashboard cache 25.51 MB (no change — slim cache already excluded
+  most of the removed features).
+
 
 

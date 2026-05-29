@@ -377,48 +377,28 @@ with tab_production:
         st.markdown("### Methodology")
         st.markdown(
             """
-**CCQS** is a per-ticker composite of standardized components: relative
-strength versus the S&P 500, relative strength leadership (a quality-weighted
-relative strength blend), relative strength line behaviour versus the
-benchmark, trend slope, chart structure, multi-timeframe alignment (weekly +
-monthly trend confirmation), and extension from trend. Two additional
-components — `s_climax` (removed in Phase 6) and `s_demand` (zeroed in
-Phase 7 after the Priority 2 bootstrap analysis showed it averaged
-−0.009 out-of-sample information coefficient) — are kept in the schema as
-zero-weight diagnostics. `s_momentum` carries 1% in every state.
-Each component is z-scored cross-sectionally per date, then combined with
-state-conditional weights and a confidence-blended Bayesian average across the
-six states.
+**CCQS** is a per-ticker composite of 10 standardized components: relative
+strength vs SPY, RS leadership, RS line behaviour, trend slope, chart
+structure, multi-timeframe alignment, extension, residual momentum,
+oscillator momentum, and volume pattern.
 
-The resulting score is per-date z-renormalized, mapped to 0–100 via the
-standard normal cumulative distribution function, then per-date winsorized
-at the 1st and 99th percentiles. Grades S, A, B, C, D come from per-date
-quantile cuts (top 8% → S, next 12% → A, and so on).
+Each component is z-scored cross-sectionally per date, combined with
+state-conditional weights, and Bayesian-averaged across the six states.
+The composite is mapped to 0–100 via the standard-normal CDF, winsorized
+at the 1st / 99th percentiles, and graded by per-date quantile cuts
+(top 8% → S, next 12% → A, etc.).
 
-**Out-of-sample information coefficient** is the Spearman rank correlation
-between today's CCQS and forward returns at each horizon, evaluated on data
-the model never saw. A t-statistic above 2.0 indicates the signal is
-statistically distinguishable from noise.
+**Component contributions** are z × weight under the ticker's primary
+state. Components with zero weight in that state are hidden — they
+contribute nothing to that name's CCQS.
 
-**Component contributions** in stock detail are z × weight under the ticker's
-current state. The sum (after rescale) approximates the CCQS itself; large
-positive contributions are what's driving the score.
+**Out-of-sample IC** is the Spearman rank correlation between today's CCQS
+and forward returns, evaluated on data the model never saw. CCQS shows the
+strongest signal at the 60d and 126d horizons. A t-statistic above 2.0
+indicates the signal is distinguishable from noise.
 
-See **SPEC.md** for the full methodology spec, including the Phase 7
-Priority 3a validation, the Priority 2 bootstrap analysis of every weight
-cell, and the Priority 3c finding on confidence-blending and per-state
-weight customization.
-            """
-        )
-
-        st.markdown("### Out-of-Sample Information Coefficient by Horizon")
-        st.markdown(
-            """
-Out-of-sample information coefficient (rank correlation between today's CCQS
-and forward returns, evaluated on data the model never saw). The composite
-shows the strongest signal at the 60-day and 126-day forward horizons. See
-**SPEC.md** for the full Phase 16 walk-forward evidence including
-horizon-by-horizon and regime-conditional breakdowns.
+See `SPEC.md` for the full methodology, weight tables, and walk-forward
+validation.
             """
         )
 

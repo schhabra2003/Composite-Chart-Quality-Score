@@ -494,12 +494,21 @@ def _within_basket_rank(metric_wide: pd.DataFrame, ticker_to_basket: dict[str, s
 # ---------------------------------------------------------------------------
 
 FEATURE_ORDER: list[str] = [
-    # Cat 1 (9)
-    "close", "open", "high", "low", "sma_50", "sma_200", "ema_8", "ema_21", "ema_50",
-    # Cat 2 (5)
-    "atr_14", "atr_pct", "adr_pct_20", "realized_vol_20", "realized_vol_60",
-    # Cat 3 (5)
-    "pct_ma_50", "pct_ma_200", "atr_x_50", "atr_x_200", "vol_normalized_extension",
+    # Phase 29 (2026-05-28): 30 features removed from storage because they
+    # had zero downstream references in any consumer (components.py,
+    # state.py, leadership.py, setup_classifier_v2.py, aggregation.py,
+    # data_loader.py, tables.py, charts.py, streamlit_app.py). The
+    # `feats["..."] = ...` computation lines are preserved in compute_features
+    # below — some are still needed as intermediate values for derived
+    # features (e.g. ema_8 feeds e_align). Removing from FEATURE_ORDER only
+    # excludes them from the persisted parquet, saving 30 columns × 1.5M
+    # rows of storage + downstream IO. CCQS bit-identical.
+    # Cat 1 (4) — removed: open, high, low, ema_8, ema_50
+    "close", "sma_50", "sma_200", "ema_21",
+    # Cat 2 (2) — removed: atr_14, atr_pct, realized_vol_20
+    "adr_pct_20", "realized_vol_60",
+    # Cat 3 (4) — removed: atr_x_200
+    "pct_ma_50", "pct_ma_200", "atr_x_50", "vol_normalized_extension",
     # Cat 4 (5)
     "trend_slope_60d", "trend_r_squared_60d", "trend_slope_t_stat",
     "trend_slope_significant", "price_z_score_vs_trend",
@@ -516,16 +525,19 @@ FEATURE_ORDER: list[str] = [
     "rs_rating_spy",
     "sharpe_momentum_rank_126d", "sortino_rank_126d",
     "within_basket_z_21d",
-    # Cat 9 (13) — SPY RS Line + QQQ context-only RS Line
-    "rs_line_spy_value", "rs_line_qqq_value",
+    # Cat 9 (10) — SPY RS Line + QQQ context-only RS Line.
+    # Removed: rs_line_spy_value, rs_line_qqq_value, rs_line_qqq_slope_20d
+    # (raw values feed internal slope/new-high derivations; the derived
+    # signals are the consumed ones).
     "rs_line_spy_new_high_60d", "rs_line_spy_new_high_252d",
     "rs_line_spy_slope_20d", "rs_line_spy_slope_60d", "rs_line_spy_r_squared_60d",
     "rs_line_qqq_new_high_60d", "rs_line_qqq_new_high_252d",
-    "rs_line_qqq_slope_20d", "rs_line_qqq_slope_60d",
+    "rs_line_qqq_slope_60d",
     "rs_rating_slope_60d", "rs_rating_slope_120d",
-    # Cat 9b (3) — Phase 8a residual momentum (beta-adjusted; see comp/feature note).
-    "residual_momentum_63d", "residual_momentum_126d", "residual_momentum_252d",
-    # Cat 10 (9)
+    # Cat 9b (1) — Phase 8a residual momentum. Only 126d is consumed.
+    # Removed: residual_momentum_63d, residual_momentum_252d.
+    "residual_momentum_126d",
+    # Cat 10 (8)
     "sma_stack_score", "ema_stack_score", "hh_count_60d", "hl_count_60d",
     "trend_integrity", "new_252d_high",
     "pct_up_days_21", "failed_breakout_flag_10d",
@@ -536,16 +548,19 @@ FEATURE_ORDER: list[str] = [
     "monthly_close_above_sma_10", "monthly_higher_highs_3m",
     # Cat 13 (1)
     "mtf_rs_coherence",
-    # Cat 14 (7)
-    "rsi_14", "macd_line", "macd_signal", "macd_histogram", "macd_posture",
+    # Cat 14 (4) — removed: macd_line, macd_signal, macd_histogram
+    # (only macd_posture is consumed by any classifier).
+    "rsi_14", "macd_posture",
     "bullish_divergence_20d", "bearish_divergence_20d",
-    # Cat 15 (6)
-    "bb_upper_20", "bb_lower_20", "bb_width_pct_252d", "bb_squeeze_flag",
-    "vcp_quality_score", "base_duration_days",
-    # Cat 16 (3)
-    "days_near_52w_high_60d", "consecutive_high_intensity", "climax_volume_flag",
-    # Cat 17 (4)
-    "within_basket_z_63d", "within_basket_z_126d",
+    # Cat 15 (3) — removed: bb_upper_20, bb_lower_20, base_duration_days
+    # (the upper/lower bands feed bb_width internally; only bb_width is
+    # consumed downstream).
+    "bb_width_pct_252d", "bb_squeeze_flag",
+    "vcp_quality_score",
+    # Cat 16 (2) — removed: consecutive_high_intensity
+    "days_near_52w_high_60d", "climax_volume_flag",
+    # Cat 17 (3) — removed: within_basket_z_126d
+    "within_basket_z_63d",
     "within_basket_rank", "within_basket_rank_pct",
     # Cat 18 (1)
     "volume_leadership_confirmed",
@@ -554,39 +569,34 @@ FEATURE_ORDER: list[str] = [
     "pct_above_sma_50", "pct_above_sma_200",
     "weekly_rs_new_high_26w", "monthly_rs_rising_3m", "monthly_rs_rising_6m",
     "pct_from_52w_high", "pct_from_52w_low",
-    # Cat 20 (4) — Trend Quality (Path D): persistence / smoothness signals
-    # that are hard to read from the chart but predictive of medium-long term
-    # trend continuation.
+    # Cat 20 (3) — removed: return_smoothness_60d
     "hurst_exponent_252d", "return_autocorrelation_60d_lag1",
-    "return_smoothness_60d", "trend_rsquared_252d",
-    # Cat 21 (4) — Volatility Quality (Path D): asymmetric & sustained-drawdown
-    # vol measures that complement realized_vol/ATR.
+    "trend_rsquared_252d",
+    # Cat 21 (3) — removed: ulcer_index_60d
     "upside_vol_60d", "downside_vol_60d",
-    "ulcer_index_60d", "gain_to_pain_ratio_252d",
-    # Cat 22 (4) — Risk-Adjusted Performance (Path D): multi-horizon Sharpe
-    # ranks, tail-ratio, information ratio vs SPY.
+    "gain_to_pain_ratio_252d",
+    # Cat 22 (4) — Risk-Adjusted Performance.
     "sharpe_rank_60d", "sharpe_rank_252d",
     "tail_ratio_252d", "information_ratio_252d",
-    # Cat 23 (10) — Horizon-Specific (Path E): 21d / 60d momentum-quality
-    # signals targeted at the 20–60d forward-return horizon, where prior
-    # CCQS had its weakest IC (≈0.01). Strong 126d IC (≈0.037) suggests
-    # the score reads long-cycle quality well but underweights medium-term
-    # momentum; Cat 23 closes that gap.
+    # Cat 23 (6) — Horizon-Specific. Removed: bb_position_21d, sharpe_ratio_60d,
+    # information_ratio_60d, sortino_ratio_60d (alternative window variants of
+    # already-consumed metrics).
     "momentum_21d_pct", "rs_line_spy_slope_21d", "ad_line_slope_21d",
-    "bb_position_21d",
-    "sharpe_ratio_60d", "information_ratio_60d", "sortino_ratio_60d",
     "max_drawdown_pct_60d",
     "return_autocorrelation_21d_lag1", "vol_percentile_21d",
-    # Cat 24 (12) — Setup-cascade primitives (Phase 25 + Phase 27)
+    # Cat 24 (10) — Setup-cascade primitives (Phase 25 + Phase 27).
+    # Removed: high_max_20d, range_20d_pct_of_price (intermediate variables
+    # consumed inside features.py to derive other Cat 24 features; not
+    # consumed by setup_classifier_v2 directly).
     "close_max_40d", "close_min_40d",
-    "high_max_20d", "pct_from_20d_high",
-    "range_20d_pct_of_price", "range_60d_pct_of_price",
+    "pct_from_20d_high",
+    "range_60d_pct_of_price",
     "range_20d_to_60d_ratio", "position_in_60d_range",
     "pct_ma_50_p80_252d", "true_range_x_atr14",
     "failed_breakout_flag_5d_v2",
     "failed_breakdown_flag_5d_v2",  # Phase 27 — symmetric to failed_breakout
 ]
-assert len(FEATURE_ORDER) == 138, f"FEATURE_ORDER has {len(FEATURE_ORDER)} entries, expected 138"
+assert len(FEATURE_ORDER) == 108, f"FEATURE_ORDER has {len(FEATURE_ORDER)} entries, expected 108"
 
 
 def compute_features(long_df: pd.DataFrame) -> pd.DataFrame:
