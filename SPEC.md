@@ -4015,11 +4015,11 @@ The canonical universe lives in `data/universe.py`. **DO NOT REGENERATE OR MODIF
 - **SPY, QQQ** are kept as benchmarks only (RS denominator + chart overlays) and
   are NOT in the scored panel — their OHLCV is persisted separately at
   `data/cache/benchmarks.parquet`
-- **275 baskets** across **9 categories**
-  - **180 CORE baskets** (sector/industry primary classifications)
+- **276 baskets** across **9 categories**
+  - **181 CORE baskets** (sector/industry primary classifications)
   - **60 TAG baskets** (thematic cross-sector overlays)
   - **35 COUNTRY baskets** (country ETF tier)
-- **275 populated baskets**, **151 healthy** (≥3 primary tickers)
+- **276 populated baskets**, **151 healthy** (≥3 primary tickers)
 - **734 manual business-descriptor overrides** already applied
 
 ### Removed Tickers (Phase 5.2)
@@ -5922,7 +5922,7 @@ Deploy to private GitHub + Streamlit Community Cloud.
 | Metric | Value |
 |--------|------:|
 | Universe size | ~892 tickers |
-| Baskets | 275 (180 CORE + 60 TAG + 35 COUNTRY); ~148 populated themes shown in dashboard |
+| Baskets | 276 (181 CORE + 60 TAG + 35 COUNTRY); ~148 populated themes shown in dashboard |
 | Benchmarks | 2 (SPY, QQQ) |
 | Features per stock | 108 |
 | Components | 10 |

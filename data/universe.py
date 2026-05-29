@@ -6,10 +6,10 @@ Dedup: Priority hierarchy + 734 manual overrides for business-descriptor accurac
 
 Stats:
   - 892 unique tickers
-  - 275 baskets across 9 categories
-  - 180 CORE / 60 TAG / 35 COUNTRY
+  - 276 baskets across 9 categories
+  - 181 CORE / 60 TAG / 35 COUNTRY
   - 734 manual overrides applied
-  - 275 populated baskets, 151 healthy (>=3 primary tickers)
+  - 276 populated baskets, 151 healthy (>=3 primary tickers)
 
 Usage:
   from data.universe import all_unique_tickers, primary_basket, tags_for
@@ -42,7 +42,8 @@ CATEGORIES: Dict[str, Dict[str, List[str]]] = {
         'Data Center Networking': ['ANET', 'CSCO', 'AVGO', 'MRVL', 'CIEN', 'LITE'],
         'Servers and AI Hardware': ['SMCI', 'DELL', 'HPE', 'NTAP', 'WDC', 'STX', 'SNDK', 'IBM'],
         'Enterprise Storage and Data Infrastructure': ['NTAP', 'WDC', 'STX', 'SNDK', 'IBM', 'DDOG', 'SNOW', 'MDB'],
-        'Hyperscalers': ['MSFT', 'AMZN', 'GOOGL', 'META', 'ORCL', 'AAPL'],
+        'Hyperscalers': ['MSFT', 'AMZN', 'GOOGL', 'META', 'ORCL'],
+        'Magnificent Seven': ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NVDA', 'TSLA'],
         'AI Cloud Challengers and Neocloud': ['ORCL', 'IBM', 'HPE', 'SMCI', 'DELL', 'NBIS', 'IREN', 'CORZ', 'APLD', 'CRWV'],
         'Enterprise SaaS': ['NOW', 'CRM', 'ADBE', 'INTU', 'TEAM', 'HUBS', 'WDAY', 'DOCU'],
         'Vertical Software': ['VEEV', 'TYL', 'APPF', 'MNDY', 'PAYC', 'GWRE', 'DAY', 'APP'],
@@ -364,6 +365,7 @@ BASKET_PRIORITY: Dict[str, int] = {
     'Servers and AI Hardware': 11,
     'Enterprise Storage and Data Infrastructure': 12,
     'Hyperscalers': 13,
+    'Magnificent Seven': 13,  # Phase 30: AAPL-primary mega-cap leadership basket; not used for dedup of other 6 (they keep existing primaries)
     'AI Cloud Challengers and Neocloud': 14,
     'Enterprise SaaS': 15,
     'Vertical Software': 16,
@@ -637,7 +639,7 @@ MANUAL_OVERRIDES: Dict[str, str] = {
     'AAL': 'Airlines',
     'AAOI': 'Optical Networking and Interconnect',
     'AAP': 'Auto Parts and Repair',
-    'AAPL': 'Hyperscalers',
+    'AAPL': 'Magnificent Seven',
     'ABBV': 'Large-Cap Pharma',
     'ABNB': 'Travel Booking',
     'ABT': 'MedTech Devices',
@@ -1363,7 +1365,7 @@ PRIMARY_BASKETS: Dict[str, str] = {
     'AAL': 'Airlines',
     'AAOI': 'Optical Networking and Interconnect',
     'AAP': 'Auto Parts and Repair',
-    'AAPL': 'Hyperscalers',
+    'AAPL': 'Magnificent Seven',
     'ABBV': 'Large-Cap Pharma',
     'ABNB': 'Travel Booking',
     'ABT': 'MedTech Devices',
@@ -2268,7 +2270,8 @@ PRIMARY_BASKET_CONSTITUENTS: Dict[str, List[str]] = {
     'Data Center Networking': ['ANET', 'CSCO'],
     'Servers and AI Hardware': ['DELL', 'HPE', 'NTAP', 'SMCI'],
     'Enterprise Storage and Data Infrastructure': [],
-    'Hyperscalers': ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'ORCL'],
+    'Hyperscalers': ['AMZN', 'GOOGL', 'META', 'MSFT', 'ORCL'],
+    'Magnificent Seven': ['AAPL'],
     'AI Cloud Challengers and Neocloud': ['APLD', 'CORZ', 'CRWV', 'IREN', 'NBIS'],
     'Enterprise SaaS': ['ADBE', 'CRM', 'DOCU', 'HUBS', 'INTU', 'NOW', 'TEAM', 'WDAY'],
     'Vertical Software': ['APPF', 'DAY', 'MNDY', 'PAYC', 'TYL', 'VEEV'],
@@ -2559,7 +2562,7 @@ TAGS: Dict[str, List[str]] = {
     'AMGN': ['GLP-1 and Metabolic', 'Obesity Drug Ecosystem', 'GLP-1 Winners'],
     'AMH': ['Single-Family Rental', 'Housing Affordability Stress'],
     'AMKR': ['Advanced Packaging'],
-    'AMZN': ['Retail Media Networks', 'E-Commerce Marketplaces'],
+    'AMZN': ['Retail Media Networks', 'E-Commerce Marketplaces', 'Magnificent Seven'],
     'ANET': ['AI Data Center Capex', 'AI Hardware Supply Chain', 'Sovereign AI Infrastructure'],
     'APD': ['Hydrogen and Fuel Cells'],
     'APP': ['Vertical Software'],
@@ -2688,7 +2691,7 @@ TAGS: Dict[str, List[str]] = {
     'GEV': ['Nuclear SMR Developers', 'Transformer Bottleneck', 'Switchgear and Electrical Distribution', 'Data Center Power and Thermal', 'Backup Power and Generators', 'Gas Turbines and Peakers', 'Wind and Renewables', 'AI Data Center Capex', 'AI Power Demand', 'Data Center Construction and EPC', 'Grid Bottleneck', 'Electrification', 'Reindustrialization', 'Tariff Beneficiaries'],
     'GM': ['Autonomous Vehicles and Robotaxis'],
     'GNRC': ['Switchgear and Electrical Distribution', 'Climate Adaptation'],
-    'GOOGL': ['Digital Advertising Platforms', 'Retail Media Networks', 'Consumer Internet', 'Quantum Computing', 'Autonomous Vehicles and Robotaxis'],
+    'GOOGL': ['Digital Advertising Platforms', 'Retail Media Networks', 'Consumer Internet', 'Quantum Computing', 'Autonomous Vehicles and Robotaxis', 'Magnificent Seven'],
     'GPN': ['Digital Payments and Networks', 'Cross-Border Payments'],
     'GREK': ['Index Reclassification and Frontier-to-Developed'],
     'GS': ['Brokers and Trading Platforms'],
@@ -2758,7 +2761,7 @@ TAGS: Dict[str, List[str]] = {
     'MDLZ': ['GLP-1 Consumer Losers'],
     'MDT': ['Surgical Robotics and Advanced Devices', 'Orthopedics and Spine', 'Cardiovascular Devices', 'Diabetes Devices', 'Longevity and Aging Population'],
     'MELI': ['Digital Payments and Networks'],
-    'META': ['Digital Advertising Platforms', 'Retail Media Networks', 'Consumer Internet'],
+    'META': ['Digital Advertising Platforms', 'Retail Media Networks', 'Consumer Internet', 'Magnificent Seven'],
     'MGM': ['Sports Betting and iGaming'],
     'MKTX': ['Market Infrastructure and Exchanges'],
     'MLM': ['Reindustrialization', 'Reshoring and Factory Buildout', 'North American Onshoring Materials', 'Climate Adaptation'],
@@ -2769,7 +2772,7 @@ TAGS: Dict[str, List[str]] = {
     'MRVL': ['AI Compute and Accelerators', 'Data Center Networking', 'AI Data Center Capex'],
     'MS': ['Brokers and Trading Platforms'],
     'MSCI': ['Exchanges and Market Data', 'Insurance Software and Data'],
-    'MSFT': ['Developer Productivity and Code AI', 'Identity and Access Management', 'Gaming Publishers', 'AI Application Layer', 'Quantum Computing'],
+    'MSFT': ['Developer Productivity and Code AI', 'Identity and Access Management', 'Gaming Publishers', 'AI Application Layer', 'Quantum Computing', 'Magnificent Seven'],
     'MSGS': ['Sports Live Events and Experiences'],
     'MSOS': ['Policy Optionality and Regulatory Beta'],
     'MSTR': ['Stablecoin and Tokenization Proxies', 'Crypto and Tokenization Proxies', 'Speculative Liquidity and Retail Beta'],
@@ -2787,7 +2790,7 @@ TAGS: Dict[str, List[str]] = {
     'NRG': ['Gas Turbines and Peakers', 'AI Power Demand'],
     'NTAP': ['Enterprise Storage and Data Infrastructure'],
     'NUE': ['Reindustrialization', 'North American Onshoring Materials', 'Tariff Beneficiaries'],
-    'NVDA': ['HBM and Advanced Memory', 'AI Data Center Capex', 'AI Hardware Supply Chain', 'Sovereign AI Infrastructure', 'Humanoid Robotics', 'Autonomous Vehicles and Robotaxis'],
+    'NVDA': ['HBM and Advanced Memory', 'AI Data Center Capex', 'AI Hardware Supply Chain', 'Sovereign AI Infrastructure', 'Humanoid Robotics', 'Autonomous Vehicles and Robotaxis', 'Magnificent Seven'],
     'NVGS': ['Shipping and Geopolitical Tonne-Mile Risk'],
     'NVO': ['GLP-1 and Metabolic', 'Obesity Drug Ecosystem', 'GLP-1 Winners', 'Longevity and Aging Population'],
     'NXE': ['Nuclear Fuel, Enrichment and Services'],
@@ -2879,7 +2882,7 @@ TAGS: Dict[str, List[str]] = {
     'TRMB': ['Industrial Automation', 'Industrial Software and PLM'],
     'TRMD': ['Shipping and Geopolitical Tonne-Mile Risk'],
     'TRV': ['Marine Insurance and Reinsurance'],
-    'TSLA': ['Robotics and Embodied AI', 'Battery Energy Storage', 'Humanoid Robotics', 'Autonomous Vehicles and Robotaxis', 'Grid Flexibility and Storage'],
+    'TSLA': ['Robotics and Embodied AI', 'Battery Energy Storage', 'Humanoid Robotics', 'Autonomous Vehicles and Robotaxis', 'Grid Flexibility and Storage', 'Magnificent Seven'],
     'TSM': ['AI ASICs and Custom Silicon', 'HBM and Advanced Memory', 'Advanced Packaging', 'AI Data Center Capex', 'AI Hardware Supply Chain', 'Sovereign AI Infrastructure', 'Supply Chain Diversification', 'Taiwan'],
     'TT': ['Data Center Power and Thermal'],
     'TTD': ['Retail Media Networks'],

@@ -146,6 +146,7 @@ System is **fully deployed and live in production**. Phase numbering reflects it
 | 27 | Setup cascade bug fix + "Reclaim" label (13th) | ✅ |
 | 28 | s_demand permanently removed + 0-weight rows hidden | ✅ |
 | 29 | 30 unused features dropped + Methodology section trim | ✅ |
+| 30 | "Magnificent Seven" CORE basket added; AAPL moved out of Hyperscalers | ✅ |
 
 ---
 

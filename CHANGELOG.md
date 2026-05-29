@@ -2,6 +2,98 @@
 
 Phase-by-phase implementation history. Companion to `SPEC.md` (authoritative methodology document) and `USER_GUIDE.md` (user-facing interpretation manual).
 
+## Phase 30 — Magnificent Seven basket added; AAPL moved out of Hyperscalers (2026-05-29)
+
+User-driven universe reorganization. A new CORE basket "Magnificent Seven"
+is added under the "Technology, AI and Internet" category, containing all
+7 mega-cap leaders (AAPL, MSFT, AMZN, GOOGL, META, NVDA, TSLA).
+
+### Universe changes
+
+**`data/universe.py`:**
+- `CATEGORIES["Technology, AI and Internet"]["Hyperscalers"]`: removed `'AAPL'` (now 5 members: MSFT, AMZN, GOOGL, META, ORCL)
+- `CATEGORIES["Technology, AI and Internet"]["Magnificent Seven"]`: NEW basket with 7 members
+- `BASKET_PRIORITY["Magnificent Seven"] = 13` (positioned next to Hyperscalers in the priority stack; immaterial for dedup since AAPL is hard-set via PRIMARY_BASKETS)
+- `MANUAL_OVERRIDES["AAPL"]`: `'Hyperscalers'` → `'Magnificent Seven'`
+- `PRIMARY_BASKETS["AAPL"]`: `'Hyperscalers'` → `'Magnificent Seven'`
+- `PRIMARY_BASKET_CONSTITUENTS["Hyperscalers"]`: removed `'AAPL'`
+- `PRIMARY_BASKET_CONSTITUENTS["Magnificent Seven"]`: NEW, `['AAPL']`
+- `TAGS[t]` for `t in {MSFT, AMZN, GOOGL, META, NVDA, TSLA}`: appended `'Magnificent Seven'`
+- Module-docstring stats: 275 → 276 baskets, 180 → 181 CORE
+
+The 6 non-AAPL Mag7 members keep their existing primary baskets
+(Hyperscalers for MSFT/AMZN/GOOGL/META, AI Compute and Accelerators for
+NVDA, Electric Vehicles for TSLA). Magnificent Seven appears as a TAG
+overlay on those names — additive, no methodology disruption to their
+within-basket comparisons.
+
+### Methodological consequence — AAPL within-basket features
+
+AAPL is the sole primary constituent of the new Magnificent Seven basket.
+Per `compute/features.py:_within_basket_z` (requires `len(members) >= 3`
+to compute) and `_within_basket_rank` (requires `>= 2`), AAPL now emits
+NaN for:
+- `within_basket_z_21d`
+- `within_basket_z_63d`
+- `within_basket_rank`
+- `within_basket_rank_pct`
+
+These were previously computed against the 6-member Hyperscalers cohort.
+The 10-component CCQS panel does not depend on these particular features
+(they live deeper in feature space and feed `s_rs_leadership` via other
+paths), so AAPL's CCQS remains computable with `weight_present = 1.0` and
+all 10 components valid.
+
+### Cache + pipeline refresh
+
+Full pipeline re-run on 2026-05-28 OHLCV with the new universe:
+- `compute.features`: 55.6s, 108 features × 1,548,000 rows
+- `compute.standardization`: per-date robust z-scores
+- `compute.pipeline`: components / state / leadership / CCQS / setups
+- `compute.build_dashboard_cache`: slimmed parquets to ~25.5 MB
+
+### Universe-drift effect on canaries (expected, within tolerance)
+
+Cross-sectional ranks (RS rating, CCQS percentile) shift slightly any time
+the universe changes — same effect as Phases 23 / 14R / 5.2. All 10 TV
+parity canaries pass the existing tolerance band (CCQS ±5, RS ±5):
+
+| Canary | CCQS pre | CCQS post | Δ |
+|---|---:|---:|---:|
+| NVDA | 74.85 | 74.31 | −0.54 |
+| MSFT | 25.65 | 25.13 | −0.52 |
+| META | 15.51 | 15.80 | +0.29 |
+| GOOGL | 88.54 | 87.90 | −0.64 |
+| TSLA | 63.88 | 65.60 | +1.72 |
+| AMZN | 84.49 | 85.67 | +1.18 |
+| JPM | 45.50 | 45.11 | −0.39 |
+| TSM | 86.79 | 87.60 | +0.81 |
+| LLY | 71.73 | 71.18 | −0.55 |
+| UNH | 82.47 | 81.96 | −0.51 |
+
+All categorical fields (grade, state, leadership_tier, setup) bit-identical.
+
+### Validation
+
+- ✓ 91/91 pytest passed
+- ✓ 140/140 TV reference parity passed (all 10 canaries × 14 fields)
+- ✓ 11/11 pipeline sanity checks PASS
+- ✓ Universe consistency: AAPL primary = Magnificent Seven; Hyperscalers
+  no longer contains AAPL; 6 other Mag7 names have Mag7 in their tag list
+
+### AAPL post-refresh snapshot (2026-05-28)
+
+| Field | Value |
+|---|---|
+| CCQS | 84.76 (grade A) |
+| State | TRENDING (conf 0.788) |
+| Leadership tier | STRONG_PERFORMER (display "Steady") |
+| Setup | Tight Base |
+| is_basket_leader | False (1-member basket; trivially the only member) |
+| Primary basket | Magnificent Seven |
+| Tags | [] |
+
+
 **Path C overall status:** COMPLETE as of 2026-05-26 (commit `e3a9ada` + Phase 12 closeout documentation).
 
 Status legend:
