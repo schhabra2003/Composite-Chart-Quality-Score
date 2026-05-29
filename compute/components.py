@@ -1,7 +1,7 @@
 """
 CCQS V1 — Component Scoring Layer (SPEC Section 7)
 
-Computes 11 component z-scores per (ticker, date):
+Computes 10 component z-scores per (ticker, date) (post-Phase-28):
 
     S_RS                Classical cross-sectional momentum
     S_RS_LEADERSHIP     Multi-dim leadership composite (PRIMARY)
@@ -11,13 +11,18 @@ Computes 11 component z-scores per (ticker, date):
     S_STRUCTURE         MA stacks + HH/HL + Supertrend
     S_MTF               Multi-timeframe confluence
     S_EXTENSION         Vol-normalized extension (inverted)
-    S_DEMAND            Volume quality (zero-weighted since Phase 7)
     S_MOMENTUM          MACD + RSI + divergences
     S_VOLUME            Bundled volume-pattern composite (Phase 10)
 
 (S_CLIMAX removed in Phase 6, 2026-05-25 — carried zero weight since
 Phase X.2.1, math was inverted vs label. Underlying features remain
-available to state classification and the setup classifier.)
+available to state classification and the setup classifier.
+
+S_DEMAND removed from the component panel in Phase 28, 2026-05-28 —
+had weight 0.0 in every state since Phase 7 (Priority 3a — s_demand
+removal + carrier redistribution, 2026-05-25). The _compute_s_demand
+function is preserved below for reference but is no longer called
+from compute_components().)
 
 All outputs live in z-score space. Raw features feed pre-transform
 operations (logs, products, sign-flips, posture lookups); z_scores feed
@@ -439,7 +444,7 @@ def _compute_s_volume(features: pd.DataFrame) -> pd.Series:
 # ---------------------------------------------------------------------------
 
 def compute_components(features: pd.DataFrame, z_scores: pd.DataFrame) -> pd.DataFrame:
-    """Return DataFrame of 11 component z-scores aligned to features index."""
+    """Return DataFrame of 10 component z-scores aligned to features index (post-Phase-28; s_demand removed)."""
     # Align z_scores to features (both should already share the MultiIndex).
     z = z_scores.reindex(features.index)
 

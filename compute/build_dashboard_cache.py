@@ -48,11 +48,13 @@ LATEST_ONLY_COLS = {
         "adx_14", "rsi_14", "realized_vol_60",
         "within_basket_z_21d", "distribution_days_25",
     ],
+    # Phase 28 (2026-05-28) — s_demand removed from the component panel
+    # (had weight 0.0 in every state since Phase 7). 10 components, not 11.
     "components.parquet": [
         "s_rs", "s_rs_leadership", "s_residual_momentum",
         "s_rsl", "s_trend_slope",
         "s_structure", "s_mtf", "s_extension",
-        "s_demand", "s_momentum", "s_volume",
+        "s_momentum", "s_volume",
     ],
 }
 

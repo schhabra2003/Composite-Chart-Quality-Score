@@ -473,7 +473,7 @@ if SHOW_SANDBOX:
             st.markdown("## Top Sandbox-Only Stocks")
             st.markdown(
                 "<div class='meta'>Stocks present only because of the SP500 expansion "
-                "— not in the production 879-name universe.</div>",
+                "— not in the production ~892-name universe.</div>",
                 unsafe_allow_html=True,
             )
             sb_only_top = load_sandbox_only_top_stocks(n=50)

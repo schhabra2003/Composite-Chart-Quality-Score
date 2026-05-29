@@ -190,14 +190,15 @@ def _composite_z_with_renormalization(
 
     Returns:
         composite_z       — the same value as the original formula when all
-                            11 components are present; per-row renormalized
+                            10 components are present (post-Phase-28; was 11
+                            before s_demand removal); per-row renormalized
                             when some components are NaN; NaN when the
                             partial threshold is breached.
         weight_present    — share of effective weight that was present on
                             each row (in [0, 1]).
         n_valid_components — count of non-NaN components per row.
 
-    Bit-identical guarantee: rows with all 11 components valid produce
+    Bit-identical guarantee: rows with all 10 components valid produce
     composite_z values mathematically identical to the original
     implementation (weight_present = 1.0 exactly).
     """
@@ -275,9 +276,9 @@ def compute_ccqs(components: pd.DataFrame, state: pd.DataFrame) -> pd.DataFrame:
     # using confidence-adjusted probabilities. Phase 24 — uses the
     # renormalization-aware composite so partial-history rows (some
     # components NaN) still produce a CCQS when enough weight is present.
-    # Rows with all 11 components valid produce values bit-identical to
-    # the original formula (verified in tests/test_metric_integrity.py
-    # and tests/reference/test_tv_parity.py).
+    # Rows with all 10 components valid (post-Phase-28; was 11 pre-Phase-28)
+    # produce values bit-identical to the original formula (verified in
+    # tests/test_metric_integrity.py and tests/reference/test_tv_parity.py).
     ccqs_z_raw, weight_present, n_valid_components = (
         _composite_z_with_renormalization(components, state)
     )

@@ -130,7 +130,12 @@ FEATURE_WEIGHTS: dict[str, dict[str, float]] = {
     # consecutive_high_intensity, climax_volume_flag) remain for state and
     # setup classification, but no longer roll up into a CCQS component.
 
-    # s_demand
+    # s_demand — pre-Phase-7 weight map preserved for historical audit
+    # context. s_demand was zeroed in every state at Phase 7 (2026-05-25,
+    # Priority 3a — s_demand removal + carrier redistribution) and the
+    # component itself was removed entirely at Phase 28 (2026-05-28). The
+    # weights below feed the OOS-IC-vs-effective-weight comparison in the
+    # original Phase X.4 audit and are NOT used by the daily pipeline.
     "up_down_vol_ratio_50": {"s_demand": 0.30},
     "distribution_days_25": {"s_demand": 0.25},
     "ad_line_slope_20":     {"s_demand": 0.20},

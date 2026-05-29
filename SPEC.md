@@ -3981,7 +3981,7 @@ For each basket:
 | Data | Daily OHLCV only (yfinance primary, Stooq backup for verification) |
 | Scope | Pure technical and momentum/strength analysis |
 | Timeframes | Daily primary; weekly + monthly confluence |
-| Universe | 910 unique tickers (expandable to mid/small caps later) |
+| Universe | ~892 unique tickers (post Phase 23; expandable to mid/small caps later) |
 | No macro/regime detection | User has separate models for that |
 | No fundamentals | No earnings, no estimates, no revisions |
 | No positioning data | No short interest, no insider, no options flow |
@@ -5084,13 +5084,14 @@ Target tier sizes (by construction of the quantile cuts):
 
 ---
 
-## 10. Setup Categories — 29 Setups (LEGACY — superseded by Phase 25)
+## 10. Setup Categories — 29 Setups (LEGACY — superseded by Phase 25 + 27)
 
 > ⚠️ **Phase 25 (2026-05-28) supersedes this section.** Production
-> now uses the 12-label chart-evocative cascade in
-> `compute/setup_classifier_v2.py` — see the Phase 25 entry above in the
-> phase-by-phase section. The 27-label vocabulary documented below is
-> preserved here for historical reference; the legacy classifier in
+> now uses the 13-label chart-evocative cascade in
+> `compute/setup_classifier_v2.py` (12 labels in Phase 25; Phase 27
+> added the 13th, "Reclaim") — see the Phase 25 / 27 entries above in
+> the phase-by-phase section. The 27-label vocabulary documented below
+> is preserved here for historical reference; the legacy classifier in
 > `compute/setup_classifier.py` is no longer called by the pipeline but
 > is kept untouched in the repo.
 

@@ -132,10 +132,11 @@ def run_pipeline() -> dict:
 
     # ---- Setups -----------------------------------------------------------
     # Phase 25 — replaced the legacy 27-label classify_setups() with the
-    # 12-label chart-evocative cascade classify_setup_v2(). Pure display-layer
-    # change; CCQS / state / tier / regime / TV reference values unchanged.
-    # The legacy classifier remains in compute/setup_classifier.py for
-    # reference; this is the only call site that flipped over.
+    # chart-evocative cascade classify_setup_v2() (12 labels at Phase 25;
+    # Phase 27 added a 13th, "Reclaim"). Pure display-layer change; CCQS /
+    # state / tier / regime / TV reference values unchanged. The legacy
+    # classifier remains in compute/setup_classifier.py for reference;
+    # this is the only call site that flipped over.
     t = time.time()
     from compute.setup_classifier_v2 import classify_setup_v2
     setups = classify_setup_v2(features)
