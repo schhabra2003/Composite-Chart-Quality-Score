@@ -4,13 +4,12 @@ CCQS V1 — Canonical Universe (Locked)
 Source: ADFM Public Equities Baskets deployed code + Macro Dislocation category.
 Dedup: Priority hierarchy + 734 manual overrides for business-descriptor accuracy.
 
-Stats (post Phase 23 — added 9 major recent IPOs; original 910 minus
-Phase 5.2 removals + later additions = 892):
+Stats:
   - 892 unique tickers
   - 275 baskets across 9 categories
   - 180 CORE / 60 TAG / 35 COUNTRY
   - 734 manual overrides applied
-  - 219 populated baskets, 152 healthy (>=3 tickers)
+  - 275 populated baskets, 151 healthy (>=3 primary tickers)
 
 Usage:
   from data.universe import all_unique_tickers, primary_basket, tags_for
@@ -1356,7 +1355,7 @@ MANUAL_OVERRIDES: Dict[str, str] = {
 }
 
 # ============================================================
-# PRIMARY_BASKETS (892 tickers, deduplicated — post Phase 23)
+# PRIMARY_BASKETS (892 tickers, deduplicated)
 # ============================================================
 PRIMARY_BASKETS: Dict[str, str] = {
     'A': 'Diagnostics and Life Science Tools',
@@ -2946,7 +2945,7 @@ BENCHMARKS: set = {"SPY", "QQQ"}
 # ============================================================
 
 def all_unique_tickers() -> List[str]:
-    """Return sorted list of all unique tickers across the universe (~892 post Phase 23)."""
+    """Return sorted list of all 892 unique tickers across the universe."""
     tickers = set()
     for baskets in CATEGORIES.values():
         for tl in baskets.values():

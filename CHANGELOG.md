@@ -237,7 +237,7 @@ See `SPEC.md` §Phase 11D §Phase 11E.2 patch.
 ### Phase 12 — Path C closeout documentation (2026-05-26) ✓ THIS COMMIT
 
 Comprehensive closeout work:
-1. Live site verification via Chrome MCP (verified Phase 11E.2 chips on STM/AWK/ABT, NVDA/AAL, 11 components, no "Emerging Leader" setup)
+1. Live site verification via Chrome MCP (verified Phase 11E.2 chips on STM/AWK/ABT, NVDA/AAL, 10 components, no "Emerging Leader" setup)
 2. SPEC.md comprehensive review + Path C — Comprehensive Overview section
 3. USER_GUIDE.md created (user-facing interpretation manual)
 4. CHANGELOG.md created (this file)
@@ -364,7 +364,7 @@ prior good cache stays live. This is the "no issues whatsoever" promise.
    - All 8 parquet files + 4 JSON files exist
    - All parquets non-empty
    - CCQS latest date within 7 days
-   - 11 components present in dashboard `components.parquet`
+   - 10 components present in dashboard `components.parquet`
    - Cache size within expected 15-40 MB band
    - Regime context current
    - All 11 sanity checks pass
@@ -375,7 +375,7 @@ prior good cache stays live. This is the "no issues whatsoever" promise.
    - CCQS values in [0, 100]
    - CCQS distribution non-degenerate
    - Grade distribution covers all 5 grades
-   - 11 components present, no all-NaN columns
+   - 10 components present, no all-NaN columns
    - State/tier/setup distributions non-degenerate
    - STATE_WEIGHTS sum to 1.0 per state
    - Confidence-blending mechanism intact
@@ -767,11 +767,11 @@ In `compute/ccqs.py`, `_state_composite_z()` is replaced with
 4. Computes the composite using only valid components.
 5. Emits NaN if either:
    - `weight_present < 0.60` (less than 60% of state weight present), OR
-   - `n_valid_components < 6` (fewer than 6 of 11 non-NaN).
+   - `n_valid_components < 6` (fewer than 6 of 10 non-NaN).
 
 ### Bit-identical guarantee for full-data tickers
 
-For any ticker with all 11 components valid, `weight_present == 1.0`
+For any ticker with all 10 components valid, `weight_present == 1.0`
 exactly, the renormalization is the identity, and the composite is
 **mathematically equivalent** to the original formula. **TradingView
 reference parity remains 140/140** (verified post-implementation; same
@@ -782,7 +782,7 @@ canary CCQS values within tolerance).
 | Column | Type | Description |
 |---|---|---|
 | `weight_present` | float | Share of state weight present per row (1.0 = full data) |
-| `n_valid_components` | int | Number of non-NaN components per row (out of 11) |
+| `n_valid_components` | int | Number of non-NaN components per row (out of 10) |
 | `is_partial` | bool | True when `weight_present < 1.0` and CCQS was computed |
 
 ### Dashboard disclaimer
@@ -797,10 +797,10 @@ is only on the detail panel).
 
 Universe count: 860 scored (up from 849). Two partial-CCQS rows today:
 
-| Ticker | n_valid / 11 | weight_present | CCQS | Grade |
+| Ticker | n_valid / 10 | weight_present | CCQS | Grade |
 |---|---:|---:|---:|---|
-| SNDK | 10 | 0.952 | 98.19 | S (partial) |
-| CRWV | 9 | 0.669 | 60.67 | B (partial) |
+| SNDK | 9 | 0.952 | 98.19 | S (partial) |
+| CRWV | 8 | 0.669 | 60.67 | B (partial) |
 
 CRCL is still NaN today (only 6 components, 42% weight present — below
 threshold). It needs ~6 more trading days for `rs_rating_spy` to clear
@@ -823,7 +823,7 @@ Two gates protect score reliability:
   renormalization. The dominant carriers `s_rs` and `s_rs_leadership`
   account for ~54% in TRENDING; if both are NaN the row is correctly
   rejected as too partial.
-- **Component count gate (6 / 11)**: at least 6 of 11 components must
+- **Component count gate (6 / 10)**: at least 6 of 10 components must
   be present, preventing pathological cases where small-weight
   components dominate due to renormalization.
 
@@ -833,8 +833,9 @@ emitted as NaN.
 
 ## Phase 25 — Setup label redesign (2026-05-28)
 
-Replaces the 27-label setup vocabulary with a 12-label chart-evocative
-cascade. **Display-layer only** — no CCQS, state, leadership, or
+Replaces the 27-label setup vocabulary with a 13-label chart-evocative
+cascade (12 at Phase 25; Phase 27 added "Reclaim" as the 13th).
+**Display-layer only** — no CCQS, state, leadership, or
 methodology changes. The legacy classifier in
 `compute/setup_classifier.py` is preserved untouched for reference; the
 pipeline now calls the new `compute/setup_classifier_v2.py`.
@@ -851,7 +852,7 @@ pipeline now calls the new `compute/setup_classifier_v2.py`.
    coverage analysis on the live universe.
 6. 1–2 word labels (hard constraint).
 
-### The 12 labels (cascade order, first match wins)
+### The 13 labels (cascade order, first match wins)
 
 | # | Label | One-line intent |
 |---|---|---|
@@ -866,7 +867,8 @@ pipeline now calls the new `compute/setup_classifier_v2.py`.
 | 9 | At Highs | Bullish stack + within 5% of 252d high (residual) |
 | 10 | Basing Low | Within 10% of 252d low + bottom-40% cross-sectional ADR |
 | 11 | Breakdown | Closed below prior 40d low AND below 50d MA |
-| 12 | Sideways | 60d range < 20% of price + position within middle 50% of 60d range |
+| 12 | Reclaim | Breakdown within last 5 days now closing back above the failed level |
+| 13 | Sideways | 60d range < 20% of price + position within middle 50% of 60d range |
 
 If no condition matches → empty string (`""`). Silence beats noise.
 `setup_confidence = 1.0` for any assigned label, `0.0` for blank.

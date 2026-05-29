@@ -172,8 +172,6 @@ def _state_composite_z(components: pd.DataFrame, state: str) -> pd.Series:
 # present to keep the composite meaningful.
 PARTIAL_MIN_WEIGHT_PRESENT = 0.60   # row needs ≥60% of state weight present
 PARTIAL_MIN_VALID_COMPONENTS = 6    # AND ≥6 of 10 components non-NaN
-                                    # (was "of 11" pre-Phase-28; s_demand
-                                    # removed since it had weight 0 anyway).
 # Threshold tuning rationale: 60% leaves at most 40% of state weight imputed
 # by renormalizing across the remaining components. Empirically calibrated to
 # admit names with ~9-10 months of post-IPO history (typical 252-day-warmup
@@ -190,8 +188,7 @@ def _composite_z_with_renormalization(
 
     Returns:
         composite_z       — the same value as the original formula when all
-                            10 components are present (post-Phase-28; was 11
-                            before s_demand removal); per-row renormalized
+                            10 components are present; per-row renormalized
                             when some components are NaN; NaN when the
                             partial threshold is breached.
         weight_present    — share of effective weight that was present on
@@ -276,9 +273,9 @@ def compute_ccqs(components: pd.DataFrame, state: pd.DataFrame) -> pd.DataFrame:
     # using confidence-adjusted probabilities. Phase 24 — uses the
     # renormalization-aware composite so partial-history rows (some
     # components NaN) still produce a CCQS when enough weight is present.
-    # Rows with all 10 components valid (post-Phase-28; was 11 pre-Phase-28)
-    # produce values bit-identical to the original formula (verified in
-    # tests/test_metric_integrity.py and tests/reference/test_tv_parity.py).
+    # Rows with all 10 components valid produce values bit-identical to
+    # the original formula (verified in tests/test_metric_integrity.py
+    # and tests/reference/test_tv_parity.py).
     ccqs_z_raw, weight_present, n_valid_components = (
         _composite_z_with_renormalization(components, state)
     )

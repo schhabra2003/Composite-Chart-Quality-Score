@@ -3209,7 +3209,7 @@ basis (t-statistic citation). RED state triggers an additional
 
 **No methodology changes:**
 - `compute/ccqs.py` STATE_WEIGHTS unchanged
-- `compute/components.py` unchanged (11 components computed)
+- `compute/components.py` unchanged (10 components computed)
 - `data/cache/components.parquet` semantics unchanged
 - `data/cache/ccqs.parquet` semantics unchanged
 - `tests/reference/tv_snapshots.py` unchanged (140/140 TV reference parity preserved)
@@ -3230,22 +3230,23 @@ change — display-layer addition citing empirical evidence).
 
 Display-layer redesign of the setup classifier. The 27-label
 state-conditioned cascade in `compute/setup_classifier.py` is replaced
-by a 12-label **chart-evocative cascade** in
-`compute/setup_classifier_v2.py`. Pure descriptive labels — no
+by a 13-label **chart-evocative cascade** in
+`compute/setup_classifier_v2.py` (Phase 25 shipped with 12; Phase 27
+later added "Reclaim" as the 13th). Pure descriptive labels — no
 predictive language, no gestalt-pattern naming (no cup-and-handle /
 wedge / H&S). The legacy classifier is preserved untouched for
 reference; the pipeline now calls v2.
 
 **No methodology changes.**
 - `compute/ccqs.py` STATE_WEIGHTS unchanged
-- `compute/components.py` unchanged (11 components)
+- `compute/components.py` unchanged (10 components)
 - `compute/state.py` unchanged (6 states)
 - `compute/leadership.py` unchanged
 - All numeric / categorical non-setup fields bit-identical
   (140/140 TV reference parity preserved; only `setup` and
   `setup_confidence` change)
 
-**The 12 labels (cascade order, first match wins):**
+**The 13 labels (cascade order, first match wins):**
 
 | # | Label | Definition |
 |---|---|---|
@@ -3260,7 +3261,8 @@ reference; the pipeline now calls v2.
 | 9 | At Highs | Bullish stack AND within 5% of 252d high (residual) |
 | 10 | Basing Low | Within 10% of 252d low AND `adr_pct_20` in bottom 40th cross-sectional percentile |
 | 11 | Breakdown | `close < prior 40d min` AND close < 50d MA |
-| 12 | Sideways | `range_60d_pct_of_price < 20` AND 25% ≤ `position_in_60d_range` ≤ 75% |
+| 12 | Reclaim | Within last 5d a Breakdown (#11) fired AND today's close > that breakdown's failed level (`failed_breakdown_flag_5d_v2`) |
+| 13 | Sideways | `range_60d_pct_of_price < 20` AND 25% ≤ `position_in_60d_range` ≤ 75% |
 
 If no condition matches → empty string (`""`).
 `setup_confidence = 1.0` for any assigned label, `0.0` for blank.
@@ -3981,7 +3983,7 @@ For each basket:
 | Data | Daily OHLCV only (yfinance primary, Stooq backup for verification) |
 | Scope | Pure technical and momentum/strength analysis |
 | Timeframes | Daily primary; weekly + monthly confluence |
-| Universe | ~892 unique tickers (post Phase 23; expandable to mid/small caps later) |
+| Universe | ~892 unique tickers (expandable to mid/small caps later) |
 | No macro/regime detection | User has separate models for that |
 | No fundamentals | No earnings, no estimates, no revisions |
 | No positioning data | No short interest, no insider, no options flow |
@@ -4008,7 +4010,7 @@ The canonical universe lives in `data/universe.py`. **DO NOT REGENERATE OR MODIF
 
 ### Universe Stats
 
-- **892 unique tickers** (post Phase 23: added 9 major recent IPOs; original spec had 910 before Phase 5.2 removals and subsequent re-additions)
+- **892 unique tickers**
 - **~858 stocks** survive the data-quality firewall and are CCQS-scored on a given day (Phase 24 also restores partial-history names via graceful renormalization)
 - **SPY, QQQ** are kept as benchmarks only (RS denominator + chart overlays) and
   are NOT in the scored panel — their OHLCV is persisted separately at
@@ -4017,7 +4019,7 @@ The canonical universe lives in `data/universe.py`. **DO NOT REGENERATE OR MODIF
   - **180 CORE baskets** (sector/industry primary classifications)
   - **60 TAG baskets** (thematic cross-sector overlays)
   - **35 COUNTRY baskets** (country ETF tier)
-- **219 populated baskets**, **152 healthy** (≥3 primary tickers)
+- **275 populated baskets**, **151 healthy** (≥3 primary tickers)
 - **734 manual business-descriptor overrides** already applied
 
 ### Removed Tickers (Phase 5.2)
@@ -4045,7 +4047,7 @@ exceptions.
 
 ```python
 from data.universe import (
-    all_unique_tickers,       # List of ~892 scored-panel tickers (post Phase 23)
+    all_unique_tickers,       # List of ~892 scored-panel tickers
     primary_basket,           # ticker -> primary basket name
     tags_for,                 # ticker -> list of tag baskets
     constituents,             # basket -> list of primary tickers
@@ -4065,8 +4067,8 @@ from data.universe import (
 
 **Primary:** yfinance (Python library, free, no API key)
 - Daily OHLCV: open, high, low, close, adj_close, volume
-- ~7-year lookback (`LOOKBACK_DAYS = 7*365 + 60` ≈ 1,824 calendar days; original spec was 5y / 1,260 trading days, widened to support warmup back to 2020-01-01)
-- Batch download, ~60-120 seconds for ~892 tickers (post Phase 23)
+- ~7-year lookback (`LOOKBACK_DAYS = 7*365 + 60` ≈ 1,824 calendar days; supports CCQS history back to 2020-01-01 after 252d feature warm-up)
+- Batch download, ~60-120 seconds for ~892 tickers
 - Use `auto_adjust=False` to get both `close` and `adj_close`
 
 **Backup verification:** Stooq (via pandas-datareader)
@@ -5084,14 +5086,13 @@ Target tier sizes (by construction of the quantile cuts):
 
 ---
 
-## 10. Setup Categories — 29 Setups (LEGACY — superseded by Phase 25 + 27)
+## 10. Setup Categories — LEGACY (superseded by Phase 25 + 27)
 
-> ⚠️ **Phase 25 (2026-05-28) supersedes this section.** Production
-> now uses the 13-label chart-evocative cascade in
-> `compute/setup_classifier_v2.py` (12 labels in Phase 25; Phase 27
-> added the 13th, "Reclaim") — see the Phase 25 / 27 entries above in
-> the phase-by-phase section. The 27-label vocabulary documented below
-> is preserved here for historical reference; the legacy classifier in
+> ⚠️ **This section is historical.** Production uses the 13-label
+> chart-evocative cascade in `compute/setup_classifier_v2.py` — see
+> the Phase 25 / 27 entries above in the phase-by-phase section. The
+> vocabulary documented below is preserved here for reference; the
+> legacy classifier in
 > `compute/setup_classifier.py` is no longer called by the pipeline but
 > is kept untouched in the repo.
 
@@ -5819,7 +5820,7 @@ python3.13 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
-python -m compute.loader      # Pull ~892 tickers + benchmarks (original spec: 910)
+python -m compute.loader      # Pull ~892 tickers + benchmarks
 python -m compute.data_quality # Run quality checks
 ```
 
@@ -5834,7 +5835,7 @@ Expected:
 ### Phase 2: Features + Standardization
 
 Create:
-- `compute/features.py` (all 104 features, vectorized using pandas/numpy)
+- `compute/features.py` (108 features, vectorized using pandas/numpy)
 - `compute/standardization.py` (robust z-score framework)
 - `tests/test_features.py` (unit tests for feature correctness)
 
@@ -5844,10 +5845,10 @@ Test on a sample of 10 tickers; verify feature values against TradingView spot c
 
 Create:
 - `compute/components.py` (10 component scores)
-- `compute/state.py` (probabilistic classification)
+- `compute/state.py` (probabilistic classification, 6 states)
 - `compute/ccqs.py` (composite engine + grading)
-- `compute/setup_classifier.py` (24 setups)
-- `compute/leadership.py` (leadership tier)
+- `compute/setup_classifier_v2.py` (13-label chart-evocative cascade)
+- `compute/leadership.py` (leadership tier, 10 tiers)
 - `tests/test_components.py`, `tests/test_state.py`
 
 Test: full universe scoring. Should complete in <30s. Distribution sanity: ~5-10% Grade S.
@@ -5866,17 +5867,17 @@ Run end-to-end pipeline. All sanity checks pass.
 ### Phase 5: Streamlit Dashboard
 
 Create:
-- `output/app.py` (8 dashboard views with ADFM brand)
+- `app/streamlit_app.py` (8 dashboard views with ADFM brand)
 
-Test locally with `streamlit run output/app.py`. Verify all views render correctly.
+Test locally with `streamlit run app/streamlit_app.py`. Verify all views render correctly.
 
 ### Phase 6: Deployment
 
 Create:
 - [`.github/workflows/pipeline.yml`](.github/workflows/pipeline.yml) —
-  scheduled daily refresh at 21:30 UTC weekdays (= 4:30 PM EST /
-  5:30 PM EDT, always at least 30 minutes after the 4:00 PM ET
-  cash-equity close).
+  scheduled daily refresh at 4:05 PM ET weekdays (5 min after the
+  4:00 PM ET cash-equity close), via two DST-spanning UTC crons gated
+  by an ET-hour guard so exactly one fires per weekday.
 - README deployment instructions
 - Streamlit Cloud configuration
 
@@ -5901,7 +5902,7 @@ Deploy to private GitHub + Streamlit Community Cloud.
 
 ### Performance Targets
 
-- Data pull: < 2 minutes for ~892 tickers (original spec: 910)
+- Data pull: < 2 minutes for ~892 tickers
 - Feature computation: < 30 seconds for full universe
 - Scoring: < 5 seconds
 - Total daily refresh: < 5 minutes
@@ -5918,25 +5919,19 @@ Deploy to private GitHub + Streamlit Community Cloud.
 
 ## Reference Card — Key Numbers
 
-| Metric | Original spec | Current (post-Phase-29) |
-|--------|-------------|------:|
-| Universe size | 910 tickers | ~892 tickers (Phase 23 added IPOs) |
-| Baskets | 275 (180 CORE + 60 TAG + 35 COUNTRY) | 275 universe baskets → ~148 populated themes shown in dashboard |
-| Benchmarks | 2 (SPY, QQQ) | 2 (SPY, QQQ) |
-| Features per stock | 104 → 138 (Path C+) | 108 (Phase 29 dropped 30 unused) |
-| Components | 10 → 11 → 10 | 10 (Phase 28 removed s_demand) |
-| States | 6 | 6 |
-| Setup categories | 24 → 29 → 12 | 13 (Phase 25 + 27 Reclaim) |
-| Leadership tiers | 7 → 9 → 10 | 10 (Phase 11.C.1 added UNCLASSIFIED) |
-| Theme classes | 7 | 7 |
-| Dashboard views | 8 | 8 |
-| Reliability layers | 8 | 8 |
-
-The "Original spec" column reflects the pre-implementation plan in
-§16 "Build Phases" above. The "Current" column reflects production
-state on 2026-05-28 (post-Phase-29.3). Methodology refinements
-documented per-phase in the Path C overview + per-Phase entries above
-and in CHANGELOG.md.
+| Metric | Value |
+|--------|------:|
+| Universe size | ~892 tickers |
+| Baskets | 275 (180 CORE + 60 TAG + 35 COUNTRY); ~148 populated themes shown in dashboard |
+| Benchmarks | 2 (SPY, QQQ) |
+| Features per stock | 108 |
+| Components | 10 |
+| States | 6 |
+| Setup categories | 13 |
+| Leadership tiers | 10 |
+| Theme classes | 7 |
+| Dashboard views | 8 |
+| Reliability layers | 8 |
 
 ---
 

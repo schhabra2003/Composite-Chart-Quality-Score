@@ -40,7 +40,7 @@ A 25-test regression suite now runs from `tests/test_metric_integrity.py`. It ru
 | **CCQS / Grade** | range [0,100]; NaN tolerance; S share in [2%,15%]; top 8% by score → S consistency; all letters present | 5 / 5 PASS |
 | **State** | raw probabilities sum to 1; adjusted probabilities sum to 1; confidence in [0,1]; valid state names | 4 / 4 PASS |
 | **Leadership** | valid tier names; ELITE_LEADER share <10% (sanity) | 2 / 2 PASS |
-| **Components** | all 11 present; no ±inf; values bounded \|z\|<15 across 5 sample dates × 11 components | 3 / 3 PASS |
+| **Components** | all 10 present; no ±inf; values bounded \|z\|<15 across 5 sample dates × 10 components | 3 / 3 PASS |
 | **Feature arithmetic** | 30 random tickers cross-validated vs raw OHLCV: pct_ma_50, pct_ma_200; RSI/ADX in [0,100] | 4 / 4 PASS |
 | **Δ CCQS** | 1d / 5d / 21d computable from sorted trading-day history, sane magnitudes | 1 / 1 PASS |
 | **Setup** | ≥ 95% coverage; confidence in [0,1] | 2 / 2 PASS |
