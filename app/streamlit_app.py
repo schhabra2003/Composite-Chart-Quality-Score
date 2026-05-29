@@ -362,7 +362,15 @@ with tab_production:
             # represents.
             from data.universe import tickers_tagged
             members = set(tickers_tagged(basket))
-            peers = df[df.index.isin(members)].sort_values("ccqs", ascending=False).head(10)
+            peers = df[df.index.isin(members)].sort_values("ccqs", ascending=False).head(10).copy()
+            # Phase 30.4 — every peer row is, by definition, a member of
+            # this basket; override the per-ticker "basket" column (which
+            # stores each ticker's PRIMARY) so the Theme column reflects the
+            # basket being viewed. Without this, AAPL's Mag7 peer list
+            # showed NVDA tagged "AI Compute", TSLA tagged "Electric
+            # Vehicles", MSFT/META/AMZN/GOOGL tagged "Hyperscalers" —
+            # visually scrambled even though all 7 are genuine Mag7 peers.
+            peers["basket"] = basket
         else:
             peers = df.head(0)
         st.plotly_chart(
